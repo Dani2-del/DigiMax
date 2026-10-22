@@ -13,5 +13,5 @@
 **/build/
 **/target/
 **/out/
+**/bin/
 *.log
-

@@ -59,7 +59,7 @@ Aplicación de transporte que permite a los usuarios gestionar tarjetas y recarg
 
 ## Configuración y ejecución local
 
-Ejecuta MongoDB, `Correo` (puerto 8084) y `Acceso` (puerto 8080) antes de iniciar este módulo. Configura `MAIL_SERVICE_API_KEY` con el mismo valor aleatorio en Correo, Acceso y Digitrans-MAX; configura `SMTP_USERNAME`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` únicamente en Correo. Define los secretos en las variables de entorno del usuario, nunca en `application.properties`. Este módulo se ejecuta en el puerto 8081 y consulta `Acceso` para validar el JWT en cada solicitud autenticada. Las credenciales de registro y Google OAuth pertenecen a `Acceso`.
+Ejecuta MongoDB local, `Correo` (puerto 8084) y `Acceso` (puerto 8080) antes de iniciar este módulo. Por defecto, este servicio usa la base local vacía `digitrans_transporte`; Acceso usa por separado `digitrans_acceso`. Puedes cambiar las URI locales mediante `TRANSPORTE_MONGODB_URI` y `ACCESO_MONGODB_URI`, respectivamente; no uses aquí la URI de Atlas. Configura `MAIL_SERVICE_API_KEY` con el mismo valor aleatorio en Correo, Acceso y Transporte; configura `SMTP_USERNAME`, `SMTP_PASSWORD` y, opcionalmente, `SMTP_FROM` únicamente en Correo. Define secretos en variables de entorno, nunca en `application.properties`. Este módulo se ejecuta en el puerto 8081 y consulta Acceso para validar el JWT en cada solicitud autenticada. Las credenciales de registro y Google OAuth pertenecen a Acceso.
 
 En PowerShell, asigna los valores correspondientes en el entorno local y ejecuta:
 

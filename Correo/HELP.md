@@ -4,7 +4,7 @@
 
 ## Local startup
 
-Generate one shared API key and store it in the user environment. Acceso and Digitrans-MAX use the same value to authenticate requests to Correo:
+Generate one shared API key and store it in the user environment. Acceso and Transporte use the same value to authenticate requests to Correo:
 
 ```powershell
 $bytes = New-Object byte[] 32
@@ -25,13 +25,13 @@ $env:SMTP_PASSWORD = '<smtp-app-password>'
 .\gradlew.bat bootRun
 ```
 
-Use exactly the same generated `MAIL_SERVICE_API_KEY` value in Correo, Acceso, and Digitrans-MAX. The launcher reads `MAIL_SERVICE_API_KEY` and `APP_JWT_SECRET` from the current user's environment. Store SMTP credentials as user environment variables too; never put real values in `application.properties` or commit them. In deployed environments, expose this API only to trusted internal services and use HTTPS.
+Use exactly the same generated `MAIL_SERVICE_API_KEY` value in Correo, Acceso, and Transporte. The launcher reads `MAIL_SERVICE_API_KEY` and `APP_JWT_SECRET` from the current user's environment. Store SMTP credentials as user environment variables too; never put real values in `application.properties` or commit them. In deployed environments, expose this API only to trusted internal services and use HTTPS.
 
-SMTP variables belong only in this Correo terminal. Acceso and Digitrans-MAX do not need SMTP credentials.
+SMTP variables belong only in this Correo terminal. Acceso and Transporte do not need SMTP credentials.
 
 | Variable | Required | Default / purpose |
 | --- | --- | --- |
-| `MAIL_SERVICE_API_KEY` | Yes | Shared internal key used by Correo, Acceso, and Digitrans-MAX. |
+| `MAIL_SERVICE_API_KEY` | Yes | Shared internal key used by Correo, Acceso, and Transporte. |
 | `SMTP_USERNAME` | Yes for delivery | SMTP account username. |
 | `SMTP_PASSWORD` | Yes for delivery | SMTP account password or app password. |
 | `SMTP_HOST` / `SMTP_PORT` | No | Defaults to Gmail SMTP on port 587. |

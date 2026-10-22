@@ -16,10 +16,10 @@ $services = @(
         Command = '.\gradlew.bat --no-daemon bootRun'
     },
     @{
-        Name = 'Digitrans-MAX'
+        Name = 'Transporte'
         Port = 8081
         MainClass = 'com.transcaribe.transcaribe.DigitransMaxApplication'
-        Folder = 'Digitrans-MAX'
+        Folder = 'Transporte'
         Command = '.\mvnw.cmd spring-boot:run'
     }
 )
