@@ -1,0 +1,20 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="modal"
+     th:if="${alertasAdmin != null and !#lists.isEmpty(alertasAdmin)}">
+    <div class="admin-alert-overlay" role="dialog" aria-modal="true"
+         aria-labelledby="adminAlertTitle" aria-describedby="adminAlertMessage">
+        <section class="admin-alert-card">
+            <span class="admin-alert-label">AVISO DE Digitrans</span>
+            <h2 id="adminAlertTitle" th:text="${alertasAdmin[0].asunto}">Aviso importante</h2>
+            <img th:if="${alertasAdmin[0].imagen != null}"
+                 th:src="@{/avisos/{id}/imagen(id=${alertasAdmin[0].id})}"
+                 alt="Imagen del aviso" class="admin-alert-image">
+            <p id="adminAlertMessage" class="admin-alert-message"
+               th:text="${alertasAdmin[0].mensaje}">Mensaje del aviso</p>
+            <form th:action="@{/avisos/{id}/cerrar(id=${alertasAdmin[0].id})}" method="post">
+                <input type="hidden" name="volverA"
+                       th:value="${alertaReturnTo != null ? alertaReturnTo : '/menu'}">
+                <button type="submit" class="admin-alert-close">Cerrar</button>
+            </form>
+        </section>
+    </div>
+</div>

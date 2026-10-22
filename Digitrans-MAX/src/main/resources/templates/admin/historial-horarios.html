@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de horarios - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <style>
+        .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+        .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+        .btn-secundario { background: #2f855a; color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-secundario:hover { background: #276749; }
+        .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; padding: 16px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
+        .filter-field { display: flex; flex-direction: column; gap: 6px; }
+        .filter-field label { font-weight: 600; color: #4a5568; }
+        .filter-field input, .filter-field select { box-sizing: border-box; width: 100%; padding: 9px 10px; border: 1px solid #cbd5e0; border-radius: 7px; background: #fff; }
+        .filter-actions { display: flex; align-items: end; gap: 8px; }
+        .primary, .ghost { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 700; }
+        .primary { background: #2a9d8f; color: #fff; }
+        .ghost { background: #edf2f7; color: #2d3748; }
+        .summary { margin: 14px 0; color: #4a5568; }
+        .history-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 13px 14px; border: 1px solid #edf2f7; border-radius: 8px; margin-bottom: 8px; }
+        .history-header { background: #2d3748; color: #fff; border-color: #2d3748; font-weight: 700; }
+        .history-cell small { display: block; color: #718096; font-size: 11px; margin-bottom: 3px; }
+        .history-header small { color: #e2e8f0; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #ebf8ff; color: #2b6cb0; font-size: 11px; font-weight: 700; }
+        .flash-error { background: #fff5f5; color: #822727; border: 1px solid #f56565; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
+        @media (max-width: 760px) {
+            .history-header { display: none; }
+            .history-row { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <div class="center-card">
+        <div class="card">
+            <div class="header-row">
+                <div>
+                    <h2 style="margin-bottom: 5px;">📚 Historial de horarios</h2>
+                    <p style="margin-top: 0; color: #718096;">Consulta las rutas programadas y el historial operativo de los conductores.</p>
+                </div>
+                <div class="header-actions">
+                    <button type="button" class="btn-secundario" onclick="window.location.href='/admin/horarios'">Menú de rutas</button>
+                    <button type="button" class="ghost" onclick="window.location.href='/admin/dashboard'">Panel principal</button>
+                </div>
+            </div>
+
+            <div th:if="${error}" class="flash-error" th:text="${error}"></div>
+
+            <form class="filters" th:action="@{/admin/horarios/historial}" method="get">
+                <div class="filter-field">
+                    <label for="conductorId">Conductor</label>
+                    <select id="conductorId" name="conductorId">
+                        <option value="">Todos los conductores</option>
+                        <option th:each="c : ${conductores}"
+                                th:value="${c.id}"
+                                th:text="${c.nombre != null ? c.nombre : c.correo}"
+                                th:selected="${c.id == conductorIdSeleccionado}">
+                        </option>
+                    </select>
+                </div>
+                <div class="filter-field">
+                    <label for="ruta">Ruta</label>
+                    <input id="ruta" type="search" name="ruta" th:value="${rutaSeleccionada}" placeholder="Ej: T100E">
+                </div>
+                <div class="filter-field">
+                    <label for="fechaDesde">Desde</label>
+                    <input id="fechaDesde" type="date" name="fechaDesde" th:value="${fechaDesde}">
+                </div>
+                <div class="filter-field">
+                    <label for="fechaHasta">Hasta</label>
+                    <input id="fechaHasta" type="date" name="fechaHasta" th:value="${fechaHasta}">
+                </div>
+                <div class="filter-actions">
+                    <button type="submit" class="primary">Filtrar</button>
+                    <button type="button" class="ghost" onclick="window.location.href='/admin/horarios/historial'">Limpiar</button>
+                </div>
+            </form>
+
+            <div class="summary">
+                <strong th:text="${totalHistorial}">0</strong> registro(s) encontrado(s).
+            </div>
+
+            <div th:if="${#lists.isEmpty(historial)}" class="error-message">
+                <p>No hay registros que coincidan con los filtros seleccionados.</p>
+            </div>
+
+            <div th:unless="${#lists.isEmpty(historial)}">
+                <div class="history-row history-header">
+                    <div class="history-cell">Conductor</div>
+                    <div class="history-cell" th:text="${esTransmilenio ? 'Vehículo' : 'Bus'}">Bus</div>
+                    <div class="history-cell">Ruta</div>
+                    <div class="history-cell">Fecha y horario</div>
+                    <div class="history-cell">Estado</div>
+                </div>
+                <div th:each="h : ${historial}" class="history-row">
+                    <div class="history-cell">
+                        <strong th:text="${nombreConductor[h.conductorId] != null ? nombreConductor[h.conductorId] : 'Conductor no disponible'}"></strong>
+                    </div>
+                    <div class="history-cell">
+                        <span th:if="${esTransmilenio}">No aplica</span>
+                        <span th:unless="${esTransmilenio}" th:text="${busPorHorario[h.id] != null ? busPorHorario[h.id] : (h.busPlaca != null ? h.busPlaca : (busConductor[h.conductorId] != null ? busConductor[h.conductorId] : 'Sin bus asignado'))}"></span>
+                    </div>
+                    <div class="history-cell">
+                        <strong th:text="${h.ruta}"></strong>
+                        <small th:if="${h.sentido != null}"
+                               th:text="${h.sentido == 'IDA' ? 'Sentido: Ida' : 'Sentido: Vuelta'}"></small>
+                    </div>
+                    <div class="history-cell">
+                        <span th:text="${h.fecha}"></span><br>
+                        <small th:text="${h.horaInicio + ' - ' + h.horaFin}"></small>
+                    </div>
+                    <div class="history-cell">
+                        <span class="status" th:text="${h.estado}"></span>
+                    </div>
+                </div>
+                <div th:if="${totalPages > 1}" style="display:flex; justify-content:center; gap:12px; margin-top:18px;">
+                    <a th:if="${currentPage > 0}"
+                       th:href="@{/admin/horarios/historial(page=${currentPage - 1}, conductorId=${conductorIdSeleccionado}, ruta=${rutaSeleccionada}, fechaDesde=${fechaDesde}, fechaHasta=${fechaHasta})}">
+                        Anterior
+                    </a>
+                    <span th:text="'Página ' + ${currentPage + 1} + ' de ' + ${totalPages}"></span>
+                    <a th:if="${currentPage + 1 < totalPages}"
+                       th:href="@{/admin/horarios/historial(page=${currentPage + 1}, conductorId=${conductorIdSeleccionado}, ruta=${rutaSeleccionada}, fechaDesde=${fechaDesde}, fechaHasta=${fechaHasta})}">
+                        Siguiente
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

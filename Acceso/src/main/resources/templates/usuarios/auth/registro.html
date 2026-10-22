@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <title>Registro - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="registration-page">
+  <div class="page registration-page-shell">
+    <main class="registration-layout">
+      <aside class="registration-art">
+        <a class="registration-brand" th:href="@{/}" aria-label="Volver al inicio de Digitrans">
+          <img th:src="@{/images/digitrans-mark.svg}" alt="">
+          <span>Digitrans</span>
+        </a>
+        <div class="registration-art-copy">
+          <span>Digitrans · COLOMBIA</span>
+          <h2>Muévete por la ciudad a tu manera.</h2>
+          <p>Crea una sola cuenta para acceder a los servicios de transporte y recargas móviles.</p>
+        </div>
+      </aside>
+
+      <section class="registration-panel" aria-labelledby="registrationTitle">
+        <div class="registration-card">
+          <span class="registration-kicker">EMPIEZA TU RECORRIDO</span>
+          <h1 id="registrationTitle">Crear cuenta</h1>
+          <p class="registration-intro">Completa tus datos para crear tu cuenta universal.</p>
+
+          <form th:action="@{/registro}" method="post" class="form" id="registroForm">
+            <input type="text" name="username" placeholder="Nombre completo" autocomplete="name" required />
+            <input type="email" name="correo" placeholder="Correo electrónico" autocomplete="email" required />
+
+            <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="new-password" required minlength="8" />
+
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirmar contraseña" autocomplete="new-password" required />
+            <p id="passwordMessage" class="match-error">Las contraseñas no coinciden</p>
+
+            <button class="primary" type="submit" id="btnRegistrar">Crear mi cuenta</button>
+          </form>
+
+          <div class="register-row">
+            <span>¿Ya tienes cuenta?</span>
+            <a th:href="@{/login}" class="registration-login-link">Inicia sesión</a>
+          </div>
+
+          <div class="registration-feedback">
+            <p class="error" th:if="${error}" th:text="${error}"></p>
+            <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+
+  <script>
+    const password = document.getElementById('password');
+    const confirmPassword = document.getElementById('confirmPassword');
+    const message = document.getElementById('passwordMessage');
+    const btn = document.getElementById('btnRegistrar');
+
+    function validarPassword() {
+      if (confirmPassword.value === "") {
+        message.style.display = 'none';
+        return;
+      }
+
+      if (password.value.length < 8) {
+        message.textContent = "La contraseña debe tener mínimo 8 caracteres";
+        message.style.display = 'block';
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+      } else if (password.value !== confirmPassword.value) {
+        message.textContent = "Las contraseñas no coinciden";
+        confirmPassword.classList.add('no-match');
+        message.style.display = 'block';
+        btn.disabled = true;
+        btn.style.opacity = "0.5";
+      } else {
+        confirmPassword.classList.remove('no-match');
+        message.style.display = 'none';
+        btn.disabled = false;
+        btn.style.opacity = "1";
+      }
+    }
+
+    password.addEventListener('change', validarPassword);
+    confirmPassword.addEventListener('keyup', validarPassword);
+  </script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

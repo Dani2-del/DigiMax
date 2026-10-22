@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color"
+        th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#0F3948')}" />
+  <title>Mi espacio - Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261015-5)}" />
+  <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}" />
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="menu-page" th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <main class="user-dashboard">
+      <section class="dashboard-welcome">
+        <div class="welcome-copy">
+          <span class="dashboard-eyebrow">TU ESPACIO Digitrans</span>
+          <h1>Hola, <span th:text="${usuario.nombre != null && !usuario.nombre.isBlank() ? usuario.nombre : 'viajero'}">viajero</span></h1>
+          <p>Estás usando <strong th:text="${sistemaActual.nombre}">Transcaribe</strong>. Aquí tienes tus tarjetas y movimientos de ese sistema.</p>
+        </div>
+        <div class="welcome-mark" aria-hidden="true">
+          <svg viewBox="0 0 120 120" fill="none">
+            <circle cx="60" cy="60" r="50" stroke="currentColor" stroke-width="1.5" opacity=".3"/>
+            <circle cx="60" cy="60" r="37" stroke="currentColor" stroke-width="1.5" opacity=".5"/>
+            <path d="M26 68h68M35 52h50M45 36h30" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+            <circle cx="60" cy="60" r="7" fill="currentColor"/>
+            <path d="M60 12v12M108 60H96M60 108V96M12 60h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+      </section>
+
+      <section th:attr="data-sistema=${sistemaActual}" aria-label="Sistema de transporte activo">
+        <p>Sistema seleccionado: <strong th:text="${sistemaActual.nombre}">Transcaribe</strong></p>
+        <form th:if="${usuario.role == 'ROLE_ADMIN'}" th:action="@{/menu/sistema}" method="post">
+          <label for="sistema">Cambiar sistema:</label>
+          <select id="sistema" name="sistema">
+            <option th:each="sistema : ${sistemasTransporte}"
+                    th:value="${sistema}"
+                    th:text="${sistema.nombre}"
+                    th:selected="${sistema == sistemaActual}"></option>
+          </select>
+          <button type="submit">Cambiar sistema</button>
+        </form>
+      </section>
+
+      <section class="dashboard-summary" aria-label="Resumen de cuenta">
+        <div class="summary-label">
+          <span class="summary-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/>
+              <path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <span>Saldo total en tus tarjetas</span>
+        </div>
+        <strong class="summary-amount"
+                th:text="${'$' + #numbers.formatDecimal(saldoSistemaActual, 0, 'COMMA', 0, 'POINT')}">$0</strong>
+        <a class="summary-link" th:href="@{/tarjetas}">Ver mis tarjetas
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </a>
+        <span class="summary-orbit summary-orbit-one" aria-hidden="true"></span>
+        <span class="summary-orbit summary-orbit-two" aria-hidden="true"></span>
+      </section>
+
+      <section class="dashboard-section">
+        <div class="dashboard-section-heading">
+          <div>
+            <span class="dashboard-eyebrow">ACCESOS RÁPIDOS</span>
+            <h2>¿Qué quieres hacer?</h2>
+          </div>
+          <span class="section-caption">Administra tu viaje fácilmente</span>
+        </div>
+
+        <div class="dashboard-actions">
+          <a class="dashboard-action action-recharge" th:href="@{/recarga}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/>
+              </svg>
+            </span>
+            <span class="action-copy"><strong>Recargar saldo</strong><small>Agrega pasajes a tu tarjeta</small></span>
+            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-cards" th:href="@{/tarjetas}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="14" rx="3" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M3 10h18M7 15h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="action-copy"><strong>Mis tarjetas</strong><small>Consulta y administra tus tarjetas</small></span>
+            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-history" th:href="@{/historial}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M4 12a8 8 0 1 0 2.35-5.65L4 8.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 4v4.7h4.7M12 7v5l3.2 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="action-copy"><strong>Historial</strong><small>Revisa movimientos y recibos PDF</small></span>
+            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-routes"
+             th:href="${tieneRutasConfiguradas ? '/rutas' : null}"
+             th:classappend="${!tieneRutasConfiguradas ? 'is-disabled' : ''}"
+             th:attr="aria-disabled=${!tieneRutasConfiguradas}, tabindex=${!tieneRutasConfiguradas ? -1 : 0}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <circle cx="12" cy="9" r="2.5" stroke="currentColor" stroke-width="1.8"/>
+              </svg>
+            </span>
+            <span class="action-copy">
+              <strong>Rutas favoritas</strong>
+              <small th:text="${!tieneRutasConfiguradas ? 'Próximamente para ' + sistemaActual.nombre : 'Elige rutas y horarios de aviso'}">Elige rutas y horarios de aviso</small>
+            </span>
+            <svg th:if="${tieneRutasConfiguradas}" class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-routes"
+             th:href="${tieneRutasConfiguradas ? '/mapa-rutas' : null}"
+             th:classappend="${!tieneRutasConfiguradas ? 'is-disabled' : ''}"
+             th:attr="aria-disabled=${!tieneRutasConfiguradas}, tabindex=${!tieneRutasConfiguradas ? -1 : 0}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="m3 6.5 5.5-2.5 7 2.5L21 4v13.5L15.5 20l-7-2.5L3 20V6.5Z"
+                      stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                <path d="M8.5 4v13.5M15.5 6.5V20M12 14.5c1.7-1.8 3-3.2 3-4.5a3 3 0 1 0-6 0c0 1.3 1.3 2.7 3 4.5Z"
+                      stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                <circle cx="12" cy="10" r="1" fill="currentColor"/>
+              </svg>
+            </span>
+            <span class="action-copy">
+              <strong>Mapa interactivo (BETA)</strong>
+              <small th:text="${!tieneRutasConfiguradas ? 'Próximamente para ' + sistemaActual.nombre : 'Explora rutas y paradas en el mapa'}">Explora rutas y paradas en el mapa</small>
+            </span>
+            <svg th:if="${tieneRutasConfiguradas}" class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-profile" th:href="@{/perfil}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            <span class="action-copy"><strong>Mi perfil</strong><small>Actualiza tus datos personales</small></span>
+            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+
+          <a class="dashboard-action action-alerts" th:href="@{/limite-saldo}">
+            <span class="action-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="action-copy"><strong>Alerta de saldo</strong><small>Configura tu límite mínimo</small></span>
+            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
+        </div>
+      </section>
+
+      <section class="dashboard-ride">
+        <div class="ride-intro">
+          <span class="ride-icon" aria-hidden="true">
+            <svg viewBox="0 0 48 48" fill="none">
+              <path class="ride-bus-body" d="M9 31V15c0-4 3-6 7-6h16c4 0 7 2 7 6v16H9Z" fill="#FF5500" stroke="#B85B16" stroke-width="1.8" stroke-linejoin="round"/>
+              <path class="ride-bus-window" d="M13 15h22v7H13z" fill="#BCEEF2"/>
+              <path class="ride-bus-detail" d="M9 25h30M14 31v5m20-5v5M12 36h24" stroke="#B85B16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <path class="ride-bus-trim" d="M10 28h28v3H10z" fill="#E85A0B"/>
+              <path d="M15 26h.1M33 26h.1" stroke="#FFF4D8" stroke-width="3.2" stroke-linecap="round"/>
+              <circle class="ride-bus-wheel" cx="16" cy="36" r="3.2" fill="#0F3948"/>
+              <circle class="ride-bus-wheel" cx="32" cy="36" r="3.2" fill="#0F3948"/>
+              <path class="ride-bus-detail" d="M20 12h8" stroke="#B85B16" stroke-width="1.5" stroke-linecap="round"/>
+            </svg>
+          </span>
+          <div>
+            <span class="dashboard-eyebrow" th:text="${permiteSimularViaje ? '¿LISTO PARA VIAJAR?' : 'SERVICIO EN PREPARACIÓN'}">¿LISTO PARA VIAJAR?</span>
+            <h2 th:text="${permiteSimularViaje ? 'Simula tu viaje' : 'Viajes en bus próximamente'}">Simula tu viaje</h2>
+            <p th:text="${permiteSimularViaje ? ((esTransmilenio or esTransmetro) ? 'Elige tu tarjeta; al confirmar, se asignará una ruta troncal al azar.' : 'Selecciona tu tarjeta para simular el pago de un pasaje.') : 'Las operaciones de buses estarán disponibles próximamente para ' + sistemaActual.nombre + '.'}">Selecciona tu tarjeta para simular el pago de un pasaje.</p>
+          </div>
+        </div>
+        <div th:unless="${permiteSimularViaje}" class="ride-coming-soon">
+          <strong>Operaciones de buses</strong>
+          <span>Próximamente para <b th:text="${sistemaActual.nombre}">Transmetro</b></span>
+        </div>
+        <form th:if="${permiteSimularViaje}" th:action="@{/api/buses/simular-viaje}" method="post" class="ride-form">
+          <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+          <input type="hidden" name="usuarioId" th:value="${usuario.id}" />
+          <label for="rideCard">Tarjeta Digitrans</label>
+          <select id="rideCard" name="numeroTarjeta" class="select-bus" required>
+            <option value="" disabled selected>Selecciona una tarjeta</option>
+            <option th:each="t : ${tarjetasSistemaActual}"
+                    th:value="${t.numeroTarjeta}"
+                    th:text="${t.numeroTarjeta + ' · Saldo $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT')}">
+            </option>
+          </select>
+          <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}"
+                  onclick="return confirm('¿Confirmas la simulación del viaje por $' + new Intl.NumberFormat('es-CO').format(Number(this.dataset.fare)) + '?')">
+            <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+              <path d="M2.5 10h13m-4.5-4.5L15.5 10 11 14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Simular viaje · $<span th:text="${#numbers.formatDecimal(valorPasaje, 0, 'POINT', 0, 'COMMA')}">3.550</span>
+          </button>
+        </form>
+      </section>
+
+      <div class="dashboard-feedback" aria-live="polite">
+        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+      </div>
+
+      <form th:action="@{/logout}" method="post" class="dashboard-logout">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+        <button type="submit">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M8 3H4.5A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17H8m4-3 4-4-4-4m4 4H7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Cerrar sesión
+        </button>
+      </form>
+    </main>
+
+    <a th:if="${usuario.role == 'ROLE_ADMIN'}"
+       th:href="@{/admin/dashboard}"
+       class="admin-switch-btn">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M8.2 3.2a2 2 0 0 1 3.6 0l.4 1a6.5 6.5 0 0 1 1.4.8l1-.3a2 2 0 0 1 2.1 3.1l-.6.8a6 6 0 0 1 0 1.6l.6.8a2 2 0 0 1-2.1 3.1l-1-.3a6.5 6.5 0 0 1-1.4.8l-.4 1a2 2 0 0 1-3.6 0l-.4-1a6.5 6.5 0 0 1-1.4-.8l-1 .3a2 2 0 0 1-2.1-3.1l.6-.8a6 6 0 0 1 0-1.6l-.6-.8a2 2 0 0 1 2.1-3.1l1 .3a6.5 6.5 0 0 1 1.4-.8l.4-1Z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+        <circle cx="10" cy="9.5" r="2.4" stroke="currentColor" stroke-width="1.4"/>
+      </svg>
+      Panel administrador
+    </a>
+
+    <a th:if="${usuario.role == 'ROLE_MODERATOR'}"
+       th:href="@{/admin/dashboard}"
+       class="admin-switch-btn">
+      Panel de moderación
+    </a>
+
+    <a th:if="${usuario.role == 'ROLE_CONDUCTOR'}"
+       th:href="@{/conductor/panel}"
+       class="admin-switch-btn conductor-switch-btn">
+      Cambiar a vista conductor
+    </a>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+  <div th:replace="~{fragments/aviso-administrativo :: modal}"></div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

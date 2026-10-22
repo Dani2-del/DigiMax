@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Avisos y alertas - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="admin-announcements-page" th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card admin-announcements">
+            <header class="admin-announcements-header">
+                <div>
+                    <p class="admin-eyebrow" th:text="|${sistemaActual.nombre} · COMUNICACIONES|">Transcaribe · COMUNICACIONES</p>
+                    <h1>Avisos y alertas de <span th:text="${sistemaActual.nombre}">Transcaribe</span></h1>
+                    <p>Los avisos se enviarán únicamente a cuentas de este servicio.</p>
+                </div>
+                <a class="admin-announcements-back" th:href="@{/admin/dashboard}">Volver al panel</a>
+            </header>
+
+            <p class="announcement-feedback announcement-success"
+               th:if="${mensajeAviso}" th:text="${mensajeAviso}" role="status"></p>
+            <p class="announcement-feedback announcement-error"
+               th:if="${errorAviso}" th:text="${errorAviso}" role="alert"></p>
+
+            <form class="announcement-form" th:action="@{/admin/avisos}" method="post"
+                  enctype="multipart/form-data">
+                <label for="asunto">Asunto del aviso</label>
+                <input id="asunto" name="asunto" type="text" maxlength="120" required
+                       placeholder="Ej.: Cambios temporales en el servicio">
+
+                <label for="mensaje">Mensaje</label>
+                <textarea id="mensaje" name="mensaje" maxlength="3000" rows="6" required
+                          placeholder="Escribe la información que quieres comunicar."></textarea>
+
+                <label for="imagen">Imagen del aviso (opcional, PNG o JPEG, máximo 5 MB)</label>
+                <input id="imagen" name="imagen" type="file" accept="image/png,image/jpeg">
+
+                <fieldset class="announcement-audience">
+                    <legend>Destinatarios</legend>
+                    <label class="announcement-radio">
+                        <input type="radio" name="tipoDestinatarios" value="roles" checked>
+                        <span><strong>Por tipo de cuenta</strong><small>El aviso llegará a todas las cuentas de los tipos marcados.</small></span>
+                    </label>
+                    <label class="announcement-radio">
+                        <input type="radio" name="tipoDestinatarios" value="seleccionados">
+                        <span><strong>Elegir uno o varios</strong><small>Marca las cuentas que recibirán el aviso.</small></span>
+                    </label>
+                </fieldset>
+
+                <fieldset class="announcement-role-filters">
+                    <legend>Tipos de cuenta</legend>
+                    <label><input type="checkbox" name="roles" value="ROLE_USER" checked> Usuarios</label>
+                    <label><input type="checkbox" name="roles" value="ROLE_CONDUCTOR" checked> Conductores</label>
+                    <label><input type="checkbox" name="roles" value="ROLE_MODERATOR" checked> Moderadores</label>
+                    <label><input type="checkbox" name="roles" value="ROLE_ADMIN" checked> Administradores</label>
+                </fieldset>
+
+                <div class="announcement-recipient-tools">
+                    <label for="recipientSearch">Buscar cuenta</label>
+                    <input id="recipientSearch" type="search" placeholder="Nombre, correo o tipo de cuenta">
+                    <span id="recipientCount" th:text="|${#lists.size(destinatarios)} cuentas activas y verificadas|"></span>
+                </div>
+
+                <div class="announcement-recipient-list" role="group" aria-label="Seleccionar destinatarios">
+                    <label class="announcement-recipient" th:each="destinatario : ${destinatarios}"
+                           th:attr="data-role=${destinatario.role},data-search=${(destinatario.nombre ?: '') + ' ' + destinatario.correo + ' ' + destinatario.role}">
+                        <input type="checkbox" name="usuarios" th:value="${destinatario.id}">
+                        <span class="announcement-recipient-copy">
+                            <strong th:text="${destinatario.nombre ?: 'Sin nombre'}">Nombre</strong>
+                            <small th:text="${destinatario.correo}">correo</small>
+                        </span>
+                        <span class="announcement-role" th:text="${destinatario.role}">ROLE_USER</span>
+                    </label>
+                    <p class="announcement-empty" th:if="${#lists.isEmpty(destinatarios)}">
+                        No hay cuentas activas y verificadas para recibir avisos.
+                    </p>
+                </div>
+
+                <button type="submit" class="announcement-submit">Enviar aviso y publicar alerta</button>
+            </form>
+        </section>
+
+        <section class="card announcement-history">
+            <div class="announcement-history-header">
+                <h2>Avisos recientes</h2>
+                <a class="announcement-history-link" th:href="@{/admin/avisos/historial}">
+                    Ver historial completo
+                </a>
+            </div>
+            <p class="announcement-history-empty" th:if="${#lists.isEmpty(avisosRecientes)}">
+                Aún no se han enviado avisos.
+            </p>
+            <article class="announcement-history-item" th:each="aviso : ${avisosRecientes}">
+                <div>
+                    <h3 th:text="${aviso.asunto}">Asunto</h3>
+                    <img th:if="${aviso.imagen != null}"
+                         th:src="@{/avisos/{id}/imagen(id=${aviso.id})}"
+                         alt="Imagen del aviso" class="announcement-history-image">
+                    <p th:text="${aviso.mensaje}">Mensaje del aviso</p>
+                </div>
+                <span th:text="|${#lists.size(aviso.destinatarios)} destinatario(s)|">Destinatarios</span>
+            </article>
+        </section>
+    </main>
+</div>
+<script th:src="@{/js/avisos-admin.js}" defer></script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

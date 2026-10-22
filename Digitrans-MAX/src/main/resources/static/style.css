@@ -1,0 +1,736 @@
+/* =============================================
+   VARIABLES GLOBALES
+   ============================================= */
+:root {
+  --bg-1: #ffffff;
+  --card-bg: rgba(255, 255, 255, 0.9);
+  --glass: rgba(255, 255, 255, 0.8);
+  --accent: #FF5600;
+  --accent-2: #E3600F;
+  --accent-3: #B75C16;
+  --text: #4a5568;
+  --text-light: #FF5600;
+  --muted: #a0aec0;
+  --radius: 14px;
+}
+
+/* =============================================
+   RESET Y BASE
+   ============================================= */
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+}
+
+body {
+  background: #f8fafc;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  align-items: center;
+  position: relative;
+  z-index: 0;
+}
+
+/* Fondo con imagen desenfocada */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("/images/Background.png");
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  filter: blur(4px) brightness(1.1) saturate(0.8);
+  opacity: 0.2;
+  z-index: -1;
+}
+
+/* =============================================
+   VARIANTES DE BODY POR PÁGINA
+   ============================================= */
+body.login-page,
+body.menu-page {
+  min-height: 100vh;
+}
+
+body.login-page {
+  justify-content: center;
+}
+
+body.login-page .page {
+  flex: 1;
+  justify-content: center;
+  padding-bottom: 0;
+}
+
+body.login-page .center-card {
+  flex: 1;
+  align-items: center;
+}
+
+/* =============================================
+   TOPBAR
+   ============================================= */
+.topbar {
+  width: 100%;
+  max-width: 1100px;
+  margin: 22px auto 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-radius: 12px;
+  background: var(--accent);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  border: none;
+}
+
+.topbar .brand-title,
+.topbar .brand-sub {
+  color: white;
+}
+
+.top-actions button {
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.top-actions button:hover {
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* =============================================
+   NAVBAR
+   ============================================= */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--accent);
+  padding: 12px 40px;
+  box-shadow: 0 4px 12px rgba(240, 148, 84, 0.2);
+  border-radius: 0 0 15px 15px;
+  border-bottom: none;
+}
+
+.navbar .brand h1,
+.navbar-right .nav-link,
+.sub-links a {
+  color: white;
+}
+
+.sub-links a:hover,
+.navbar-right .nav-link:hover {
+  color: #f0f0f0;
+  opacity: 0.8;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.navbar-left .brand {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.navbar-left h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: white;
+}
+
+/* =============================================
+   BRAND Y LOGO
+   ============================================= */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: transparent;
+  padding: 8px;
+  filter: brightness(0) invert(1);
+  transition: transform 0.3s ease;
+}
+
+.brand-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text);
+  display: block;
+}
+
+.brand-sub {
+  font-size: 12px;
+  color: var(--muted);
+  display: block;
+  margin-top: -2px;
+}
+
+/* =============================================
+   FOOTER
+   ============================================= */
+.footer {
+  width: 100%;
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 14px 18px;
+  border-radius: 12px;
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 13px;
+  background: #ffffff;
+  border: 1px solid #f0f0f0;
+}
+
+.footer a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.footer a:hover {
+  color: var(--accent-2);
+  text-decoration: underline;
+}
+
+/* =============================================
+   LAYOUT: PAGE Y CARDS
+   ============================================= */
+.page {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding-bottom: 28px;
+}
+
+.center-card {
+  width: 100%;
+  max-width: 920px;
+  display: flex;
+  justify-content: center;
+  padding: 26px 18px;
+}
+
+/* Card principal — fondo blanco con borde naranja sutil */
+.card {
+  width: 100%;
+  background: white;
+  border-radius: var(--radius);
+  padding: 28px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(240, 148, 84, 0.2);
+  color: var(--text);
+  position: relative;
+}
+
+.card .title,
+.card .login-title {
+  color: var(--accent) !important;
+}
+
+.card .subtitle,
+.card label,
+.card-btn,
+.card-btn2 {
+  color: var(--text) !important;
+}
+
+.card-details {
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(240, 148, 84, 0.08);
+  border-radius: 12px;
+  border: 1px solid rgba(240, 148, 84, 0.2);
+}
+
+.card-number {
+  font-family: monospace;
+  font-size: 1.1em;
+  color: var(--text);
+  margin: 0 0 15px 0;
+  padding: 10px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid rgba(240, 148, 84, 0.2);
+}
+
+.error-message {
+  color: white;
+  text-align: center;
+  margin: 20px 0;
+  padding: 15px;
+  background: rgba(220, 50, 50, 0.7);
+  border-radius: 8px;
+}
+
+.login-card {
+  max-width: 420px;
+  text-align: center;
+}
+
+/* =============================================
+   FORMULARIOS
+   ============================================= */
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.form input[type="text"],
+.form input[type="password"],
+.form input[type="email"],
+.form input[type="number"] {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  color: #1a1a1a;
+  transition: box-shadow 0.18s, transform 0.12s;
+}
+
+/* =============================================
+   BOTONES
+   ============================================= */
+button {
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 12px 18px;
+  border: 0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: inline-block;
+}
+
+/* Botón primario: naranja con texto blanco */
+.primary,
+.btn-recargar,
+.bus-btn {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  font-weight: 700;
+  border: none !important;
+  box-shadow: 0 4px 15px rgba(240, 148, 84, 0.3) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.primary:hover,
+.btn-recargar:hover,
+.bus-btn:hover {
+  background: var(--accent-2) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 12px 24px rgba(240, 148, 84, 0.3) !important;
+}
+
+/* Botón ghost: borde naranja, fondo transparente */
+.ghost {
+  background: transparent !important;
+  color: var(--accent) !important;
+  border: 1px solid var(--accent) !important;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.ghost:hover {
+  background: rgba(240, 148, 84, 0.05) !important;
+  transform: translateY(-2px);
+}
+
+/* Botón enlace */
+.button-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 16px;
+  border-radius: 12px;
+  border: 2px solid var(--accent);
+  background: white;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  transition: all 0.18s ease;
+  box-shadow: 0 8px 20px rgba(240, 148, 84, 0.15);
+}
+
+.button-link:hover {
+  transform: translateY(-2px);
+  background: #fff5ec;
+  box-shadow: 0 12px 24px rgba(240, 148, 84, 0.22);
+}
+
+.register-row {
+  margin-top: 16px;
+  gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.register-button {
+  padding: 8px 14px;
+  font-size: 0.92rem;
+}
+
+/* Botones de acciones en tablas */
+.card-btn,
+.card-btn2 {
+  padding: 14px;
+  margin: 6px;
+  border-radius: 12px;
+  background: white;
+  color: var(--accent) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  border: 1px solid rgba(240, 148, 84, 0.3);
+  font-weight: 600;
+  width: 48%;
+}
+
+.card-btn:hover {
+  transform: translateY(-6px);
+  filter: brightness(0.95);
+}
+
+.btn-admin {
+  background: white;
+  color: var(--accent);
+}
+
+.back-arrow {
+  all: unset;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: var(--accent);
+  font-size: 24px;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.back-arrow:hover {
+  opacity: 0.7;
+}
+
+/* =============================================
+   DASHBOARD
+   ============================================= */
+.dashboard .user-row {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: rgba(240, 148, 84, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--accent) !important;
+  font-size: 20px;
+}
+
+.balance {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(240, 148, 84, 0.08);
+  margin-bottom: 18px;
+  border: 1px solid rgba(240, 148, 84, 0.2);
+}
+
+.balance-label { color: var(--text); }
+.balance-amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--accent);
+}
+
+/* =============================================
+   TABLAS
+   ============================================= */
+.table-wrap { overflow: auto; }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: transparent;
+}
+
+thead th {
+  background: rgba(240, 148, 84, 0.15);
+  color: var(--text);
+  padding: 12px;
+  border-radius: 8px;
+}
+
+tbody td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(240, 148, 84, 0.1);
+  color: var(--text);
+}
+
+/* Columna de acciones — tabla admin */
+table.admin-table th:nth-child(6),
+table.admin-table td:nth-child(6) {
+  min-width: 280px;
+  width: 280px;
+  white-space: nowrap;
+}
+
+table.admin-table .card-btn,
+table.admin-table .card-btn2 {
+  margin: 2px 4px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  min-width: 70px;
+  width: auto;
+}
+
+/* Columna de acciones — tabla moderador */
+table.mod-table th:nth-child(6),
+table.mod-table td:nth-child(6) {
+  min-width: 150px;
+  width: 150px;
+  white-space: nowrap;
+}
+
+table.mod-table .card-btn {
+  margin: 2px 4px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  min-width: 120px;
+  width: auto;
+}
+
+/* =============================================
+   FORMULARIO DE RECARGA
+   ============================================= */
+.recarga-container {
+  background: var(--accent);
+  color: white;
+  width: min(100%, 760px);
+  margin: 50px auto 80px;
+  padding: 36px 32px;
+  border-radius: 24px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+  text-align: center;
+  position: relative;
+}
+
+.recarga-container h2 {
+  color: white;
+  margin-bottom: 16px;
+  font-size: 1.95rem;
+}
+
+.recarga-form {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 18px;
+}
+
+.recarga-form .form-section {
+  width: min(100%, 340px);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: left;
+}
+
+.recarga-form .full-width { width: 100%; }
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(120px, 1fr));
+  gap: 14px;
+}
+
+.recarga-form label {
+  font-weight: 700;
+  font-size: 0.98rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.recarga-form input,
+.recarga-form select {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: white;
+  color: #1a1a1a;
+  font-size: 0.98rem;
+}
+
+.recarga-form input[readonly] {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.radio-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.radio-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.radio-options input { accent-color: white; }
+
+.recarga-form .small {
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.88rem;
+}
+
+.btn-recargar {
+  margin-top: 8px;
+  width: 100%;
+  max-width: 260px;
+  align-self: center;
+}
+
+/* =============================================
+   SIMULADOR DE BUS
+   ============================================= */
+.bus-container {
+  background: rgba(240, 148, 84, 0.06);
+  padding: 24px;
+  border-radius: var(--radius);
+  border: 1px solid rgba(240, 148, 84, 0.2);
+  margin-top: 20px;
+  width: 100%;
+  grid-column: span 2;
+}
+
+.bus-container label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--text);
+  margin-bottom: 10px;
+}
+
+.select-bus {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(240, 148, 84, 0.3);
+  background: white;
+  color: var(--text);
+  font-size: 1rem;
+  margin-bottom: 18px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.bus-btn {
+  width: 100%;
+  padding: 16px;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* =============================================
+   RESPONSIVE
+   ============================================= */
+@media (max-width: 768px) {
+  table.admin-table th:nth-child(6),
+  table.admin-table td:nth-child(6) {
+    min-width: 200px;
+    width: 200px;
+  }
+
+  table.admin-table .card-btn,
+  table.admin-table .card-btn2 {
+    margin: 2px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    min-width: 60px;
+  }
+
+  table.mod-table th:nth-child(6),
+  table.mod-table td:nth-child(6) {
+    min-width: 120px;
+    width: 120px;
+  }
+
+  table.mod-table .card-btn {
+    margin: 2px;
+    padding: 6px 8px;
+    font-size: 0.8rem;
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 720px) {
+  .topbar { padding: 10px; }
+  .logo { display: none; }
+
+  .recarga-container {
+    margin: 24px 16px 48px;
+    padding: 28px 20px;
+  }
+
+  .recarga-form { gap: 14px; }
+
+  .recarga-form .form-section { width: 100%; }
+
+  .grid-2 { grid-template-columns: 1fr; }
+
+  .bus-container {
+    grid-column: span 1;
+    padding: 18px;
+  }
+}

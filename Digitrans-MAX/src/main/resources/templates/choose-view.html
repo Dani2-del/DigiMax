@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261015-2)}" />
+    <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Seleccionar Vista - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+    <div class="page">
+        <div class="center-card">
+            <h1>Bienvenido, <span th:text="${nombre}"></span></h1>
+            <p>Selecciona cómo deseas ingresar hoy:</p>
+
+            <div class="selection-container">
+                <a href="/menu" class="choice-card">
+                    <span>👤</span>
+                    <h3>Vista Usuario</h3>
+                    <p>Ver mis tarjetas y saldo</p>
+                </a>
+
+                <a th:if="${esAdmin}" href="/admin/seleccionar-entidad" class="choice-card">
+                    <span>⚙️</span>
+                    <h3>Panel de administración</h3>
+                    <p>Elige la entidad que deseas gestionar</p>
+                </a>
+
+                <a th:if="${esModerador}" href="/admin/dashboard" class="choice-card">
+                    <span>⚙️</span>
+                    <h3>Panel de moderación</h3>
+                    <p th:text="${usuario.sistemaAsignado != null ? usuario.sistemaAsignado.nombre : 'Entidad asignada'}"></p>
+                </a>
+
+                <a th:if="${puedeUsarPanelConductor}" href="/conductor/panel" class="choice-card">
+                    <span>🚌</span>
+                    <h3>Panel Conductor</h3>
+                    <p>Ver mis rutas y horarios</p>
+                </a>
+            </div>
+        </div>
+    </div>
+    <div th:replace="~{fragments/aviso-administrativo :: modal}"></div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

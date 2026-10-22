@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Beta: Mapa de rutas - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/index.css}">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" th:href="@{/css/mapa-rutas.css}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+<nav class="route-map-navbar" aria-label="Navegación principal">
+    <div class="route-map-navbar-left">
+        <a class="route-map-brand"
+           th:href="${esAdmin == true ? '/admin/dashboard' : '/'}"
+           th:attr="aria-label=${esAdmin == true ? 'Digitrans, panel de administración' : 'Digitrans, inicio'}">
+            <img th:src="@{/images/digitrans-mark.svg}" alt="">
+            <span>Digitrans</span>
+        </a>
+        <div class="route-map-nav-links" th:if="${esAdmin != true}">
+            <a th:href="@{/recarga}">Recargas</a>
+            <span aria-hidden="true">·</span>
+            <a th:href="@{/tarjetas}">Tarjetas</a>
+            <span aria-hidden="true">·</span>
+            <a th:href="@{/historial}">Historial</a>
+        </div>
+    </div>
+    <a class="route-map-menu-link"
+       th:href="${menuUrl != null ? menuUrl : '/'}"
+       th:text="${menuLabel != null ? menuLabel : 'Menú'}">
+        Menú
+    </a>
+</nav>
+
+<main class="route-map-page">
+    <header class="route-map-header">
+        <div>
+            <p class="route-map-eyebrow">CARTAGENA · Digitrans</p>
+            <h1>Mapa interactivo <span class="route-map-beta">BETA</span></h1>
+            <p>Versión de prueba independiente. Revísala antes de integrarla a los paneles.</p>
+        </div>
+    </header>
+
+    <p class="route-map-beta-notice">
+        Este mapa está en pruebas. Las líneas siguen únicamente los trayectos oficiales que ya se han dibujado sobre las calles;
+        las paradas sin coordenadas válidas se indican aparte.
+    </p>
+
+    <section class="route-map-layout" aria-label="Mapa y filtros de rutas">
+        <aside class="route-map-controls">
+            <label for="routeCategory">Tipo de ruta</label>
+            <select id="routeCategory">
+                <option value="">Todas las categorías</option>
+                <option value="Troncales">Troncales</option>
+                <option value="Pretroncales">Pretroncales</option>
+                <option value="Alimentadoras">Alimentadoras</option>
+                <option value="Complementarias">Complementarias</option>
+            </select>
+
+            <label for="routeCode">Ruta</label>
+            <select id="routeCode">
+                <option value="">Selecciona una ruta</option>
+            </select>
+
+            <fieldset id="routeDirections" class="route-directions" hidden>
+                <legend>Sentidos visibles</legend>
+            </fieldset>
+
+            <p id="routeMapStatus" class="route-map-status" role="status" aria-live="polite">
+                Selecciona una ruta para ver sus paradas.
+            </p>
+            <p id="routeMapWarning" class="route-map-warning" hidden></p>
+
+            <div class="route-map-legend">
+                <strong>Cómo leer el mapa</strong>
+                <span>Los números muestran el orden de las paradas.</span>
+                <span>Las líneas de ruta solo aparecen cuando se ha dibujado y guardado el trazado por las calles.</span>
+            </div>
+        </aside>
+
+        <div id="routeMap" class="route-map-canvas" role="application"
+             aria-label="Mapa interactivo de paradas de Digitrans"></div>
+    </section>
+
+    <footer class="route-map-footer">
+        Mapa base © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>.
+        Las coordenadas de las paradas provienen de los CSV del proyecto.
+    </footer>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script th:src="@{/js/rutas-catalogo.js}"></script>
+<script th:src="@{/js/mapa-rutas.js}"></script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

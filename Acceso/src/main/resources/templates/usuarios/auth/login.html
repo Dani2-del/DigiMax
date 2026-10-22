@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <title>Iniciar sesión - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="login-page">
+  <div class="page registration-page-shell login-page-shell">
+    <main class="registration-layout login-layout">
+      <aside class="registration-art">
+        <a class="registration-brand" th:href="@{/}" aria-label="Volver al inicio de Digitrans">
+          <img th:src="@{/images/digitrans-mark.svg}" alt="">
+          <span>Digitrans</span>
+        </a>
+        <div class="registration-art-copy">
+          <span>Digitrans · CARTAGENA</span>
+          <h2>Qué bueno tenerte de vuelta.</h2>
+          <p>Inicia sesión para consultar tu tarjeta, tus recargas y tus rutas favoritas.</p>
+        </div>
+      </aside>
+
+      <section class="registration-panel" aria-labelledby="loginTitle">
+        <div class="registration-card login-card">
+          <span class="registration-kicker">TU CIUDAD, A TU ALCANCE</span>
+          <h1 id="loginTitle">Bienvenido</h1>
+          <p class="registration-intro">Ingresa a tu cuenta de Digitrans.</p>
+
+          <form th:action="@{/login}" method="post" class="form">
+            <input type="text" name="correo" placeholder="Correo electrónico" autocomplete="username" required />
+            <input type="password" name="password" placeholder="Contraseña" autocomplete="current-password" required />
+            <a th:href="@{/olvido-password}" class="forgot-password">¿Olvidaste tu contraseña?</a>
+            <button class="primary" type="submit">Ingresar</button>
+          </form>
+
+          <div class="oauth-section">
+            <div class="separator">o</div>
+            <a th:if="${googleOAuthEnabled}" th:href="@{/oauth2/authorization/google}" class="button-google">
+              <img src="https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg"
+                   alt="Google"
+                   class="google-icon">
+              Continuar con Google
+            </a>
+          </div>
+
+          <div class="register-row">
+            <span>¿No tienes cuenta?</span>
+            <a th:href="@{/registro}" class="registration-login-link">Regístrate</a>
+          </div>
+
+          <div class="registration-feedback messages">
+            <p class="error" th:if="${param.error}">Credenciales incorrectas. Intenta de nuevo.</p>
+            <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+            <p class="error" th:if="${param.sessionExpired}">Tu sesión ha expirado. Por favor, inicia sesión nuevamente.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

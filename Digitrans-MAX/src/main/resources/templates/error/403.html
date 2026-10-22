@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+    <meta charset="UTF-8">
+    <title>Acceso Denegado</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+    <div class="page">
+        <div class="center-card">
+            <div class="card" style="text-align: center;">
+                <h1 style="font-size: 80px; color: #dc3545; margin: 0;">403</h1>
+                <h2>Acceso Restringido</h2>
+                <p>No tienes permisos suficientes para ver esta sección.</p>
+                <p>Tu rol actual: <strong th:text="${#authentication.authorities}"></strong></p>
+                <a href="/" class="primary">Regresar</a>
+            </div>
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Historial de avisos - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="admin-announcements-page" th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card announcement-history announcement-history-full">
+            <header class="admin-announcements-header">
+                <div>
+                    <p class="admin-eyebrow">Digitrans · COMUNICACIONES</p>
+                    <h1>Historial de avisos · <span th:text="${sistemaActual.nombre}">Transcaribe</span></h1>
+                    <p>Consulta los avisos enviados a este servicio y sus destinatarios.</p>
+                </div>
+                <a class="admin-announcements-back" th:href="@{/admin/avisos}">Volver a avisos</a>
+            </header>
+
+            <p class="announcement-history-empty" th:if="${#lists.isEmpty(avisos)}">
+                Aún no se han enviado avisos.
+            </p>
+            <article class="announcement-history-item" th:each="aviso : ${avisos}">
+                <div>
+                    <h2 th:text="${aviso.asunto}">Asunto</h2>
+                    <img th:if="${aviso.imagen != null}"
+                         th:src="@{/avisos/{id}/imagen(id=${aviso.id})}"
+                         alt="Imagen del aviso" class="announcement-history-image">
+                    <p th:text="${aviso.mensaje}">Mensaje del aviso</p>
+                </div>
+                <div class="announcement-history-meta">
+                    <time th:if="${aviso.fechaCreacion != null}"
+                          th:datetime="${aviso.fechaCreacion}"
+                          th:text="${#temporals.format(aviso.fechaCreacion, 'dd/MM/yyyy HH:mm')}">
+                        Fecha
+                    </time>
+                    <span th:text="|${#lists.size(aviso.destinatarios)} destinatario(s)|">
+                        Destinatarios
+                    </span>
+                </div>
+            </article>
+        </section>
+    </main>
+</div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

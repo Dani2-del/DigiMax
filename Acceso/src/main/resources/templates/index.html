@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Digitrans — Una cuenta, varios servicios</title>
+  <link rel="icon" th:href="@{/images/digitrans-mark.svg}">
+  <link rel="stylesheet" th:href="@{/css/index.css}">
+</head>
+<body>
+  <section class="hero">
+    <nav class="landing-nav">
+      <a class="brand" th:href="@{/}">
+        <img th:src="@{/images/digitrans-mark.svg}" alt="Digitrans">
+        <span>Digitrans</span>
+      </a>
+      <div class="nav-actions">
+        <a th:href="@{/login}" class="btn btn-outline">Iniciar sesión</a>
+        <a th:href="@{/registro}" class="btn btn-primary">Crear cuenta</a>
+      </div>
+    </nav>
+    <div class="wrap">
+      <div class="hero-content">
+        <span class="eyebrow-pill">Una cuenta para todos tus servicios</span>
+        <h1>Muévete y recarga desde <em>un solo lugar</em>.</h1>
+        <p class="lead">Crea tu cuenta Digitrans una sola vez. Después podrás elegir entre servicios de transporte y recargas móviles.</p>
+        <div class="hero-ctas">
+          <a th:href="@{/registro}" class="btn btn-primary">Crear cuenta →</a>
+          <a th:href="@{/login}" class="btn btn-outline">Ya tengo cuenta</a>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>Una sola cuenta</h2>
+        <p>Tu registro y acceso son centrales. Las tarjetas y los servicios se administran dentro de cada módulo.</p>
+      </div>
+      <div class="route-cards">
+        <article class="role-card">
+          <div class="role-kicker">Movilidad</div>
+          <h3>Transporte</h3>
+          <p>Accede a los sistemas de transporte integrados desde una misma cuenta.</p>
+        </article>
+        <article class="role-card">
+          <div class="role-kicker">Telefonía móvil</div>
+          <h3>Recargas móviles</h3>
+          <p>Consulta y realiza recargas de saldo o paquetes para tu línea móvil.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+  <div th:replace="~{fragments/footer :: footer}"></div>
+</body>
+</html>

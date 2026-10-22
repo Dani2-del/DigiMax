@@ -1,0 +1,13 @@
+codigo,tipo,estado,paradas,horarios
+B1,corriente,activa,portal_soledad;pacho_galan;pedro_ramaya;joaquin_barrios;buenos_aires;la_ocho;la_catorce;la_veintiuna;atlantico;chiquinquira;la_arenosa;barrio_abajo;parque_cultural,05:00-18:22
+B2,corriente,activa,joe_arroyo;esthercita_forero;alfredo_correa;la_catedral;barrio_abajo;parque_cultural,06:15-20:00
+R1,corriente,activa,portal_soledad;pacho_galan;pedro_ramaya;joaquin_barrios;buenos_aires;la_ocho;la_catorce;la_veintiuna;atlantico;chiquinquira;la_arenosa;la_catedral;alfredo_correa;esthercita_forero;joe_arroyo,05:00-21:18
+R2,corriente,activa,parque_cultural;barrio_abajo;la_catedral;alfredo_correa;esthercita_forero;joe_arroyo,06:00-19:45
+S1,corriente,activa,joe_arroyo;esthercita_forero;alfredo_correa;la_catedral;la_arenosa;chiquinquira;atlantico;la_veintiuna;la_catorce;la_ocho;buenos_aires;joaquin_barrios;pedro_ramaya;pacho_galan;portal_soledad,05:12-22:00
+S2,corriente,activa,parque_cultural;barrio_abajo;la_arenosa;chiquinquira;atlantico;la_veintiuna;la_catorce;la_ocho;buenos_aires;joaquin_barrios;pedro_ramaya;pacho_galan;portal_soledad,05:38-22:00
+B10,expreso,suspendida,portal_soledad;joaquin_barrios;la_ocho;atlantico;la_arenosa;parque_cultural,05:30-08:26
+R10,expreso,activa,portal_soledad;joaquin_barrios;la_ocho;la_catedral;alfredo_correa;esthercita_forero;joe_arroyo,05:37-09:37|15:30-20:00
+R40,expreso,suspendida,pacho_galan;pedro_ramaya;buenos_aires;la_catedral;alfredo_correa;joe_arroyo,05:30-08:00
+S10,expreso,activa,joe_arroyo;alfredo_correa;la_catedral;la_ocho;joaquin_barrios;portal_soledad,05:37-09:37
+S20,expreso,suspendida,parque_cultural;la_arenosa;atlantico;la_ocho;joaquin_barrios;portal_soledad,16:30-19:33
+S40,expreso,activa,joe_arroyo;alfredo_correa;la_catedral;buenos_aires;pedro_ramaya;pacho_galan;portal_soledad,16:00-19:00

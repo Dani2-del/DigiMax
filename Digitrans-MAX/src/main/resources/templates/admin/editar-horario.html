@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Editar horario - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <style>
+        .page { min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 24px; }
+        .edit-card { width: min(560px, 100%); }
+        .form-row { display: flex; flex-direction: column; gap: 7px; margin-bottom: 16px; }
+        .form-row input, .form-row select { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 7px; }
+        .form-actions { display: flex; gap: 10px; margin-top: 22px; }
+        .primary, .ghost { flex: 1; border: 0; border-radius: 8px; padding: 12px; cursor: pointer; font-weight: 700; }
+        .primary { background: #2a9d8f; color: white; }
+        .ghost { background: #edf2f7; color: #2d3748; }
+        .notice { background: #ebf8ff; color: #2c5282; border: 1px solid #90cdf4; padding: 12px; border-radius: 8px; margin-bottom: 18px; }
+    </style>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <div class="center-card edit-card">
+        <div class="card">
+            <h2>✏️ Editar horario del conductor</h2>
+            <div class="notice">
+                El conductor recibirá un correo electrónico con los cambios realizados.
+            </div>
+
+            <p><strong>Conductor:</strong>
+                <span th:text="${conductor.nombre != null ? conductor.nombre : conductor.correo}"></span>
+            </p>
+            <p><strong>Correo:</strong> <span th:text="${conductor.correo}"></span></p>
+
+            <form th:action="@{/admin/horarios/editar}" method="post">
+                <input type="hidden" name="id" th:value="${horario.id}">
+
+                <div class="form-row">
+                    <label for="busId">Bus</label>
+                    <select id="busId" name="busId" required onchange="actualizarRutas()">
+                        <option th:each="b : ${buses}" th:value="${b.id}"
+                                th:text="${b.placa + ' (' + (b.tipo != null ? b.tipo : 'TRONCAL') + ')'}"
+                                th:selected="${b.id == busSeleccionadoId}"></option>
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="ruta">Ruta</label>
+                    <select id="ruta" name="ruta" required></select>
+                </div>
+
+                <div class="form-row">
+                    <label for="fecha">Fecha</label>
+                    <input id="fecha" type="date" name="fecha" th:value="${horario.fecha}" required>
+                </div>
+
+                <div class="form-row">
+                    <label for="horaInicio">Hora de inicio</label>
+                    <input id="horaInicio" type="time" name="horaInicio" th:value="${horario.horaInicio}" required>
+                </div>
+
+                <div class="form-row">
+                    <label for="horaFin">Hora de fin</label>
+                    <input id="horaFin" type="time" name="horaFin" th:value="${horario.horaFin}" required>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="primary">Guardar cambios</button>
+                    <button type="button" class="ghost" onclick="window.location.href='/admin/horarios/programar'">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<script th:inline="javascript">
+    var busRutasPorId = /*[[${busRutasPorId}]]*/ {};
+    var rutaActual = /*[[${horario.ruta}]]*/ '';
+    function actualizarRutas() {
+        var rutas = busRutasPorId[document.getElementById('busId').value] || [];
+        var select = document.getElementById('ruta');
+        select.innerHTML = '';
+        rutas.forEach(function (ruta) {
+            var option = document.createElement('option');
+            option.value = ruta;
+            option.textContent = ruta;
+            option.selected = ruta === rutaActual;
+            select.appendChild(option);
+        });
+        if (rutas.length === 0) {
+            var option = document.createElement('option');
+            option.value = '';
+            option.textContent = 'Este bus no tiene rutas registradas';
+            select.appendChild(option);
+        }
+    }
+    actualizarRutas();
+</script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

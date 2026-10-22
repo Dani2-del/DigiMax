@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+    <meta charset="UTF-8">
+    <title>Página no encontrada</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+    <div class="page">
+        <div class="center-card">
+            <div class="card" style="text-align: center;">
+                <h1 style="font-size: 80px; color: #ffc107; margin: 0;">404</h1>
+                <h2>¡Ups! Ruta no encontrada</h2>
+                <p>Lo sentimos, la página que buscas no existe en Digitrans.</p>
+                <a href="/" class="primary" style="text-decoration: none; display: inline-block; padding: 10px 20px;">
+                    Volver al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

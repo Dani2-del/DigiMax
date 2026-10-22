@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Seleccionar entidad - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/usuario.css}">
+    <style>
+        .entity-options { display: grid; gap: 1rem; margin-top: 1.5rem; }
+        .entity-options button { width: 100%; cursor: pointer; }
+    </style>
+</head>
+<body>
+<main class="page">
+    <section class="center-card">
+        <h1>Hola, <span th:text="${nombre}">administrador</span></h1>
+        <p>Elige la entidad cuyo panel administrativo deseas abrir.</p>
+        <p th:if="${param.error}" role="alert">Selecciona una entidad válida.</p>
+        <div class="entity-options">
+            <form th:each="entidad : ${entidades}" th:action="@{/admin/contexto}" method="post">
+                <input type="hidden" name="sistema" th:value="${entidad.name()}">
+                <button class="choice-card" type="submit">
+                    <h2 th:text="${entidad.nombre}">Entidad</h2>
+                    <span>Entrar al panel</span>
+                </button>
+            </form>
+        </div>
+    </section>
+</main>
+</body>
+</html>

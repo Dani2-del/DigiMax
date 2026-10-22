@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/conductor.css(v=20261015-4)}" />
+  <link rel="stylesheet" th:href="@{/css/avisos.css}" />
+  <meta charset="UTF-8" />
+  <title>Panel Conductor - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+  <div class="page conductor-page">
+  <header class="navbar conductor-navbar">
+    <div class="conductor-navbar-brand">
+      <img src="/images/digitrans-mark.svg" alt="" class="logo">
+      <div>
+        <span class="conductor-brand-title">Digitrans</span>
+        <span class="conductor-brand-subtitle" th:text="${sistemaActual.nombre + ' - Panel de conductor'}">Transcaribe · Panel de conductor</span>
+      </div>
+    </div>
+    <nav class="conductor-navbar-actions" aria-label="Navegación del conductor">
+      <a th:href="@{/conductor/panel}" th:classappend="${!verHistorial} ? ' active' : ''">Mis rutas</a>
+      <a th:href="@{/conductor/panel(historial=true)}"
+         th:classappend="${verHistorial} ? ' active' : ''">Historial</a>
+      <a th:href="@{/chat}">Chat operativo</a>
+      <a th:href="@{/menu}" class="conductor-view-switch">Vista usuario</a>
+      <form th:action="@{/logout}" method="post">
+        <button type="submit">Cerrar sesión</button>
+      </form>
+    </nav>
+  </header>
+
+    <main class="center-card">
+      <div class="card" style="max-width: 600px;">
+        <h2 style="margin-bottom: 20px;">Panel Conductor · <span th:text="${sistemaActual.nombre}">Transcaribe</span></h2>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:10px;">
+            <h4 th:if="${!verHistorial}" style="margin:0;">📥 Tu bandeja de horarios asignados</h4>
+            <h4 th:if="${verHistorial}" style="margin:0;">📚 Historial de mis rutas completadas</h4>
+            <a th:if="${!verHistorial}" th:href="@{/conductor/panel(historial=true)}"
+               class="btn-historial">📚 Ver historial</a>
+            <a th:if="${verHistorial}" th:href="@{/conductor/panel}"
+               class="btn-historial">↩ Volver a rutas</a>
+        </div>
+
+        <div th:if="${!verHistorial and #lists.isEmpty(horarios)}" class="error-message" style="margin-bottom: 20px;">
+            <p>No tienes rutas asignadas.</p>
+        </div>
+
+        <div th:if="${!verHistorial}" th:each="h : ${horarios}" class="horario-item">
+            <div class="horario-info">
+                <div class="ruta">🚌 <span th:text="${h.ruta}"></span>
+                    <span th:if="${busPorHorario[h.id] != null or h.busPlaca != null}"
+                          th:text="| · Bus ${busPorHorario[h.id] != null ? busPorHorario[h.id] : h.busPlaca}|"></span>
+                    <span th:if="${h.sentido != null}" class="badge-sentido"
+                          th:text="${h.sentido == 'IDA' ? 'Ida' : 'Vuelta'}"></span>
+                </div>
+                <div class="detalle">
+                    📆 <span th:text="${h.fecha}"></span>
+                    &nbsp;·&nbsp; 🕐 <span th:text="${h.horaInicio} + ' - ' + ${h.horaFin}"></span>
+                </div>
+                <span class="badge-estado badge-pendiente" th:if="${h.estado == 'PENDIENTE'}">Pendiente</span>
+                <span class="badge-estado badge-en-curso" th:if="${h.estado == 'EN_CURSO'}">En curso</span>
+                <span class="badge-estado badge-pendiente" th:if="${h.estado == 'FINALIZADA'}">Finalizada</span>
+            </div>
+
+            <form th:if="${h.estado == 'PENDIENTE'}"
+                  th:action="@{/conductor/iniciar-ruta}" method="post"
+                  class="start-route-form" data-direction="Ida">
+                <input type="hidden" name="horarioId" th:value="${h.id}" />
+                <input type="hidden" name="sentido" value="IDA" />
+                <button type="submit" class="btn-iniciar">Iniciar</button>
+            </form>
+
+            <form th:if="${h.estado == 'EN_CURSO' and h.sentido != 'VUELTA'}"
+                  th:action="@{/conductor/iniciar-ruta}" method="post"
+                  class="start-route-form" data-direction="Vuelta">
+                <input type="hidden" name="horarioId" th:value="${h.id}" />
+                <input type="hidden" name="sentido" value="VUELTA" />
+                <button type="submit" class="btn-iniciar">Iniciar vuelta</button>
+            </form>
+
+            <form th:if="${h.estado == 'EN_CURSO' and h.sentido == 'VUELTA'}"
+                  th:action="@{/conductor/terminar-ruta}" method="post" style="display:inline;">
+                <input type="hidden" name="horarioId" th:value="${h.id}" />
+                <button type="submit" class="btn-terminar"
+                        onclick="return confirm('¿Está seguro de terminar esta ruta?')">
+                    Terminar ruta
+                </button>
+            </form>
+        </div>
+
+        <div th:if="${verHistorial and #lists.isEmpty(historialHorarios)}" class="error-message" style="margin-bottom: 20px;">
+            <p>Aún no tienes rutas finalizadas.</p>
+        </div>
+
+        <div th:if="${verHistorial}" th:each="h : ${historialHorarios}" class="horario-item">
+            <div class="horario-info">
+                <div class="ruta">🚌 <span th:text="${h.ruta}"></span>
+                    <span th:if="${busPorHorario[h.id] != null or h.busPlaca != null}"
+                          th:text="| · Bus ${busPorHorario[h.id] != null ? busPorHorario[h.id] : h.busPlaca}|"></span>
+                    <span th:if="${h.sentido != null}" class="badge-sentido"
+                          th:text="${h.sentido == 'IDA' ? 'Ida' : 'Vuelta'}"></span>
+                </div>
+                <div class="detalle">
+                    📆 <span th:text="${h.fecha}"></span>
+                    &nbsp;·&nbsp; 🕐 <span th:text="${h.horaInicio} + ' - ' + ${h.horaFin}"></span>
+                </div>
+                <span class="badge-estado badge-pendiente"
+                      th:if="${h.estado == 'FINALIZADA'}">Finalizada</span>
+                <span class="badge-estado badge-pendiente">Completada</span>
+            </div>
+        </div>
+
+        <nav th:if="${verHistorial and totalPaginasHistorial > 1}" class="pagination-bar"
+             aria-label="Paginación del historial">
+            <a th:if="${paginaHistorial > 0}"
+               th:href="@{/conductor/panel(historial=true, page=${paginaHistorial - 1})}"
+               class="btn-pagina">Anterior</a>
+            <span class="pagina-info"
+                  th:text="|Página ${paginaHistorial + 1} de ${totalPaginasHistorial}|"></span>
+            <a th:if="${paginaHistorial + 1 < totalPaginasHistorial}"
+               th:href="@{/conductor/panel(historial=true, page=${paginaHistorial + 1})}"
+               class="btn-pagina">Siguiente</a>
+        </nav>
+
+        <section class="reporte-panel">
+            <h4>🛠️ Reportar una novedad</h4>
+            <p>Informa a los administradores sobre fallas o problemas del bus.</p>
+            <form th:action="@{/conductor/reportar}" method="post">
+                <label for="asuntoReporte">Asunto</label>
+                <input id="asuntoReporte" name="asunto" type="text" maxlength="150"
+                       placeholder="Ej: Falla en los frenos" required>
+                <label for="detalleReporte">Descripción</label>
+                <textarea id="detalleReporte" name="detalle" rows="5" maxlength="3000"
+                          placeholder="Describe la falla o el error con detalle..." required></textarea>
+                <button type="submit" class="btn-reportar">Enviar reporte</button>
+            </form>
+            <p class="reporte-error" th:if="${errorReporte}" th:text="${errorReporte}"></p>
+            <p class="reporte-ok" th:if="${mensajeReporte}" th:text="${mensajeReporte}"></p>
+        </section>
+
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+      </div>
+    </main>
+
+    <dialog id="confirmarInicioRuta" class="route-confirm-dialog"
+            aria-labelledby="confirmarInicioRutaTitulo" aria-describedby="confirmarInicioRutaMensaje">
+      <h2 id="confirmarInicioRutaTitulo">Confirmar inicio de ruta</h2>
+      <p id="confirmarInicioRutaMensaje"></p>
+      <div class="route-confirm-actions">
+        <button type="button" id="cancelarInicioRuta" class="route-confirm-no">No</button>
+        <button type="button" id="aceptarInicioRuta" class="route-confirm-yes">Sí, iniciar</button>
+      </div>
+    </dialog>
+
+    <div th:replace="fragments/footer :: footer"></div>
+  </div>
+  <div th:replace="~{fragments/aviso-administrativo :: modal}"></div>
+  <script>
+    (() => {
+      const dialog = document.getElementById('confirmarInicioRuta');
+      const mensaje = document.getElementById('confirmarInicioRutaMensaje');
+      const confirmar = document.getElementById('aceptarInicioRuta');
+      const cancelar = document.getElementById('cancelarInicioRuta');
+      let formularioPendiente = null;
+      let envioConfirmado = false;
+
+      document.querySelectorAll('.start-route-form').forEach((formulario) => {
+        formulario.addEventListener('submit', (event) => {
+          if (envioConfirmado) {
+            envioConfirmado = false;
+            return;
+          }
+          event.preventDefault();
+          formularioPendiente = formulario;
+          const sentidoSeleccionado = formulario.dataset.direction;
+          mensaje.textContent = sentidoSeleccionado === 'Ida'
+            ? 'La ruta iniciará en sentido Ida. ¿Desea iniciar la ruta?'
+            : 'La ruta está en sentido Ida. ¿Desea iniciar la vuelta?';
+          confirmar.textContent = sentidoSeleccionado === 'Ida' ? 'Sí, iniciar' : 'Sí, iniciar vuelta';
+          dialog.showModal();
+          confirmar.focus();
+        });
+      });
+
+      confirmar.addEventListener('click', () => {
+        if (!formularioPendiente) return;
+        envioConfirmado = true;
+        formularioPendiente.requestSubmit();
+        formularioPendiente = null;
+        dialog.close();
+      });
+
+      cancelar.addEventListener('click', () => dialog.close());
+      dialog.addEventListener('close', () => {
+        formularioPendiente = null;
+      });
+    })();
+  </script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

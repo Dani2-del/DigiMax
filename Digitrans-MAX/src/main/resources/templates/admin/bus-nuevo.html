@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Registrar bus - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}" />
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f7fb;
+        }
+        .page {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 30px 16px;
+        }
+        .card {
+            width: min(520px, 100%);
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            padding: 28px;
+        }
+        .header {
+            margin-bottom: 20px;
+        }
+        .header h2 {
+            margin: 0 0 6px 0;
+            color: #1f2937;
+        }
+        .header p {
+            margin: 0;
+            color: #6b7280;
+        }
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        label {
+            font-weight: 600;
+            color: #374151;
+        }
+        input, select, button {
+            font: inherit;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #d1d5db;
+            box-sizing: border-box;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .primary, .ghost {
+            border: none;
+            border-radius: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-weight: 700;
+            flex: 1;
+        }
+        .primary {
+            background: #0ea5e9;
+            color: white;
+        }
+        .ghost {
+            background: #e5e7eb;
+            color: #111827;
+        }
+        .notice {
+            background: #ecfeff;
+            border: 1px solid #a5f3fc;
+            color: #0f172a;
+            padding: 10px 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+    </style>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+<div class="page">
+    <div class="card">
+        <div class="header">
+            <h2>🚌 Registrar nuevo bus</h2>
+            <p>Ingresa el número del bus y selecciona el tipo de servicio.</p>
+        </div>
+
+        <div class="notice">
+            Puedes registrar el bus con su número y tipo, y luego añadir rutas si aplica.
+        </div>
+
+        <form th:action="@{/admin/horarios/buses/crear}" method="post">
+            <div class="form-row">
+                <label for="placa">Número del bus</label>
+                <input id="placa" type="text" name="placa" placeholder="Ej: B-210" required />
+            </div>
+
+            <div class="form-row">
+                <label for="tipo">Tipo de servicio</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="TRONCAL">Troncal</option>
+                    <option value="PETRONCAL">Petroncal</option>
+                    <option value="ALIMENTADOR">Alimentador</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <label for="rutas">Rutas (opcional)</label>
+                <input id="rutas" type="text" name="rutas" placeholder="Ej: T100E, X101, A104" />
+            </div>
+
+            <div class="actions">
+                <button type="submit" class="primary">Guardar bus</button>
+                <button type="button" class="ghost" onclick="window.location.href='/admin/horarios'">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

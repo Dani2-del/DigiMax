@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <meta charset="UTF-8" />
+  <title>Mis Tarjetas - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="fragments/header :: header"></div>
+
+    <main class="center-card">
+      <div class="card" style="max-width: 600px;"> <h2 style="margin-bottom: 20px;">Mis Tarjetas</h2>
+        <p>Sistema activo: <strong th:text="${sistemaActual.nombre}">Transcaribe</strong></p>
+
+        <div th:if="${not #lists.isEmpty(tarjetasSistemaActual)}">
+            <div th:each="tarjeta : ${tarjetasSistemaActual}" class="tarjeta-slim">
+                
+                <div class="info-principal">
+                    <p class="numero-label">Número de tarjeta</p>
+                    <span class="numero-valor" th:text="${tarjeta.numeroTarjeta}"></span>
+                    <p class="numero-label" th:text="${tarjeta.sistemaTransporte.nombre}"></p>
+                </div>
+
+                <div class="saldo-badge">
+                    <span th:text="'$' + ${#numbers.formatDecimal(tarjeta.saldo, 1, 'POINT', 2, 'COMMA')}"></span>
+                </div>
+                
+                <div class="acciones">
+                    <button class="btn-icon" title="Editar" 
+                            th:onclick="editarTarjeta([[${tarjeta.numeroTarjeta}]])">✏️</button>
+                    
+                    <form th:action="@{/tarjetas/eliminar}" method="post" style="display:inline;">
+                        <input type="hidden" name="numeroTarjeta" th:value="${tarjeta.numeroTarjeta}" />
+                        <button type="submit" class="btn-icon" title="Eliminar" 
+                                onclick="return confirm('¿Eliminar esta tarjeta?')">🗑️</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${#lists.isEmpty(tarjetasSistemaActual)}" class="error-message">
+          <p>No tienes tarjetas asociadas a <strong th:text="${sistemaActual.nombre}">este sistema</strong>.</p>
+        </div>
+
+        <div class="add-section">
+            <h4 style="margin-bottom: 10px;">Vincular nueva tarjeta</h4>
+            <p>La nueva tarjeta se vinculará a <strong th:text="${sistemaActual.nombre}">este sistema</strong>.</p>
+            <form th:action="@{/tarjetas/agregar}" method="post" style="display: flex; gap: 10px;">
+                <input type="text" name="nuevoNumero" class="input-corto" 
+                       placeholder="10 dígitos" pattern="\d{10}" maxlength="10" required />
+                <button type="submit" class="primary" style="padding: 8px 20px;">Vincular</button>
+            </form>
+        </div>
+
+        <div class="row" style="margin-top: 30px;">
+          <button class="primary" th:onclick="|window.location.href='@{/recarga}'|">Recargar</button>
+          <button class="ghost" th:onclick="|window.location.href='@{/menu}'|">Menú</button>
+        </div>
+
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+      </div>
+    </main>
+
+    <div th:replace="fragments/footer :: footer"></div>
+  </div>
+
+  <script th:inline="javascript">
+    function editarTarjeta(numeroActual) {
+        const nuevoNumero = prompt("Nuevo número (10 dígitos) para reemplazar a " + numeroActual + ":", numeroActual);
+        if (nuevoNumero && nuevoNumero.length === 10 && nuevoNumero !== numeroActual) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = /*[[@{/tarjetas/editar}]]*/ '/tarjetas/editar';
+            
+            const inputActual = document.createElement('input');
+            inputActual.type = 'hidden';
+            inputActual.name = 'numeroActual';
+            inputActual.value = numeroActual;
+            
+            const inputNuevo = document.createElement('input');
+            inputNuevo.type = 'hidden';
+            inputNuevo.name = 'nuevoNumero';
+            inputNuevo.value = nuevoNumero;
+            
+            form.appendChild(inputActual);
+            form.appendChild(inputNuevo);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+  </script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

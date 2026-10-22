@@ -1,0 +1,24 @@
+.service-choices {
+  display: grid;
+  gap: 14px;
+  margin: 28px 0 20px;
+}
+
+.service-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px 20px;
+  color: inherit;
+  text-align: left;
+  text-decoration: none;
+}
+
+.service-choice strong {
+  font-size: 1.1rem;
+}
+
+.service-choice span {
+  font-size: 0.9rem;
+  opacity: 0.85;
+}

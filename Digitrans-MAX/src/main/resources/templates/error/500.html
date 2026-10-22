@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+    <meta charset="UTF-8">
+    <title>500 - Error Interno</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+    <div class="page">
+        <div class="center-card">
+            <div class="card" style="text-align: center; border-top: 5px solid #dc3545;">
+                <h1 style="font-size: 60px; color: #dc3545; margin-bottom: 10px;">500</h1>
+                <h2>¡Algo salió mal!</h2>
+                <p>Estamos teniendo problemas técnicos en nuestro servidor. Por favor, intenta de nuevo más tarde.</p>
+                
+                <!-- Opcional: Solo para depuración (quitar en producción) -->
+                <div th:if="${error}" style="margin-top: 20px; font-size: 12px; color: #999; background: #f8f9fa; padding: 10px; border-radius: 5px;">
+                    Detalle técnico: <span th:text="${error}"></span>
+                </div>
+
+                <br>
+                <a href="/" class="ghost" style="text-decoration: none;">Regresar al inicio</a>
+            </div>
+        </div>
+    </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

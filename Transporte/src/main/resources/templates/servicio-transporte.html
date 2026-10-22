@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transporte — Digitrans</title>
+</head>
+<body>
+  <main>
+    <h1>Servicio de transporte</h1>
+    <p th:if="${name}">Hola, <span th:text="${name}"></span>.</p>
+    <p th:if="${email}">Sesión activa con <span th:text="${email}"></span>.</p>
+    <p th:if="${error}" th:text="${error}" role="alert"></p>
+    <a th:if="${accesoUrl}" th:href="${accesoUrl + '/servicios'}">Volver a elegir servicio</a>
+  </main>
+</body>
+</html>

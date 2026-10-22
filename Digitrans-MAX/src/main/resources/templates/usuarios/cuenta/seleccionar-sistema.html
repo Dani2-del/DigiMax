@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Selecciona tu SITM - Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+</head>
+<body class="menu-page">
+  <div class="page">
+    <div th:replace="~{fragments/header :: header}"></div>
+    <main class="center-card">
+      <section class="card">
+        <h1>Elige tu SITM</h1>
+        <p>Selecciona el sistema de transporte asociado a tu cuenta. Esta elección se guardará para tus próximos ingresos.</p>
+        <form th:action="@{/menu/sistema}" method="post">
+          <label for="sistema">Sistema Integrado de Transporte</label>
+          <select id="sistema" name="sistema" required>
+            <option value="" disabled selected>Selecciona un sistema</option>
+            <option th:each="sistema : ${sistemasTransporte}"
+                    th:value="${sistema}"
+                    th:text="${sistema.nombre}"></option>
+          </select>
+          <button class="primary" type="submit">Continuar</button>
+        </form>
+      </section>
+    </main>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+</body>
+</html>

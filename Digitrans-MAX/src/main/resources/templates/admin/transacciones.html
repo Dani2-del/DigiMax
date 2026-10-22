@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Transacciones - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261015-2)}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card">
+            <header class="admin-section-header">
+                <div>
+                    <p class="admin-eyebrow">Digitrans · ADMINISTRACIÓN</p>
+                    <h1>Transacciones — <span th:text="${sistemaActual.nombre}">Entidad</span></h1>
+                    <p class="admin-home-subtitle">
+                        <span th:text="${totalTransacciones}"></span> movimientos encontrados
+                    </p>
+                </div>
+                <a class="btn-pagina" href="/admin/dashboard">← Panel principal</a>
+            </header>
+
+            <form class="transaction-filters" method="get" th:action="@{/admin/transacciones}">
+                <div class="filter-row">
+                    <label for="usuario">Usuario</label>
+                    <input id="usuario" type="search" name="usuario" th:value="${usuarioBuscado}"
+                           placeholder="Nombre o correo">
+                </div>
+                <div class="filter-row">
+                    <label for="tipo">Tipo de transacción</label>
+                    <select id="tipo" name="tipo">
+                        <option value="" th:selected="${tipoBuscado == ''}">Todos los tipos</option>
+                        <option value="recarga" th:selected="${tipoBuscado == 'recarga'}">Recargas</option>
+                        <option value="pasaje" th:selected="${tipoBuscado == 'pasaje'}">Pasajes</option>
+                        <option value="otros" th:selected="${tipoBuscado == 'otros'}">Otros movimientos</option>
+                    </select>
+                </div>
+                <div class="filter-row">
+                    <label for="montoMin">Monto desde (COP)</label>
+                    <input id="montoMin" type="number" name="montoMin" min="0" step="any"
+                           th:value="${montoMin}" placeholder="Sin mínimo">
+                </div>
+                <div class="filter-row">
+                    <label for="montoMax">Monto hasta (COP)</label>
+                    <input id="montoMax" type="number" name="montoMax" min="0" step="any"
+                           th:value="${montoMax}" placeholder="Sin máximo">
+                </div>
+                <div class="transaction-filter-actions">
+                    <button class="btn-buscar" type="submit">🔎 Buscar</button>
+                    <a class="btn-limpiar-filtros" th:href="@{/admin/transacciones}">Limpiar filtros</a>
+                </div>
+            </form>
+            <p class="transaction-filter-error" role="alert" th:if="${errorFiltro}" th:text="${errorFiltro}"></p>
+
+            <div class="table-wrap">
+                <table class="admin-table">
+                    <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Usuario</th>
+                        <th>Correo</th>
+                        <th>Tipo</th>
+                        <th>Monto</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="transaccion : ${transacciones}">
+                        <td th:text="${transaccion.fecha != null ? #temporals.format(transaccion.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                        <td th:text="${transaccion.usuario != null and transaccion.usuario.nombre != null ? transaccion.usuario.nombre : '-'}"></td>
+                        <td th:text="${transaccion.usuario != null ? transaccion.usuario.correo : '-'}"></td>
+                        <td th:text="${transaccion.tipo != null ? transaccion.tipo : '-'}"></td>
+                        <td class="saldo-display"
+                            th:text="${#numbers.formatDecimal(transaccion.monto, 1, 'POINT', 0, 'COMMA')} + ' COP'"></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(transacciones)}">
+                        <td class="admin-empty-state" colspan="5">No se encontraron transacciones con esos filtros.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <nav class="pagination-bar" th:if="${totalPages > 1}" aria-label="Paginación de transacciones">
+                <a th:if="${currentPage > 0}"
+                   th:href="@{/admin/transacciones(page=${currentPage - 1}, usuario=${usuarioBuscado}, tipo=${tipoBuscado}, montoMin=${montoMin}, montoMax=${montoMax})}"
+                   class="btn-pagina">← Anterior</a>
+                <span class="pagina-info">
+                    Página <span th:text="${currentPage + 1}"></span> de <span th:text="${totalPages}"></span>
+                </span>
+                <a th:if="${currentPage + 1 < totalPages}"
+                   th:href="@{/admin/transacciones(page=${currentPage + 1}, usuario=${usuarioBuscado}, tipo=${tipoBuscado}, montoMin=${montoMin}, montoMax=${montoMax})}"
+                   class="btn-pagina">Siguiente →</a>
+            </nav>
+        </section>
+    </main>
+</div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+    <meta charset="UTF-8" />
+    <title>Configurar Límite de Saldo - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="menu-page" th:attr="data-sistema=${sistemaActual}">
+    <div class="page">
+        <div th:replace="~{fragments/header :: header}"></div>
+
+        <main class="center-card">
+            <div class="card dashboard" style="max-width: 480px; margin: 0 auto; padding: 25px;">
+                
+                <h2 style="margin-bottom: 10px; text-align: center;">⚠️ Alertas de Saldo Bajo</h2>
+                <p style="text-align:center;">Sistema activo: <strong th:text="${sistemaActual.nombre}">Transcaribe</strong></p>
+                <p style="color: #666; font-size: 0.95rem; text-align: center; margin-bottom: 20px;">
+                    Define un umbral de saldo mínimo. Si el saldo de tu tarjeta cae por debajo de esta cantidad tras un cobro, te enviaremos una notificación a tu correo.
+                </p>
+
+                <form th:action="@{/limite-saldo}" method="post">
+                    <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+
+                    <div style="margin-bottom: 18px; text-align: left;">
+                        <label style="display: block; font-weight: bold; color: #444; margin-bottom: 6px;">
+                            Seleccionar Tarjeta:
+                        </label>
+                        <select name="numeroTarjeta" required
+                                style="width: 100%; padding: 12px; border-radius: 10px; border: 2px solid var(--linea); background: #fafafa; font-size: 1rem; color: var(--tinta);">
+                            <option value="" disabled selected>Selecciona una tarjeta...</option>
+                            <option th:each="t : ${tarjetas}"
+                                    th:value="${t.numeroTarjeta}"
+                                    th:text="${'💳 ' + t.numeroTarjeta + ' (Saldo: $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT') + ' | Límite actual: $' + (t.limiteSaldo != null ? #numbers.formatDecimal(t.limiteSaldo, 0, 'COMMA', 0, 'POINT') : 'Sin definir') + ')'}">
+                            </option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 22px; text-align: left;">
+                        <label style="display: block; font-weight: bold; color: #444; margin-bottom: 6px;">
+                            Límite Mínimo Deseado ($ COP):
+                        </label>
+                        <input type="number" name="limiteSaldo" min="0" step="500" placeholder="Ej. 6000" required
+                               style="width: 100%; padding: 12px; border-radius: 10px; border: 2px solid var(--linea); background: #fafafa; font-size: 1rem; box-sizing: border-box;" />
+                    </div>
+
+                    <button type="submit" class="primary"
+                            style="width: 100%; padding: 14px; border-radius: 10px; font-size: 1rem; cursor: pointer; margin-bottom: 10px;">
+                        Guardar Configuración
+                    </button>
+                    
+                    <a th:href="@{/menu}" class="ghost" 
+                       style="display: block; text-align: center; text-decoration: none; padding: 12px; width: 100%; box-sizing: border-box;">
+                        Volver al Menú
+                    </a>
+                </form>
+
+                <div style="margin-top: 15px; text-align: center;">
+                    <p class="success" th:if="${mensaje}" th:text="${mensaje}" 
+                       style="color: #28a745; font-weight: bold; background: #e8f5e9; padding: 10px; border-radius: 8px; margin: 0;">
+                    </p>
+                    <p class="error" th:if="${error}" th:text="${error}">
+                    </p>
+                </div>
+
+            </div>
+        </main>
+
+        <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

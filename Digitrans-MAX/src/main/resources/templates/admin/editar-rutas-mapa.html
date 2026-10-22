@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Editor beta de trazados - Digitrans</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <link rel="stylesheet" th:href="@{/css/mapa-rutas.css}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body>
+<main class="route-map-page">
+    <header class="route-map-header">
+        <a th:href="@{/mapa-rutas}" class="route-map-back">← Ver mapa beta</a>
+        <div>
+            <p class="route-map-eyebrow">ADMINISTRACIÓN · BETA</p>
+            <h1>Editor de trazados <span class="route-map-beta">BETA</span></h1>
+            <p>Dibuja sobre las calles el recorrido oficial de cada sentido.</p>
+        </div>
+    </header>
+
+    <p class="route-map-beta-notice">
+        Haz clic por las calles para marcar los giros del bus, en orden, desde la primera hasta la última parada.
+        Las paradas cargadas desde los CSV se muestran como referencia; puedes corregir el dibujo antes de guardarlo.
+    </p>
+
+    <section class="route-map-layout route-map-editor-layout" aria-label="Editor de trazados de rutas">
+        <aside class="route-map-controls route-map-editor-controls">
+            <label for="routeCategory">Tipo de ruta</label>
+            <select id="routeCategory">
+                <option value="">Todas las categorías</option>
+                <option value="Troncales">Troncales</option>
+                <option value="Pretroncales">Pretroncales</option>
+                <option value="Alimentadoras">Alimentadoras</option>
+                <option value="Complementarias">Complementarias</option>
+            </select>
+
+            <label for="routeCode">Ruta con archivo de paradas</label>
+            <select id="routeCode">
+                <option value="">Selecciona una ruta</option>
+            </select>
+
+            <label for="routeDirection">Sentido a editar</label>
+            <select id="routeDirection" disabled>
+                <option value="">Selecciona una ruta</option>
+            </select>
+
+            <a id="officialMapLink" class="route-map-reference" hidden
+               target="_blank" rel="noopener noreferrer">Abrir plano oficial de referencia ↗</a>
+
+            <div class="route-editor-actions">
+                <button id="loadSavedPath" type="button" disabled>Cargar trazado guardado</button>
+                <button id="undoPoint" type="button" disabled>Deshacer último punto</button>
+                <button id="clearDraft" type="button" disabled>Empezar de nuevo</button>
+                <button id="savePath" type="button" class="route-editor-save" disabled>Guardar trazado</button>
+                <button id="deletePath" type="button" class="route-editor-delete" disabled>Eliminar trazado guardado</button>
+            </div>
+
+            <p id="routeEditorStatus" class="route-map-status" role="status" aria-live="polite">
+                Selecciona una ruta y un sentido para comenzar.
+            </p>
+            <p id="routeEditorWarning" class="route-map-warning" hidden></p>
+
+            <div class="route-map-legend">
+                <strong>Pasos</strong>
+                <span>1. Elige la ruta y el sentido.</span>
+                <span>2. Haz clic sobre la calle en cada curva o cambio de vía.</span>
+                <span>3. Dibuja siguiendo el orden de las paradas; luego guarda.</span>
+            </div>
+        </aside>
+
+        <div id="routeMap" class="route-map-canvas route-map-editor-canvas" role="application"
+             aria-label="Mapa para dibujar el recorrido de una ruta"></div>
+    </section>
+
+    <footer class="route-map-footer">
+        Mapa base © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>.
+        Las geometrías guardadas se usarán en la vista pública del mapa beta.
+    </footer>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script th:src="@{/js/rutas-catalogo.js}"></script>
+<script th:src="@{/js/editar-rutas-mapa.js}"></script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

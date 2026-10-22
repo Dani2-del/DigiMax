@@ -1,0 +1,17 @@
+# Local environment files and secrets
+**/.env
+**/.env.*
+!**/.env.example
+**/application-local.properties
+**/application-secrets.properties
+**/*secrets*.properties
+**/secrets/
+**/credentials.json
+
+# Generated files
+**/.gradle/
+**/build/
+**/target/
+**/out/
+*.log
+

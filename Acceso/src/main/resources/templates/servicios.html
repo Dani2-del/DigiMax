@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elige un servicio — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}">
+  <link rel="stylesheet" th:href="@{/css/servicios.css}">
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="login-page">
+  <div class="page">
+    <main class="center-card">
+      <section class="card">
+        <h1 class="title">¿Qué servicio quieres usar?</h1>
+        <p class="info-text">Tu cuenta Digitrans funciona para todos los servicios. Elige a dónde quieres ir.</p>
+        <div class="service-choices">
+          <a class="primary service-choice" th:href="${transporteUrl}">
+            <strong>Transporte</strong>
+            <span>TransCaribe, TransMilenio y Transmetro</span>
+          </a>
+          <a class="primary service-choice" th:href="${recargasUrl}">
+            <strong>Recargas móviles</strong>
+            <span>Saldo y paquetes para tu línea</span>
+          </a>
+        </div>
+        <a th:href="@{/cuenta/seguridad}" class="back-to-login">Seguridad de la cuenta</a>
+        <form th:action="@{/logout}" method="post">
+          <button type="submit" class="link-button">Cerrar sesión</button>
+        </form>
+      </section>
+    </main>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

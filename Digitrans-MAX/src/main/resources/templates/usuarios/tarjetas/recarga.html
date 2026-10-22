@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <meta charset="UTF-8" />
+  <title>Recargar - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="fragments/header :: header"></div>
+
+    <main class="center-card">
+      <div class="card" style="background: white; color: #4a5568; max-width: 760px; margin: 0 auto; padding: 36px 32px; border-radius: 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border: 1px solid var(--linea); position: relative; text-align: center;">
+        <button class="back-arrow"
+                th:onclick="|window.location.href='@{/menu}'|">
+          🡨
+        </button>
+
+        <h2 style="margin-bottom: 16px; font-size: 1.95rem;">
+          Recargar saldo · <span th:text="${sistemaActual.nombre}">Transcaribe</span>
+        </h2>
+        <p style="color: #4a5568;">Usuario: <strong th:text="${usuario.correo}"></strong></p>
+
+        <form th:action="@{/recargar}" method="post" class="recarga-form" id="recargaForm">
+          
+          <div class="form-section full-width">
+            <label th:unless="${esTransmetro}">Tipo de recarga</label>
+            <input th:if="${esTransmetro}" type="hidden" name="modoRecarga" value="NORMAL" />
+            <div th:unless="${esTransmetro}" class="recharge-mode-options" role="radiogroup" aria-label="Tipo de recarga">
+              <label class="recharge-mode-option">
+                <input type="radio" name="modoRecarga" value="RAPIDA"
+                       th:checked="${modoRecarga == null || modoRecarga == 'RAPIDA'}" />
+                Recarga rápida
+              </label>
+              <label class="recharge-mode-option">
+                <input type="radio" name="modoRecarga" value="NORMAL"
+                       th:checked="${modoRecarga == 'NORMAL'}" />
+                Recarga normal
+              </label>
+            </div>
+          </div>
+
+          <div th:unless="${esTransmetro}" id="recargaRapidaFields" class="form-section full-width">
+            <label>Recarga rápida por pasajes</label>
+            <div class="quick-recharge-options" aria-label="Cantidades rápidas de pasajes">
+              <button type="button" class="quick-recharge-option" data-quantity="1">1 pasaje</button>
+              <button type="button" class="quick-recharge-option" data-quantity="5">5 pasajes</button>
+              <button type="button" class="quick-recharge-option" data-quantity="10">10 pasajes</button>
+            </div>
+            <label for="cantidadPasajes">Cantidad de pasajes</label>
+            <input id="cantidadPasajes" name="cantidadPasajes" type="number" min="1" step="1"
+                   th:value="${cantidadPasajes}" required />
+            <p class="recharge-total">
+              Valor por pasaje: <strong th:text="${'$' + #numbers.formatInteger(valorPasaje, 1, 'COMMA')}"></strong>
+              <br />
+              Total de la recarga: <strong id="totalRecarga" aria-live="polite"></strong>
+            </p>
+          </div>
+
+          <div id="recargaNormalFields" class="form-section full-width"
+               th:style="${esTransmetro ? 'display:block;' : 'display:none;'}">
+            <label for="monto">Monto a recargar (COP)</label>
+            <input id="monto" name="monto" type="number" min="1" step="1"
+                   th:value="${monto}" placeholder="Ej: 50000" disabled required />
+          </div>
+
+          <div class="form-section full-width">
+            <label>Método de pago</label>
+            <div class="radio-options" style="background: transparent;">
+              <label class="payment-option">
+                <input type="radio" name="metodoPago" value="pse" checked onchange="togglePaymentFields()"/> PSE
+              </label>
+              <label class="payment-option">
+                <input type="radio" name="metodoPago" value="tarjetaCredito" onchange="togglePaymentFields()"/> Tarjeta de crédito / débito
+              </label>
+            </div>
+          </div>
+
+          <div id="pseFields" class="form-section full-width">
+            <label for="correoPSE">Correo PSE</label>
+            <input id="correoPSE" name="correoPSE" type="email" placeholder="correo@ejemplo.com" />
+
+            <label for="contrasenaPSE">Contraseña PSE</label>
+            <input id="contrasenaPSE" name="contrasenaPSE" type="password" placeholder="Contraseña" />
+          </div>
+
+          <div id="tarjetaCreditoFields" class="form-section full-width" style="display: none;">
+            <label for="numeroTarjetaPago">Número de tarjeta (pago)</label>
+            <input id="numeroTarjetaPago" name="numeroTarjetaPago" type="text" inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" disabled />
+
+            <div class="grid-2">
+              <div>
+                <label for="fechaVencimientoPago">Fecha de vencimiento (MM/AA)</label>
+                <input id="fechaVencimientoPago" name="fechaVencimientoPago" type="text" maxlength="5" placeholder="MM/AA" disabled />
+              </div>
+              <div>
+                <label for="cvvPago">CVV</label>
+                <input id="cvvPago" name="cvvPago" type="password" inputmode="numeric" maxlength="4" placeholder="123" disabled />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-section full-width">
+            <label for="numeroTarjeta">Tarjeta Digitrans destino</label>
+            <select id="numeroTarjeta" name="numeroTarjeta" required 
+                    style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--linea); background-color: white; font-size: 1rem; color: var(--tinta);">
+              <option value="" disabled selected>Selecciona una de tus tarjetas</option>
+              <option th:each="t : ${tarjetas}"
+                      th:value="${t.numeroTarjeta}" 
+                      th:text="${'Tarjeta: ' + t.numeroTarjeta + ' (Saldo: $' + t.saldo + ')'}">
+              </option>
+            </select>
+            <small style="color: var(--piedra-soft); font-size: 0.88rem;">El saldo se aplicará a la tarjeta que selecciones.</small>
+          </div>
+
+          <div class="form-section full-width button-section">
+            <button type="submit" class="primary" style="width: 100%; cursor: pointer; margin-top: 8px; padding: 14px 18px; border-radius: 14px; font-size: 1rem;">
+              Confirmar Recarga
+            </button>
+          </div>
+        </form>
+
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+      </div>
+    </main>
+
+    <div th:replace="fragments/footer :: footer"></div>
+  </div>
+
+  <script th:inline="javascript">
+    const valorPasaje = Number([[${valorPasaje ?: 0}]]);
+
+    function actualizarModoRecarga() {
+      const modoSeleccionado = document.querySelector('input[name="modoRecarga"]:checked')
+        || document.querySelector('input[name="modoRecarga"]');
+      const modo = modoSeleccionado ? modoSeleccionado.value : 'NORMAL';
+      const rapida = document.getElementById('recargaRapidaFields');
+      const normal = document.getElementById('recargaNormalFields');
+      const esRapida = modo === 'RAPIDA';
+
+      if (rapida) {
+        rapida.style.display = esRapida ? 'block' : 'none';
+        rapida.querySelectorAll('input').forEach(input => {
+          input.disabled = !esRapida;
+        });
+      }
+      normal.style.display = esRapida ? 'none' : 'block';
+      normal.querySelectorAll('input').forEach(input => {
+        input.disabled = esRapida;
+      });
+    }
+
+    function actualizarTotalRecarga() {
+      const cantidadInput = document.getElementById('cantidadPasajes');
+      if (!cantidadInput) return;
+      const cantidad = Number(cantidadInput.value);
+      const total = Number.isSafeInteger(cantidad) && cantidad > 0 ? cantidad * valorPasaje : 0;
+      document.getElementById('totalRecarga').textContent = new Intl.NumberFormat('es-CO', {
+        style: 'currency',
+        currency: 'COP',
+        maximumFractionDigits: 0
+      }).format(total);
+      document.querySelectorAll('.quick-recharge-option').forEach(button => {
+        button.setAttribute('aria-pressed', String(Number(button.dataset.quantity) === cantidad));
+      });
+    }
+
+    function togglePaymentFields() {
+      const method = document.querySelector('input[name="metodoPago"]:checked').value;
+      const pse = document.getElementById('pseFields');
+      const tc = document.getElementById('tarjetaCreditoFields');
+
+      if (method === 'tarjetaCredito') {
+        pse.style.display = 'none';
+        pse.querySelectorAll('input').forEach(i => i.disabled = true);
+
+        tc.style.display = 'block';
+        tc.querySelectorAll('input').forEach(i => i.disabled = false);
+      } else {
+        pse.style.display = 'block';
+        pse.querySelectorAll('input').forEach(i => i.disabled = false);
+
+        tc.style.display = 'none';
+        tc.querySelectorAll('input').forEach(i => i.disabled = true);
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      togglePaymentFields();
+      actualizarModoRecarga();
+      actualizarTotalRecarga();
+      document.querySelectorAll('input[name="modoRecarga"]').forEach(input => {
+        input.addEventListener('change', actualizarModoRecarga);
+      });
+      const cantidadPasajes = document.getElementById('cantidadPasajes');
+      if (cantidadPasajes) cantidadPasajes.addEventListener('input', actualizarTotalRecarga);
+      document.querySelectorAll('.quick-recharge-option').forEach(button => {
+        button.addEventListener('click', () => {
+          document.getElementById('cantidadPasajes').value = button.dataset.quantity;
+          actualizarTotalRecarga();
+        });
+      });
+    });
+
+    document.addEventListener('input', (e) => {
+      if (e.target.id === 'numeroTarjetaPago') {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 16);
+        e.target.value = v.replace(/(.{4})/g, '$1 ').trim();
+      }
+      if (e.target.id === 'fechaVencimientoPago') {
+        let v = e.target.value.replace(/\D/g, '').slice(0, 4);
+        if (v.length > 2) v = v.slice(0, 2) + '/' + v.slice(2);
+        e.target.value = v;
+      }
+    });
+  </script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

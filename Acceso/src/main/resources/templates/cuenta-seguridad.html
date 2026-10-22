@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seguridad de la cuenta — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}">
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="login-page">
+  <div class="page">
+    <main class="center-card">
+      <section class="card">
+        <h1 class="title">Cambiar contraseña</h1>
+        <p class="info-text">Confirma tu contraseña actual. Te enviaremos un código al correo de tu cuenta.</p>
+        <form th:action="@{/cuenta/cambiar-password}" method="post" class="form">
+          <label for="passwordActual">Contraseña actual</label>
+          <input type="password" id="passwordActual" name="passwordActual" required autocomplete="current-password">
+          <label for="nuevaPassword">Nueva contraseña</label>
+          <input type="password" id="nuevaPassword" name="nuevaPassword" required minlength="8" autocomplete="new-password">
+          <label for="confirmarPassword">Confirmar nueva contraseña</label>
+          <input type="password" id="confirmarPassword" name="confirmarPassword" required minlength="8" autocomplete="new-password">
+          <button class="primary" type="submit">Enviar código</button>
+        </form>
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+        <a th:href="@{/servicios}" class="back-to-login">Volver a servicios</a>
+      </section>
+    </main>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

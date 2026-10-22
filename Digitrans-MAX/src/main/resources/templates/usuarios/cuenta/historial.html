@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <meta charset="UTF-8" />
+  <title>Historial - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="fragments/header :: header"></div>
+
+    <main class="center-card wide">
+      <div class="card">
+        <button class="back-arrow"
+                th:onclick="|window.location.href='@{/menu}'|">
+          🡨
+        </button>
+
+        <h2>Historial de transacciones</h2>
+        <p>Usuario: <strong th:text="${usuario.correo}"></strong></p>
+        <form method="get" th:action="@{/historial}" style="display:flex; align-items:center; gap:8px; margin:16px 0; flex-wrap:wrap;">
+          <input type="search" name="buscar" th:value="${buscar}" placeholder="Buscar por tipo de transacción"
+                 style="flex:1; min-width:220px; padding:10px; border:1px solid #ccd6d9; border-radius:8px;">
+          <label style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+            <input id="buscarPorTarjeta" type="checkbox" name="buscarPorTarjeta" value="true"
+                   th:checked="${buscarPorTarjeta}"
+                   onchange="if (!this.checked) { document.getElementById('tarjetaSeleccionada').value = ''; }">
+            Buscar por tarjeta
+          </label>
+          <select id="tarjetaSeleccionada" name="tarjetaSeleccionada"
+                  style="padding:10px; border:1px solid #ccd6d9; border-radius:8px;"
+                  onchange="if (this.value !== '') { document.getElementById('buscarPorTarjeta').checked = true; }">
+            <option value="" th:selected="${tarjetaSeleccionada == null}">Seleccionar tarjeta</option>
+            <option th:each="tarjeta, iter : ${tarjetasSistemaActual}"
+                    th:value="${iter.index}"
+                    th:selected="${tarjetaSeleccionada == iter.index}"
+                    th:text="${'Tarjeta ' + iter.count + (tarjeta.numeroTarjeta != null && #strings.length(tarjeta.numeroTarjeta) >= 4 ? ' (****' + #strings.substring(tarjeta.numeroTarjeta, #strings.length(tarjeta.numeroTarjeta) - 4) + ')' : '')}">
+              Tarjeta ****1234
+            </option>
+          </select>
+          <select name="tipo" style="padding:10px; border:1px solid #ccd6d9; border-radius:8px;">
+            <option value="" th:selected="${tipoSeleccionado == ''}">Todas</option>
+            <option value="recarga" th:selected="${tipoSeleccionado == 'recarga'}">Recargas</option>
+            <option value="pasaje" th:selected="${tipoSeleccionado == 'pasaje'}">Pasajes</option>
+          </select>
+          <button class="primary" type="submit">Buscar</button>
+        </form>
+
+        <!-- 🔹 TABLA -->
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Pasajes</th>
+                <th>Monto</th>
+                <th>Recibo</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr th:each="t : ${transacciones}">
+                <td th:text="${#temporals.format(t.fecha, 'dd/MM/yyyy HH:mm')}">
+                  01/01/2025
+                </td>
+                <td th:text="${t.tipo}">Recarga</td>
+                <td th:text="${t.cantidadPasajes != null ? t.cantidadPasajes : '—'}">—</td>
+                <td th:text="${#numbers.formatDecimal(t.monto, 0, 'COMMA', 2, 'POINT')}">
+                  $0.00
+                </td>
+                <td>
+                  <a class="receipt-link"
+                     th:href="@{/historial/{id}/recibo(id=${t.id})}"
+                     aria-label="Descargar recibo PDF">Descargar PDF</a>
+                </td>
+              </tr>
+
+              <tr th:if="${#lists.isEmpty(transacciones)}">
+                <td colspan="5" style="text-align:center;">
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div th:if="${totalPages > 1}" style="display:flex; justify-content:center; gap:12px; margin-top:18px;">
+          <a th:if="${currentPage > 0}" th:href="@{/historial(page=${currentPage - 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, buscarPorTarjeta=${buscarPorTarjeta}, tarjetaSeleccionada=${tarjetaSeleccionada})}">Anterior</a>
+          <span th:text="'Página ' + ${currentPage + 1} + ' de ' + ${totalPages}"></span>
+          <a th:if="${currentPage + 1 < totalPages}" th:href="@{/historial(page=${currentPage + 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, buscarPorTarjeta=${buscarPorTarjeta}, tarjetaSeleccionada=${tarjetaSeleccionada})}">Siguiente</a>
+        </div>
+
+      </div>
+    </main>
+
+    <div th:replace="fragments/footer :: footer"></div>
+  </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Gestión de rutas - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <style>
+        .admin-schedule-home .admin-home-actions { flex-shrink:0; }
+        .admin-schedule-home .admin-home-actions .btn-pagina,
+        .admin-schedule-home .admin-home-actions button { white-space:nowrap; }
+    </style>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="admin-schedule-home" th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card admin-home">
+            <header class="admin-home-header">
+                <div>
+                    <p class="admin-eyebrow" th:text="|${sistemaActual.nombre} · ${esModerador ? 'MODERACIÓN' : 'ADMINISTRACIÓN'}|">Digitrans · ADMINISTRACIÓN</p>
+                    <h1 th:text="${esTransmilenio ? 'Gestión de conductores TransMilenio' : (esTransmetro ? 'Gestión de conductores Transmetro' : 'Gestión de rutas y buses')}">Gestión de rutas y buses</h1>
+                    <p class="admin-home-subtitle">Elige qué deseas gestionar.</p>
+                </div>
+                <div class="admin-home-actions">
+                    <a href="/admin/dashboard" class="btn-pagina">← Panel principal</a>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="btn-cerrar-sesion">🚪 Cerrar sesión</button>
+                    </form>
+                </div>
+            </header>
+
+            <nav class="admin-module-grid schedule-actions" aria-label="Gestión de rutas y buses">
+                <a class="admin-module-card schedules-module" th:href="@{/admin/horarios/programar}">
+                    <span class="admin-module-icon" aria-hidden="true">📅</span>
+                    <span class="admin-module-title">Programar servicio</span>
+                    <span class="admin-module-description">Asigna un servicio, un bus, un conductor y su horario.</span>
+                    <span class="admin-module-link">Programar <span aria-hidden="true">→</span></span>
+                </a>
+
+                <a class="admin-module-card buses-module" th:href="@{/admin/horarios/buses}">
+                    <span class="admin-module-icon" aria-hidden="true">🚌</span>
+                    <span class="admin-module-title">Crear bus</span>
+                    <span class="admin-module-description" th:text="${esTransmilenio ? 'Registra buses TransMilenio y asígnales servicios troncales.' : (esTransmetro ? 'Registra buses Transmetro y asígnales rutas troncales.' : 'Registra y administra los buses y sus rutas.')}">Registra y administra los buses y sus rutas.</span>
+                    <span class="admin-module-link">Gestionar buses <span aria-hidden="true">→</span></span>
+                </a>
+
+                <a class="admin-module-card history-module" th:href="@{/admin/horarios/historial}">
+                    <span class="admin-module-icon" aria-hidden="true">📚</span>
+                    <span class="admin-module-title">Historial de rutas</span>
+                    <span class="admin-module-description">Consulta recorridos y horarios, con filtros por conductor y fecha.</span>
+                    <span class="admin-module-link">Ver historial <span aria-hidden="true">→</span></span>
+                </a>
+            </nav>
+        </section>
+    </main>
+</div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

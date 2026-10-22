@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de usuarios - Digitrans</title>
+    <meta name="_csrf" th:content="${_csrf?.token}"/>
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261015-2)}" />
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+
+<body th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <div class="center-card wide">
+        <div class="card">
+            <header class="admin-section-header">
+                <div>
+                    <p class="admin-eyebrow">Digitrans · ADMINISTRACIÓN</p>
+                    <h1>Gestión de usuarios</h1>
+                    <p class="admin-home-subtitle">
+                        Servicio: <span th:text="${sistemaActual.nombre}">SITM</span>
+                        · Usuarios registrados: <span th:text="${totalUsuarios}"></span>
+                    </p>
+                </div>
+
+                <div class="admin-home-actions">
+                    <a href="/admin/dashboard" class="btn-pagina">← Panel principal</a>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="btn-cerrar-sesion">🚪 Cerrar sesión</button>
+                    </form>
+                </div>
+            </header>
+
+            <form method="get" th:action="@{/admin/usuarios}" class="user-filters">
+                <label class="user-filter-search">
+                    <span>Buscar</span>
+                    <input type="search" name="search" th:value="${search}"
+                           placeholder="Nombre o correo..." class="search-input" />
+                </label>
+                <label>
+                    <span>Rol</span>
+                    <select name="role">
+                        <option value="" th:selected="${roleSeleccionado == ''}">Todos los roles</option>
+                        <option value="ROLE_USER" th:selected="${roleSeleccionado == 'ROLE_USER'}">Usuario</option>
+                        <option value="ROLE_CONDUCTOR" th:selected="${roleSeleccionado == 'ROLE_CONDUCTOR'}">Conductor</option>
+                        <option value="ROLE_MODERATOR" th:selected="${roleSeleccionado == 'ROLE_MODERATOR'}">Moderador</option>
+                        <option value="ROLE_ADMIN" th:selected="${roleSeleccionado == 'ROLE_ADMIN'}">Administrador</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Registrado desde</span>
+                    <input type="date" name="fechaDesde" th:value="${fechaDesde}" />
+                </label>
+                <label>
+                    <span>Registrado hasta</span>
+                    <input type="date" name="fechaHasta" th:value="${fechaHasta}" />
+                </label>
+                <label>
+                    <span>Estado de cuenta</span>
+                    <select name="estado">
+                        <option value="" th:selected="${estadoSeleccionado == ''}">Todos</option>
+                        <option value="activos" th:selected="${estadoSeleccionado == 'activos'}">Activos</option>
+                        <option value="inactivos" th:selected="${estadoSeleccionado == 'inactivos'}">Inactivos</option>
+                    </select>
+                </label>
+                <label>
+                    <span>Verificación</span>
+                    <select name="verificacion">
+                        <option value="" th:selected="${verificacionSeleccionada == ''}">Todos</option>
+                        <option value="verificados" th:selected="${verificacionSeleccionada == 'verificados'}">Verificados</option>
+                        <option value="pendientes" th:selected="${verificacionSeleccionada == 'pendientes'}">Pendientes</option>
+                    </select>
+                </label>
+                <div class="user-filter-actions">
+                    <button type="submit" class="btn-buscar">🔎 Filtrar</button>
+                    <a th:href="@{/admin/usuarios}" class="btn-cancelar">Limpiar</a>
+                </div>
+            </form>
+            <p class="user-filter-error" th:if="${errorFiltro}" th:text="${errorFiltro}" role="alert"></p>
+            <p class="user-filter-summary">
+                Mostrando <strong th:text="${totalFiltrado}">0</strong>
+                de <strong th:text="${totalUsuarios}">0</strong> usuarios registrados.
+            </p>
+
+            <div class="table-wrap">
+                <table class="admin-table">
+                    <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre / Rol</th>
+                        <th>Correo</th>
+                        <th>Tarjetas</th>
+                        <th>Saldo</th>
+                        <th>Acción</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="u : ${usuarios}">
+                        <td th:text="${u.id}"></td>
+                        <td>
+                            <span th:text="${u.nombre != null ? u.nombre : '-'}"></span>
+                            <small class="role-badge" th:text="${u.role}"></small>
+                        </td>
+                        <td th:text="${u.correo}"></td>
+                        <td>
+                            <select class="card-select" onchange="updateSaldoDisplay(this)">
+                                <option value="" data-saldo="0">Elegir tarjeta...</option>
+                                <option th:each="t : ${u.tarjetas}"
+                                        th:value="${t.numeroTarjeta}"
+                                        th:data-saldo="${t.saldo}"
+                                        th:text="${t.numeroTarjeta}">
+                                </option>
+                            </select>
+                        </td>
+                        <td class="saldo-display">$0</td>
+                        <td>
+                            <button th:if="${tieneRutasConfiguradas}" class="card-btn" th:attr="data-id=${u.id}" onclick="openChargeModal(this)">Cobrar</button>
+                            <button class="card-btn"
+                                    th:attr="data-id=${u.id}, data-nombre=${u.nombre}, data-correo=${u.correo}, data-role=${u.role}, data-sistema-asignado=${u.sistemaAsignado}"
+                                    onclick="openEditModal(this)">Editar</button>
+                            <button class="card-btn2" th:if="${u.role != 'ROLE_ADMIN'}"
+                                    th:attr="data-id=${u.id}" onclick="deleteUser(this)">Eliminar</button>
+                        </td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(usuarios)}">
+                        <td colspan="6" class="user-empty-result">No hay usuarios que coincidan con los filtros seleccionados.</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination-bar" th:if="${totalPages > 1}">
+                <a th:if="${currentPage > 0}"
+                   th:href="@{/admin/usuarios(page=${currentPage - 1}, search=${search}, role=${roleSeleccionado}, fechaDesde=${fechaDesde}, fechaHasta=${fechaHasta}, estado=${estadoSeleccionado}, verificacion=${verificacionSeleccionada})}"
+                   class="btn-pagina">⬅ Anterior</a>
+                <span class="btn-pagina" th:unless="${currentPage > 0}" style="opacity:0.4; cursor:default;">⬅ Anterior</span>
+
+                <span class="pagina-info">Página <span th:text="${currentPage + 1}"></span> de <span th:text="${totalPages}"></span></span>
+
+                <a th:if="${currentPage + 1 < totalPages}"
+                   th:href="@{/admin/usuarios(page=${currentPage + 1}, search=${search}, role=${roleSeleccionado}, fechaDesde=${fechaDesde}, fechaHasta=${fechaHasta}, estado=${estadoSeleccionado}, verificacion=${verificacionSeleccionada})}"
+                   class="btn-pagina">Siguiente ➡</a>
+                <span class="btn-pagina" th:unless="${currentPage + 1 < totalPages}" style="opacity:0.4; cursor:default;">Siguiente ➡</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cobrar -->
+<div id="chargeModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index: 1000;">
+    <div style="background:white;padding:20px;border-radius:12px;width:420px;">
+        <h3>Cobrar pasaje</h3>
+        <p>Monto: <strong>3500</strong></p>
+        <input type="hidden" id="modalUserId" />
+        <button onclick="submitCharge()" class="primary">Confirmar</button>
+        <button onclick="closeModal()" class="ghost">Cancelar</button>
+        <div id="modalMsg"></div>
+    </div>
+</div>
+
+<!-- Modal Editar -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index: 1000;">
+    <div style="background:white;padding:25px;border-radius:12px;width:420px; position:relative;">
+        <button onclick="closeEditModal()" style="position:absolute; top:10px; right:15px; border:none; background:none; font-size:20px; cursor:pointer;">✖</button>
+        <h3>Editar usuario</h3>
+        <input type="hidden" id="editUserId" />
+        <input type="hidden" id="currentService" th:value="${sistemaActual}" />
+        <label style="font-size:13px;color:#666;">Nombre completo:</label>
+        <input type="text" id="editNombre" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
+        <label style="font-size:13px;color:#666;">Correo electrónico:</label>
+        <input type="email" id="editCorreo" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
+        <label style="font-size:13px;color:#666;">Rol asignado:</label>
+        <select id="editRole" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;">
+            <option value="ROLE_USER">Usuario (ROLE_USER)</option>
+            <option value="ROLE_ADMIN">Administrador (ROLE_ADMIN)</option>
+            <option value="ROLE_MODERATOR">Moderador (ROLE_MODERATOR)</option>
+            <option value="ROLE_CONDUCTOR">Conductor (ROLE_CONDUCTOR · servicio actual)</option>
+        </select>
+        <div id="editModeratorService" style="display:none;margin-bottom:12px;">
+            <label for="editSistemaAsignado" style="font-size:13px;color:#666;">Servicio del moderador:</label>
+            <select id="editSistemaAsignado" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
+                <option th:each="sistema : ${sistemasTransporte}"
+                        th:value="${sistema.name()}" th:text="${sistema.nombre}"></option>
+            </select>
+        </div>
+        <div id="editConductorService" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:8px;background:#f7fafc;color:#4a5568;font-size:13px;">
+            El conductor quedará asignado a <strong th:text="${sistemaActual.nombre}">Transcaribe</strong> y recibirá las rutas programadas para ese servicio.
+        </div>
+
+        <label style="font-size:13px;color:#666;">Seguridad:</label>
+        <input type="password" id="editPassword" placeholder="Nueva contraseña (dejar en blanco)" style="width:100%;padding:8px;margin-bottom:15px;border:1px solid #ccc;border-radius:6px;">
+        <div style="display:flex;gap:10px;">
+            <button type="button" onclick="submitEdit()" class="primary" style="flex:1;">Guardar cambios</button>
+            <button type="button" onclick="closeEditModal()" class="ghost" style="flex:1;">Cancelar</button>
+        </div>
+        <div id="editMsg" style="margin-top:15px;text-align:center;font-weight:bold;"></div>
+    </div>
+</div>
+
+<script>
+    // ===== TABLA =====
+    function updateSaldoDisplay(selectElement) {
+        const selectedOption = selectElement.options[selectElement.selectedIndex];
+        const saldo = selectedOption.getAttribute('data-saldo');
+        const row = selectElement.closest('tr');
+        const saldoCell = row.querySelector('.saldo-display');
+        if (saldo && selectElement.value !== "") {
+            saldoCell.textContent = new Number(saldo).toLocaleString('es-CO', {style:'currency', currency:'COP', minimumFractionDigits:0});
+        } else {
+            saldoCell.textContent = "$0";
+        }
+    }
+
+    // ===== MODALES =====
+    const modal = document.getElementById('chargeModal');
+    const editModal = document.getElementById('editModal');
+    const editRole = document.getElementById('editRole');
+    const moderatorService = document.getElementById('editModeratorService');
+    const assignedService = document.getElementById('editSistemaAsignado');
+    const conductorService = document.getElementById('editConductorService');
+
+    function updateModeratorServiceVisibility() {
+        const isModerator = editRole.value === 'ROLE_MODERATOR';
+        const isConductor = editRole.value === 'ROLE_CONDUCTOR';
+        moderatorService.style.display = isModerator ? 'block' : 'none';
+        assignedService.required = isModerator;
+        conductorService.style.display = isConductor ? 'block' : 'none';
+    }
+    editRole.addEventListener('change', updateModeratorServiceVisibility);
+
+    function openChargeModal(btn) { document.getElementById('modalUserId').value = btn.getAttribute('data-id'); modal.style.display = 'flex'; }
+    function closeModal() { modal.style.display = 'none'; }
+
+    function submitCharge() {
+        const userId = document.getElementById('modalUserId').value;
+        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ?? "";
+        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') ?? "";
+        const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+        if (header && token) headers[header] = token;
+        fetch('/admin/charge', {method:'POST', headers, body: new URLSearchParams({userId, amount:3500})})
+            .then(r => r.json()).then(res => { if(res.status==='ok') location.reload(); });
+    }
+
+    function openEditModal(btn) {
+        document.getElementById('editUserId').value = btn.getAttribute('data-id');
+        document.getElementById('editNombre').value = btn.getAttribute('data-nombre');
+        document.getElementById('editCorreo').value = btn.getAttribute('data-correo');
+        document.getElementById('editRole').value = btn.getAttribute('data-role');
+        assignedService.value = btn.getAttribute('data-sistema-asignado')
+            || document.getElementById('currentService').value;
+        updateModeratorServiceVisibility();
+        document.getElementById('editPassword').value = '';
+        document.getElementById('editMsg').textContent = '';
+        editModal.style.display = 'flex';
+    }
+    function closeEditModal() { editModal.style.display = 'none'; }
+
+    function submitEdit() {
+        const userId = document.getElementById('editUserId').value;
+        const nombre = document.getElementById('editNombre').value;
+        const correo = document.getElementById('editCorreo').value;
+        const role = document.getElementById('editRole').value;
+        const sistemaAsignado = role === 'ROLE_MODERATOR' ? assignedService.value : '';
+        const password = document.getElementById('editPassword').value;
+        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ?? "";
+        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') ?? "";
+        const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+        if (header && token) headers[header] = token;
+        fetch('/admin/editUser', {method:'POST', headers, body: new URLSearchParams({userId, nombre, correo, role, sistemaAsignado, password})})
+            .then(r => r.json()).then(res => {
+            if(res.status==='ok') {
+                document.getElementById('editMsg').style.color = "green";
+                document.getElementById('editMsg').textContent = "Usuario actualizado ✅";
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                document.getElementById('editMsg').style.color = "#b00020";
+                document.getElementById('editMsg').textContent = res.message || "No se pudo actualizar el usuario.";
+            }
+        }).catch(() => {
+            document.getElementById('editMsg').style.color = "#b00020";
+            document.getElementById('editMsg').textContent = "Ocurrió un error al actualizar el usuario.";
+        });
+    }
+
+    function deleteUser(btn) {
+        if(!confirm("¿Está seguro de que desea eliminar este usuario?")) return;
+        const userId = btn.getAttribute('data-id');
+        const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ?? "";
+        const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') ?? "";
+        const headers = {'Content-Type':'application/x-www-form-urlencoded'};
+        if (header && token) headers[header] = token;
+        fetch('/admin/deleteUser', {method:'POST', headers, body: new URLSearchParams({userId})})
+            .then(r => r.json()).then(res => { if(res.status==='ok') location.reload(); });
+    }
+</script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

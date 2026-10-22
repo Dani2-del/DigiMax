@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Crear bus - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <style>
+        .bus-management-header { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; }
+        .bus-management-form { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; align-items:end; }
+        .bus-management-form .form-row { margin:0; }
+        .bus-management-form > .primary { grid-column:1 / -1; }
+        .bus-tools { display:flex; gap:8px; flex-wrap:wrap; }
+        .bus-row { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px 14px; border:1px solid #eee; border-radius:9px; margin-bottom:8px; }
+        .bus-badge { display:inline-block; margin-left:8px; padding:4px 8px; border-radius:999px; background:#e6f4ff; color:#1d4ed8; font-size:11px; font-weight:700; text-transform:uppercase; }
+        .bus-rutas { color:#718096; font-size:13px; }
+        .bus-actions { display:flex; align-items:center; gap:8px; flex:0 0 auto; }
+        .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); align-items:center; justify-content:center; z-index:50; padding:16px; }
+        .modal-overlay.abierto { display:flex; }
+        .modal-box { background:white; border-radius:12px; padding:24px; width:100%; max-width:420px; }
+        .flash-ok { background:#e6fffa; color:#22543d; border:1px solid #38a169; padding:10px 14px; border-radius:8px; margin-bottom:14px; }
+        .flash-error { background:#fff5f5; color:#822727; border:1px solid #f56565; padding:10px 14px; border-radius:8px; margin-bottom:14px; }
+        .transmilenio-bus-form { grid-template-columns:minmax(220px,.8fr) minmax(0,1.4fr); }
+        .route-picker { position:relative; width:100%; }
+        .route-picker-toggle { width:100%; min-height:44px; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:10px 13px; border:1px solid var(--linea); border-radius:10px; background:#fff; color:var(--tinta); cursor:pointer; text-align:left; }
+        .route-picker-toggle:hover, .route-picker.abierto .route-picker-toggle { border-color:var(--coral); }
+        .route-picker-count { color:var(--piedra); font-size:12px; font-weight:600; white-space:nowrap; }
+        .route-picker-menu { display:none; position:absolute; z-index:20; top:calc(100% + 6px); right:0; left:auto; width:min(420px, calc(100vw - 64px)); box-sizing:border-box; padding:10px; border:1px solid var(--linea); border-radius:12px; background:#fff; box-shadow:0 16px 36px rgba(40,25,20,.16); }
+        .route-picker.abierto .route-picker-menu { display:block; }
+        .route-picker-search { width:100%; box-sizing:border-box; margin-bottom:8px; }
+        .route-picker-options { max-height:230px; overflow:auto; }
+        .route-picker-option { display:flex; align-items:flex-start; gap:9px; padding:8px; border-radius:7px; color:var(--tinta); font-size:13px; line-height:1.35; cursor:pointer; }
+        .route-picker-option:hover { background:var(--arena); }
+        .route-picker-option input { width:auto; margin:2px 0 0; padding:0; border:0; background:transparent; accent-color:var(--coral); }
+        .route-picker-add { display:flex; gap:7px; margin-bottom:8px; }
+        .route-picker-add input { flex:1; min-width:0; }
+        .route-picker-add button { padding:8px 11px; border:0; border-radius:8px; background:var(--coral); color:#fff; font-weight:700; cursor:pointer; }
+        .route-picker-empty { display:none; margin:8px; color:var(--piedra); font-size:13px; }
+        .route-picker-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+        .route-picker-chip { display:inline-flex; align-items:center; gap:6px; max-width:100%; padding:5px 8px; border-radius:999px; background:var(--caribe-soft); color:var(--tinta); font-size:11px; }
+        .route-picker-chip span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .route-picker-chip button { padding:0; border:0; background:transparent; color:var(--tinta); font-weight:700; cursor:pointer; }
+        .route-picker-more { color:var(--piedra); font-size:12px; align-self:center; }
+        body[data-sistema="TRANSMILENIO"] .route-picker-option input { accent-color:#c8102e; }
+        body[data-sistema="TRANSMETRO"] .route-picker-option input { accent-color:#12a842; }
+        @media (max-width:700px) { .bus-management-form { grid-template-columns:1fr; } .bus-row { align-items:flex-start; flex-direction:column; } }
+    </style>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="admin-buses-page" th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card">
+            <header class="bus-management-header">
+                <div>
+                    <p class="admin-eyebrow" th:text="|${sistemaActual.nombre} · ${esModerador ? 'MODERACIÓN' : 'ADMINISTRACIÓN'}|">Digitrans · ADMINISTRACIÓN</p>
+                    <h1 th:text="${esTransmilenio ? 'Buses TransMilenio' : (esTransmetro ? 'Buses Transmetro' : 'Crear y gestionar buses')}">Crear y gestionar buses</h1>
+                    <p class="admin-home-subtitle" th:text="${esSistemaTroncal ? 'Registra buses y asigna servicios troncales.' : 'Registra buses y configura las rutas que pueden operar.'}">Registra buses y configura las rutas que pueden operar.</p>
+                </div>
+                <a th:href="@{/admin/horarios}" class="btn-pagina">← Menú de horarios</a>
+            </header>
+
+            <p th:if="${mensaje}" class="flash-ok" th:text="${mensaje}" role="status"></p>
+            <p th:if="${error}" class="flash-error" th:text="${error}" role="alert"></p>
+
+            <h2>Registrar bus</h2>
+            <form class="bus-management-form" th:classappend="${esSistemaTroncal ? ' transmilenio-bus-form' : ''}" th:action="@{/admin/horarios/buses/crear}" method="post">
+                <div class="form-row">
+                    <label for="placa">Número del bus</label>
+                    <input id="placa" type="text" name="placa" placeholder="Ej.: B-210" required>
+                </div>
+                <div class="form-row" th:unless="${esSistemaTroncal}">
+                    <label for="tipo">Tipo de servicio</label>
+                    <select id="tipo" name="tipo" required>
+                        <option value="TRONCAL">Troncal</option>
+                        <option value="PETRONCAL">Petroncal</option>
+                        <option value="ALIMENTADOR">Alimentador</option>
+                    </select>
+                </div>
+                <div class="form-row" th:unless="${esSistemaTroncal}">
+                    <label for="rutasTranscaribe">Rutas que operará</label>
+                    <div class="route-picker" data-route-picker th:attr="data-item-name=${esTransmilenio ? 'servicio' : 'ruta'}">
+                        <button id="rutasTranscaribe" type="button" class="route-picker-toggle" aria-expanded="false">
+                            <span>Seleccionar rutas</span><span class="route-picker-count">0 rutas seleccionadas</span>
+                        </button>
+                        <div class="route-picker-menu">
+                            <div class="route-picker-add">
+                                <input type="text" class="route-picker-custom" placeholder="Escribe una ruta para agregar...">
+                                <button type="button" class="route-picker-add-button">Agregar</button>
+                            </div>
+                            <input type="search" class="route-picker-search" placeholder="Buscar ruta..." autocomplete="off">
+                            <div class="route-picker-options">
+                                <label class="route-picker-option" th:each="ruta : ${rutasDisponibles}">
+                                    <input type="checkbox" name="rutas" th:value="${ruta}">
+                                    <span th:text="${ruta}"></span>
+                                </label>
+                            </div>
+                            <p class="route-picker-empty">No hay rutas que coincidan.</p>
+                        </div>
+                        <div class="route-picker-chips" aria-live="polite"></div>
+                    </div>
+                </div>
+                <div class="form-row" th:if="${esSistemaTroncal}">
+                    <label for="rutasTransmilenio" th:text="${esTransmetro ? 'Rutas troncales que operará' : 'Servicios troncales que operará'}">Servicios troncales que operará</label>
+                    <div class="route-picker" data-route-picker data-item-name="servicio">
+                        <button id="rutasTransmilenio" type="button" class="route-picker-toggle" aria-expanded="false">
+                            <span>Seleccionar servicios</span><span class="route-picker-count">0 servicios seleccionados</span>
+                        </button>
+                        <div class="route-picker-menu">
+                            <input type="search" class="route-picker-search" placeholder="Buscar por código o estación..." autocomplete="off">
+                            <div class="route-picker-options">
+                                <label class="route-picker-option" th:each="ruta : ${rutasDisponibles}">
+                                    <input type="checkbox" name="rutas" th:value="${ruta}">
+                                    <span th:text="${ruta}"></span>
+                                </label>
+                            </div>
+                            <p class="route-picker-empty">No hay servicios que coincidan.</p>
+                        </div>
+                        <div class="route-picker-chips" aria-live="polite"></div>
+                    </div>
+                </div>
+                <button type="submit" class="primary">Guardar bus</button>
+            </form>
+
+            <hr style="margin:26px 0; border:0; border-top:1px solid #eee;">
+
+            <div class="bus-management-header">
+                <h2>Buses registrados</h2>
+                <form class="bus-tools" th:action="@{/admin/horarios/buses}" method="get">
+                    <input type="search" name="buscarBus" th:value="${buscarBus}" placeholder="Buscar por número...">
+                    <select name="tipoBus" th:unless="${esSistemaTroncal}">
+                        <option value="">Todos los tipos</option>
+                        <option value="TRONCAL" th:selected="${tipoBusSeleccionado == 'TRONCAL'}">Troncal</option>
+                        <option value="PETRONCAL" th:selected="${tipoBusSeleccionado == 'PETRONCAL'}">Petroncal</option>
+                        <option value="ALIMENTADOR" th:selected="${tipoBusSeleccionado == 'ALIMENTADOR'}">Alimentador</option>
+                    </select>
+                    <button type="submit" class="btn-buscar">Filtrar</button>
+                    <a th:href="@{/admin/horarios/buses}" class="btn-cancelar">Limpiar</a>
+                </form>
+            </div>
+
+            <p th:if="${#lists.isEmpty(busesRegistrados)}" class="admin-empty-state">
+                No hay buses que coincidan con los filtros.
+            </p>
+            <article th:each="b : ${busesRegistrados}" class="bus-row">
+                <div>
+                    🚌 <strong th:text="${b.placa}">B-210</strong>
+                    <span class="bus-badge" th:text="${b.tipo != null ? b.tipo : 'TRONCAL'}">TRONCAL</span>
+                    <p class="bus-rutas"
+                       th:text="${b.rutas == null or #lists.isEmpty(b.rutas) ? 'Sin rutas configuradas' : #lists.size(b.rutas) + ' rutas: ' + #strings.listJoin(b.rutas, ', ')}">Rutas</p>
+                </div>
+                <div class="bus-actions">
+                    <button type="button" class="btn-secundario edit-bus-button"
+                            th:attr="data-id=${b.id},data-placa=${b.placa},data-rutas=${b.rutas == null ? '' : #strings.listJoin(b.rutas, ', ')},data-tipo=${b.tipo != null ? b.tipo : 'TRONCAL'}">
+                        ✏️ Editar
+                    </button>
+                    <form th:action="@{/admin/horarios/buses/eliminar}" method="post">
+                        <input type="hidden" name="id" th:value="${b.id}">
+                        <button type="submit" class="btn-eliminar-horario" title="Eliminar bus"
+                                onclick="return confirm('¿Eliminar este bus? Se quitará de los conductores asignados y se desactivarán sus horarios pendientes o en curso. El historial se conservará.')">🗑️</button>
+                    </form>
+                </div>
+            </article>
+
+            <nav th:if="${totalBusPages > 1}" class="pagination-bar" aria-label="Paginación de buses">
+                <a th:if="${currentBusPage > 0}"
+                   th:href="@{/admin/horarios/buses(busPage=${currentBusPage - 1},buscarBus=${buscarBus},tipoBus=${tipoBusSeleccionado})}"
+                   class="btn-pagina">Anterior</a>
+                <span class="pagina-info" th:text="|Página ${currentBusPage + 1} de ${totalBusPages}|"></span>
+                <a th:if="${currentBusPage + 1 < totalBusPages}"
+                   th:href="@{/admin/horarios/buses(busPage=${currentBusPage + 1},buscarBus=${buscarBus},tipoBus=${tipoBusSeleccionado})}"
+                   class="btn-pagina">Siguiente</a>
+            </nav>
+        </section>
+    </main>
+</div>
+
+<div class="modal-overlay" id="modalEditarBus" role="dialog" aria-modal="true" aria-labelledby="editarBusTitulo">
+    <div class="modal-box">
+        <h2 id="editarBusTitulo">Editar bus</h2>
+        <form th:action="@{/admin/horarios/buses/editar}" method="post">
+            <input type="hidden" name="id" id="editarBusId">
+            <div class="form-row">
+                <label for="editarBusPlaca">Número del bus</label>
+                <input type="text" name="placa" id="editarBusPlaca" required>
+            </div>
+            <div class="form-row" th:unless="${esSistemaTroncal}">
+                <label for="editarBusTipo">Tipo de servicio</label>
+                <select name="tipo" id="editarBusTipo" required>
+                    <option value="TRONCAL">Troncal</option>
+                    <option value="PETRONCAL">Petroncal</option>
+                    <option value="ALIMENTADOR">Alimentador</option>
+                </select>
+            </div>
+            <div class="form-row" th:unless="${esSistemaTroncal}">
+                <label for="editarRutasTranscaribe">Rutas que operará</label>
+                <div class="route-picker" data-route-picker th:attr="data-item-name=${esTransmilenio ? 'servicio' : 'ruta'}">
+                    <button id="editarRutasTranscaribe" type="button" class="route-picker-toggle" aria-expanded="false">
+                        <span>Seleccionar rutas</span><span class="route-picker-count">0 rutas seleccionadas</span>
+                    </button>
+                    <div class="route-picker-menu">
+                        <div class="route-picker-add">
+                            <input type="text" class="route-picker-custom" placeholder="Escribe una ruta para agregar...">
+                            <button type="button" class="route-picker-add-button">Agregar</button>
+                        </div>
+                        <input type="search" class="route-picker-search" placeholder="Buscar ruta..." autocomplete="off">
+                        <div class="route-picker-options">
+                            <label class="route-picker-option" th:each="ruta : ${rutasDisponibles}">
+                                <input type="checkbox" name="rutas" th:value="${ruta}">
+                                <span th:text="${ruta}"></span>
+                            </label>
+                        </div>
+                        <p class="route-picker-empty">No hay rutas que coincidan.</p>
+                    </div>
+                    <div class="route-picker-chips" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="form-row" th:if="${esSistemaTroncal}">
+                <label for="editarRutasTransmilenio" th:text="${esTransmetro ? 'Rutas troncales que operará' : 'Servicios troncales que operará'}">Servicios troncales que operará</label>
+                <div class="route-picker" data-route-picker data-item-name="servicio">
+                    <button id="editarRutasTransmilenio" type="button" class="route-picker-toggle" aria-expanded="false">
+                        <span>Seleccionar servicios</span><span class="route-picker-count">0 servicios seleccionados</span>
+                    </button>
+                    <div class="route-picker-menu">
+                        <input type="search" class="route-picker-search" placeholder="Buscar por código o estación..." autocomplete="off">
+                        <div class="route-picker-options">
+                            <label class="route-picker-option" th:each="ruta : ${rutasDisponibles}">
+                                <input type="checkbox" name="rutas" th:value="${ruta}">
+                                <span th:text="${ruta}"></span>
+                            </label>
+                        </div>
+                        <p class="route-picker-empty">No hay servicios que coincidan.</p>
+                    </div>
+                    <div class="route-picker-chips" aria-live="polite"></div>
+                </div>
+            </div>
+            <div class="bus-tools" style="margin-top:16px;">
+                <button type="submit" class="primary">Guardar cambios</button>
+                <button type="button" class="ghost" id="cancelarEditarBus">Cancelar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+    const modalEditarBus = document.getElementById('modalEditarBus');
+    document.querySelectorAll('[data-route-picker]').forEach((picker) => {
+      const toggle = picker.querySelector('.route-picker-toggle');
+      const search = picker.querySelector('.route-picker-search');
+      const chips = picker.querySelector('.route-picker-chips');
+      const count = picker.querySelector('.route-picker-count');
+      const empty = picker.querySelector('.route-picker-empty');
+      const itemName = picker.dataset.itemName || 'ruta';
+      const getOptions = () => Array.from(picker.querySelectorAll('.route-picker-option'));
+      const updateSelection = () => {
+        const options = getOptions();
+        const selected = options.filter(option => option.querySelector('input').checked);
+        const nombrePlural = itemName === 'ruta' ? 'rutas' : 'servicios';
+        const palabraSeleccion = itemName === 'ruta'
+          ? (selected.length === 1 ? 'elegida' : 'elegidas')
+          : (selected.length === 1 ? 'elegido' : 'elegidos');
+        count.textContent = `${selected.length} ${selected.length === 1 ? itemName : nombrePlural} ${palabraSeleccion}`;
+        chips.replaceChildren();
+        selected.slice(0, 2).forEach((option) => {
+          const chip = document.createElement('span');
+          chip.className = 'route-picker-chip';
+          const label = document.createElement('span');
+          label.textContent = option.querySelector('span').textContent;
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.setAttribute('aria-label', `Quitar ${label.textContent}`);
+          remove.textContent = '×';
+          remove.addEventListener('click', () => {
+            option.querySelector('input').checked = false;
+            updateSelection();
+          });
+          chip.append(label, remove);
+          chips.appendChild(chip);
+        });
+        if (selected.length > 2) {
+          const more = document.createElement('span');
+          more.className = 'route-picker-more';
+          more.textContent = `+${selected.length - 2} más`;
+          chips.appendChild(more);
+        }
+      };
+      toggle.addEventListener('click', () => {
+        const abierto = picker.classList.toggle('abierto');
+        toggle.setAttribute('aria-expanded', String(abierto));
+        if (abierto) search.focus();
+      });
+      search.addEventListener('input', () => {
+        const termino = search.value.trim().toLocaleLowerCase();
+        let visibles = 0;
+        getOptions().forEach((option) => {
+          const coincide = option.textContent.toLocaleLowerCase().includes(termino);
+          option.hidden = !coincide;
+          if (coincide) visibles++;
+        });
+        empty.style.display = visibles === 0 ? 'block' : 'none';
+      });
+      const conectarOpcion = option => option.querySelector('input').addEventListener('change', updateSelection);
+      getOptions().forEach(conectarOpcion);
+      const entradaPersonalizada = picker.querySelector('.route-picker-custom');
+      const botonAgregar = picker.querySelector('.route-picker-add-button');
+      const agregarRuta = () => {
+        if (!entradaPersonalizada) return;
+        const rutasNuevas = entradaPersonalizada.value.split(',').map(ruta => ruta.trim()).filter(Boolean);
+        rutasNuevas.forEach((ruta) => {
+          let opcion = getOptions().find(item => item.querySelector('input').value.toLocaleLowerCase() === ruta.toLocaleLowerCase());
+          if (!opcion) {
+            opcion = document.createElement('label');
+            opcion.className = 'route-picker-option';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.name = 'rutas';
+            checkbox.value = ruta;
+            const texto = document.createElement('span');
+            texto.textContent = ruta;
+            opcion.append(checkbox, texto);
+            picker.querySelector('.route-picker-options').appendChild(opcion);
+            conectarOpcion(opcion);
+          }
+          opcion.querySelector('input').checked = true;
+        });
+        entradaPersonalizada.value = '';
+        search.value = '';
+        getOptions().forEach(option => option.hidden = false);
+        empty.style.display = 'none';
+        updateSelection();
+      };
+      if (botonAgregar) botonAgregar.addEventListener('click', agregarRuta);
+      if (entradaPersonalizada) entradaPersonalizada.addEventListener('keydown', event => {
+        if (event.key === 'Enter') { event.preventDefault(); agregarRuta(); }
+      });
+      updateSelection();
+    });
+    document.addEventListener('click', (event) => {
+      document.querySelectorAll('[data-route-picker].abierto').forEach((picker) => {
+        if (!picker.contains(event.target)) {
+          picker.classList.remove('abierto');
+          picker.querySelector('.route-picker-toggle').setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+    document.querySelectorAll('.edit-bus-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.getElementById('editarBusId').value = button.dataset.id;
+        document.getElementById('editarBusPlaca').value = button.dataset.placa;
+        const rutasTexto = document.getElementById('editarBusRutas');
+        if (rutasTexto) rutasTexto.value = button.dataset.rutas;
+        const rutasSeleccionadas = button.dataset.rutas.split(',').map(ruta => ruta.trim());
+        const selectorEditar = document.querySelector('#modalEditarBus [data-route-picker]');
+        if (selectorEditar) {
+          selectorEditar.querySelectorAll('input[name="rutas"]').forEach(input => {
+            input.checked = rutasSeleccionadas.includes(input.value);
+            input.dispatchEvent(new Event('change'));
+          });
+        }
+        const tipoBus = document.getElementById('editarBusTipo');
+        if (tipoBus) tipoBus.value = button.dataset.tipo;
+        modalEditarBus.classList.add('abierto');
+      });
+    });
+    document.getElementById('cancelarEditarBus').addEventListener('click', () => {
+      modalEditarBus.classList.remove('abierto');
+    });
+</script>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

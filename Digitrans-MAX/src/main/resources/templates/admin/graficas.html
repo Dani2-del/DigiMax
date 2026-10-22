@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="_csrf" th:content="${_csrf?.token}">
+    <meta name="_csrf_header" th:content="${_csrf?.headerName}">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Estadísticas - Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261015-2)}">
+    <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}">
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+<div class="page">
+    <main class="center-card wide">
+        <section class="card admin-home analytics-home">
+            <header class="admin-home-header analytics-header">
+                <div>
+                    <p class="admin-eyebrow">Digitrans · ADMINISTRACIÓN</p>
+                    <h1>Estadísticas del sistema</h1>
+                    <p class="admin-home-subtitle">Indicadores calculados directamente desde los datos de la plataforma.</p>
+                </div>
+                <div class="admin-home-actions">
+                    <a class="btn-usuario analytics-back" href="/admin/dashboard">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/><path d="M9 12h12"/></svg>
+                        Volver al panel
+                    </a>
+                    <button class="btn-cerrar-sesion" type="button" id="refreshCharts">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"/></svg>
+                        Actualizar
+                    </button>
+                </div>
+            </header>
+
+            <div id="analyticsError" class="analytics-error" role="alert" hidden>
+                <span>No se pudieron cargar las estadísticas.</span>
+                <button type="button" id="retryCharts">Reintentar</button>
+            </div>
+            <p id="analyticsLoading" class="analytics-loading" role="status">Cargando estadísticas…</p>
+
+            <div id="analyticsContent" hidden>
+                <section class="analytics-kpis" aria-label="Resumen general">
+                    <article class="analytics-kpi kpi-users">
+                        <span class="analytics-kpi-label">Usuarios registrados</span>
+                        <strong id="kpiUsers">0</strong>
+                        <span>En todas las cuentas</span>
+                    </article>
+                    <article class="analytics-kpi kpi-transactions">
+                        <span class="analytics-kpi-label">Transacciones</span>
+                        <strong id="kpiTransactions">0</strong>
+                        <span>Movimientos registrados</span>
+                    </article>
+                    <article class="analytics-kpi kpi-routes">
+                        <span class="analytics-kpi-label">Rutas asignadas</span>
+                        <strong id="kpiAssignments">0</strong>
+                        <span>Programaciones guardadas</span>
+                    </article>
+                    <article class="analytics-kpi kpi-notices">
+                        <span class="analytics-kpi-label">Avisos publicados</span>
+                        <strong id="kpiNotices">0</strong>
+                        <span>Historial administrativo</span>
+                    </article>
+                </section>
+
+                <section class="analytics-grid" aria-label="Gráficas de actividad">
+                    <article class="analytics-chart-card analytics-chart-wide">
+                        <header>
+                            <div>
+                                <h2>Actividad de transacciones</h2>
+                                <p>Valor total por mes · últimos 12 meses</p>
+                            </div>
+                            <span class="analytics-chart-mark" aria-hidden="true">COP</span>
+                        </header>
+                        <div id="monthlyChart" class="monthly-chart"></div>
+                    </article>
+                    <article class="analytics-chart-card">
+                        <header>
+                            <div>
+                                <h2>Usuarios por tipo de cuenta</h2>
+                                <p>Distribución por rol</p>
+                            </div>
+                        </header>
+                        <div id="rolesChart" class="role-chart"></div>
+                    </article>
+                    <article class="analytics-chart-card">
+                        <header>
+                            <div>
+                                <h2>Pasajes y recargas</h2>
+                                <p>Proporción de movimientos por categoría</p>
+                            </div>
+                        </header>
+                        <div id="transactionCategoriesChart" class="role-chart"></div>
+                    </article>
+                    <article class="analytics-chart-card">
+                        <header>
+                            <div>
+                                <h2>Programaciones por estado</h2>
+                                <p>Estado actual de los horarios</p>
+                            </div>
+                        </header>
+                        <div id="scheduleStatesChart" class="horizontal-chart"></div>
+                    </article>
+                    <article class="analytics-chart-card">
+                        <header>
+                            <div>
+                                <h2>Rutas más programadas</h2>
+                                <p>Hasta 8 rutas con más asignaciones</p>
+                            </div>
+                        </header>
+                        <div id="topRoutesChart" class="horizontal-chart"></div>
+                    </article>
+                </section>
+                <p class="analytics-updated" id="analyticsUpdated"></p>
+            </div>
+        </section>
+    </main>
+</div>
+
+<div th:replace="~{fragments/aviso-administrativo :: modal}"></div>
+<script th:src="@{/js/admin-graficas.js}"></script>
+<th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat operativo - Digitrans</title>
+    <link rel="stylesheet" th:if="${rolParticipante == 'ROLE_CONDUCTOR'}" th:href="@{/css/conductor.css}">
+    <link rel="stylesheet" th:href="@{/css/chat.css(v=20261015-2)}">
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+<header class="navbar conductor-navbar chat-driver-navbar" th:if="${rolParticipante == 'ROLE_CONDUCTOR'}">
+    <a class="conductor-navbar-brand" th:href="@{/conductor/panel}">
+        <img src="/images/digitrans-mark.svg" alt="" class="logo">
+        <span>
+            <span class="conductor-brand-title">Digitrans</span>
+            <span class="conductor-brand-subtitle">Panel de conductor</span>
+        </span>
+    </a>
+    <nav class="conductor-navbar-actions" aria-label="Navegación del conductor">
+        <a th:if="${operacionesConductorDisponibles}" th:href="@{/conductor/panel}">Mis rutas</a>
+        <a th:if="${operacionesConductorDisponibles}" th:href="@{/conductor/panel(historial=true)}">Historial</a>
+        <a th:href="@{/chat}" class="active" aria-current="page">Chat operativo</a>
+        <a th:href="@{/menu}" class="conductor-view-switch">Vista usuario</a>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit">Cerrar sesión</button>
+        </form>
+    </nav>
+</header>
+<main class="chat-page">
+    <header class="chat-header">
+        <a class="chat-back" th:if="${rolParticipante != 'ROLE_CONDUCTOR'}" th:href="${urlPanel}">
+            <span aria-hidden="true">←</span> Volver al panel
+        </a>
+        <div>
+            <p class="chat-eyebrow" th:text="|${sistemaActual.nombre} · COORDINACIÓN OPERATIVA|">DIGITRANS · COORDINACIÓN</p>
+            <h1>Chat operativo</h1>
+            <p class="chat-subtitle">Espacio compartido de <span th:text="${sistemaActual.nombre}">Transcaribe</span> para administradores, moderadores y conductores.</p>
+        </div>
+        <span class="chat-access-badge" th:text="|Sala ${sistemaActual.nombre}|">Sala Transcaribe</span>
+    </header>
+
+    <section class="chat-card" aria-label="Conversación">
+        <div class="chat-toolbar">
+            <div>
+                <strong th:text="|Sala ${sistemaActual.nombre}|">Sala Transcaribe</strong>
+                <span>Los últimos 100 mensajes</span>
+            </div>
+            <span class="chat-live"><span></span> Actualización automática</span>
+        </div>
+        <div id="chatMessages" class="chat-messages" aria-live="polite"
+             th:data-messages-url="@{/chat/mensajes}">
+            <p class="chat-empty">Cargando mensajes...</p>
+        </div>
+
+        <p id="chatError" class="chat-error" role="alert" hidden></p>
+        <form id="chatCompose" class="chat-compose" th:action="@{/chat/mensajes}" method="post"
+              enctype="multipart/form-data">
+            <label class="visually-hidden" for="chatText">Escribe un mensaje</label>
+            <textarea id="chatText" name="texto" rows="2" maxlength="1000"
+                      placeholder="Escribe un mensaje para el equipo..."></textarea>
+            <div class="chat-compose-tools">
+                <details class="chat-emoji-picker">
+                    <summary aria-label="Abrir selector de emojis" title="Emojis">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9"></circle>
+                            <path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"></path>
+                        </svg>
+                    </summary>
+                    <div class="chat-emoji-options" role="group" aria-label="Seleccionar emoji">
+                        <button type="button" data-emoji="😀" aria-label="Sonrisa">😀</button>
+                        <button type="button" data-emoji="😂" aria-label="Risa">😂</button>
+                        <button type="button" data-emoji="😊" aria-label="Feliz">😊</button>
+                        <button type="button" data-emoji="😍" aria-label="Enamorado">😍</button>
+                        <button type="button" data-emoji="👍" aria-label="Me gusta">👍</button>
+                        <button type="button" data-emoji="👏" aria-label="Aplausos">👏</button>
+                        <button type="button" data-emoji="🙏" aria-label="Gracias">🙏</button>
+                        <button type="button" data-emoji="❤️" aria-label="Corazón">❤️</button>
+                        <button type="button" data-emoji="🎉" aria-label="Celebración">🎉</button>
+                        <button type="button" data-emoji="✅" aria-label="Correcto">✅</button>
+                        <button type="button" data-emoji="⚠️" aria-label="Precaución">⚠️</button>
+                        <button type="button" data-emoji="🚌" aria-label="Bus">🚌</button>
+                        <button type="button" data-emoji="🚦" aria-label="Semáforo">🚦</button>
+                        <button type="button" data-emoji="📍" aria-label="Ubicación">📍</button>
+                        <button type="button" data-emoji="👀" aria-label="Ojos">👀</button>
+                        <button type="button" data-emoji="💪" aria-label="Fuerza">💪</button>
+                    </div>
+                </details>
+                <label class="chat-image-pick" for="chatImage" title="Adjuntar imagen"
+                       aria-label="Adjuntar imagen">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="3" y="4" width="18" height="16" rx="2"></rect>
+                        <circle cx="8.5" cy="9" r="1.5"></circle>
+                        <path d="m21 15-5-5L5 20"></path>
+                    </svg>
+                </label>
+                <input id="chatImage" class="visually-hidden" type="file" name="imagen"
+                       accept="image/png,image/jpeg,image/webp">
+                <span id="chatImageName" class="chat-image-name" aria-live="polite"></span>
+            </div>
+            <div id="chatImagePreview" class="chat-image-preview" hidden>
+                <img id="chatImagePreviewImg" alt="Vista previa de la imagen seleccionada">
+                <button id="chatImageRemove" type="button">Quitar imagen</button>
+            </div>
+            <div class="chat-compose-footer">
+                <span>Máximo 1000 caracteres · Imágenes hasta 5 MB</span>
+                <div class="chat-compose-actions">
+                    <button id="chatCancelEdit" type="button" hidden>Cancelar edición</button>
+                    <button id="chatSubmit" type="submit">Enviar mensaje <span aria-hidden="true">→</span></button>
+                </div>
+            </div>
+        </form>
+    </section>
+</main>
+<script th:src="@{/js/chat.js}" defer></script>
+</body>
+</html>

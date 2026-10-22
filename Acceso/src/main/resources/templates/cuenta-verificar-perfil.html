@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar cambios — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}">
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="login-page">
+  <div class="page">
+    <main class="center-card">
+      <section class="card">
+        <h1 class="title">Confirma los cambios</h1>
+        <p class="info-text">Ingresa el código enviado a <strong th:text="${correoVerificacion}"></strong>.</p>
+        <form th:action="@{/cuenta/perfil/verificar}" method="post" class="form">
+          <label for="codigo">Código de 6 dígitos</label>
+          <input type="text" id="codigo" name="codigo" maxlength="6" pattern="\d{6}" required autocomplete="one-time-code">
+          <button class="primary" type="submit">Confirmar cambios</button>
+        </form>
+        <form th:action="@{/cuenta/perfil/reenviar}" method="post" class="form">
+          <button type="submit" class="link-button">Reenviar código</button>
+        </form>
+        <p class="error" th:if="${error}" th:text="${error}"></p>
+        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+        <a th:href="@{/cuenta/perfil}" class="back-to-login">Cancelar</a>
+      </section>
+    </main>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

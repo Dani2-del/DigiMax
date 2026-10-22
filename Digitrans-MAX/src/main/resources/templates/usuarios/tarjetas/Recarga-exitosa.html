@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Recarga exitosa - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="~{fragments/header :: header}"></div>
+    <main class="center-card">
+      <section class="card" style="text-align:center;">
+        <h1>¡Recarga realizada con éxito!</h1>
+        <p>Sistema: <strong th:text="${sistemaActual.nombre}">Transcaribe</strong></p>
+        <p>Tu transacción quedó registrada. Descarga aquí el recibo en PDF.</p>
+        <p th:if="${transaccion.cantidadPasajes != null}">
+          Pasajes recargados:
+          <strong th:text="${transaccion.cantidadPasajes}"></strong>
+        </p>
+        <p>
+          Total pagado:
+          <strong th:text="${#numbers.formatDecimal(transaccion.monto, 0, 'COMMA', 2, 'POINT')}"></strong>
+        </p>
+        <p>Fecha y hora registrada:
+          <strong th:text="${#temporals.format(transaccion.fecha, 'dd/MM/yyyy HH:mm:ss')}"></strong>
+        </p>
+        <p>Método de pago: <strong th:text="${transaccion.metodoPago ?: 'No disponible'}"></strong></p>
+        <p>Cuenta PSE:
+          <strong th:text="${transaccion.cuentaPse ?: 'No aplica'}"></strong>
+        </p>
+        <p>Tarjeta Digitrans:
+          <strong th:text="${transaccion.tarjetaTranscaribe ?: 'No disponible'}"></strong>
+        </p>
+        <a class="primary"
+           style="display:inline-flex; text-decoration:none; margin:12px;"
+           th:href="@{/historial/{id}/recibo(id=${transaccion.id})}">
+          Descargar recibo PDF
+        </a>
+        <a class="button-link" th:href="@{/menu}" style="display:block; margin-top:12px;">
+          Volver al menú
+        </a>
+      </section>
+    </main>
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>
