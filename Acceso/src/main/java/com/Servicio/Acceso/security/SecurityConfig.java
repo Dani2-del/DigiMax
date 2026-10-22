@@ -9,9 +9,12 @@ import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.beans.factory.annotation.Value;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.Servicio.Acceso.service.CustomUserDetailsService;
 
@@ -19,6 +22,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 public class SecurityConfig {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SecurityConfig.class);
 
     private final CustomUserDetailsService userDetailsService;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
@@ -103,7 +108,18 @@ public class SecurityConfig {
         if (googleOAuthEnabled) {
             http.oauth2Login(oauth -> oauth
                     .loginPage("/login")
-                    .successHandler(oauthSuccessHandler));
+                    .successHandler(oauthSuccessHandler)
+                    .failureHandler((request, response, exception) -> {
+                        if (exception instanceof OAuth2AuthenticationException oauthException) {
+                            LOGGER.warn("Google OAuth login failed: {} ({})",
+                                    exception.getClass().getSimpleName(),
+                                    oauthException.getError().getErrorCode());
+                        } else {
+                            LOGGER.warn("Google OAuth login failed: {}",
+                                    exception.getClass().getSimpleName());
+                        }
+                        response.sendRedirect("/login?error=true");
+                    }));
         }
         return http.build();
     }
