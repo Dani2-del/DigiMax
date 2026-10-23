@@ -10,18 +10,22 @@ public class ServiciosController {
 
     private final String transporteUrl;
     private final String recargasUrl;
+    private final String billeteraUrl;
 
     public ServiciosController(
             @Value("${app.services.transporte-url}") String transporteUrl,
-            @Value("${app.services.recargas-url}") String recargasUrl) {
+            @Value("${app.services.recargas-url}") String recargasUrl,
+            @Value("${app.services.billetera-url}") String billeteraUrl) {
         this.transporteUrl = transporteUrl;
         this.recargasUrl = recargasUrl;
+        this.billeteraUrl = billeteraUrl;
     }
 
     @GetMapping("/servicios")
     public String servicios(Model model) {
         model.addAttribute("transporteUrl", transporteUrl);
         model.addAttribute("recargasUrl", recargasUrl);
+        model.addAttribute("billeteraUrl", billeteraUrl);
         return "servicios";
     }
 }

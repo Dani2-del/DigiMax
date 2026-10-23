@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Catálogo móvil | Digitrans</title>
+  <style>
+    body { margin: 0; background: #f3f6fa; color: #17324d; font: 16px system-ui, sans-serif; }
+    main { max-width: 1000px; margin: 30px auto; padding: 20px; }
+    section { padding: 22px; margin-bottom: 16px; border-radius: 14px; background: white; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+    input, select, button { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; font: inherit; }
+    button { color: white; background: #087c86; border: 0; cursor: pointer; }
+    .secondary { background: #61758a; }
+    form { display: flex; flex-direction: column; gap: 8px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 6px; border-bottom: 1px solid #e5eaf0; text-align: left; }
+    .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
+    .error { background: #fff0ed; }
+    a { color: #087c86; }
+  </style>
+</head>
+<body>
+<main>
+  <p><a th:href="@{/}">← Volver a Recargas</a></p>
+  <h1>Administración del catálogo móvil</h1>
+  <p>Gestiona operadores y paquetes de prueba. No hay conexión con compañías móviles ni se realizan recargas reales.</p>
+  <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
+  <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
+
+  <section>
+    <h2>Agregar operador</h2>
+    <form th:action="@{/admin/catalogo/operadores}" method="post" class="grid">
+      <label>Nombre del operador
+        <input name="nombre" maxlength="80" required>
+      </label>
+      <button type="submit">Crear operador</button>
+    </form>
+    <h3>Operadores configurados</h3>
+    <table>
+      <thead><tr><th>Operador</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>
+      <tr th:each="operador : ${operadores}">
+        <td th:text="${operador.nombre}"></td>
+        <td th:text="${operador.activo ? 'Activo' : 'Inactivo'}"></td>
+        <td>
+          <form th:action="@{/admin/catalogo/operadores/estado}" method="post">
+            <input type="hidden" name="operadorId" th:value="${operador.id}">
+            <button type="submit" class="secondary"
+                    th:text="${operador.activo ? 'Desactivar' : 'Activar'}"></button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Agregar paquete de prueba</h2>
+    <p th:if="${#lists.isEmpty(operadoresActivos)}">Primero crea o activa un operador.</p>
+    <form th:if="${not #lists.isEmpty(operadoresActivos)}"
+          th:action="@{/admin/catalogo/paquetes}" method="post" class="grid">
+      <label>Operador
+        <select name="operadorId" required>
+          <option value="" disabled selected>Selecciona operador</option>
+          <option th:each="operador : ${operadoresActivos}"
+                  th:value="${operador.id}" th:text="${operador.nombre}"></option>
+        </select>
+      </label>
+      <label>Nombre del paquete
+        <input name="nombre" maxlength="80" required>
+      </label>
+      <label>Descripción
+        <input name="descripcion" maxlength="200">
+      </label>
+      <label>Precio simulado (COP)
+        <input name="precio" type="number" min="1" max="1000000" step="100" required>
+      </label>
+      <button type="submit">Crear paquete</button>
+    </form>
+    <h3>Paquetes configurados</h3>
+    <table>
+      <thead><tr><th>Operador</th><th>Paquete</th><th>Precio</th><th>Estado</th><th>Acción</th></tr></thead>
+      <tbody>
+      <tr th:each="paquete : ${paquetes}">
+        <td th:text="${operatorNames[paquete.operadorId]}"></td>
+        <td th:text="${paquete.nombre}"></td>
+        <td th:text="${paquete.precio}"></td>
+        <td th:text="${paquete.activo ? 'Activo' : 'Inactivo'}"></td>
+        <td>
+          <form th:action="@{/admin/catalogo/paquetes/estado}" method="post">
+            <input type="hidden" name="paqueteId" th:value="${paquete.id}">
+            <button type="submit" class="secondary"
+                    th:text="${paquete.activo ? 'Desactivar' : 'Activar'}"></button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+</main>
+</body>
+</html>

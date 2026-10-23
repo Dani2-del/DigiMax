@@ -211,6 +211,7 @@
         <form th:if="${permiteSimularViaje}" th:action="@{/api/buses/simular-viaje}" method="post" class="ride-form">
           <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
           <input type="hidden" name="usuarioId" th:value="${usuario.id}" />
+          <input type="hidden" name="operationId" th:value="${rideOperationId}" />
           <label for="rideCard">Tarjeta Digitrans</label>
           <select id="rideCard" name="numeroTarjeta" class="select-bus" required>
             <option value="" disabled selected>Selecciona una tarjeta</option>
@@ -218,7 +219,13 @@
                     th:value="${t.numeroTarjeta}"
                     th:text="${t.numeroTarjeta + ' · Saldo $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT')}">
             </option>
+            <option th:if="${billeteraDisponible}"
+                    value="UNIVERSAL"
+                    th:text="${'Tarjeta universal · Saldo $' + #numbers.formatDecimal(tarjetaUniversal.balance, 0, 'COMMA', 0, 'POINT')}">
+            </option>
           </select>
+          <p th:if="${errorTarjetaUniversal}" class="muted" th:text="${errorTarjetaUniversal}" role="status"></p>
+          <a th:href="${billeteraUrl}" target="_blank" rel="noopener">Consultar o cargar saldo universal</a>
           <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}"
                   onclick="return confirm('¿Confirmas la simulación del viaje por $' + new Intl.NumberFormat('es-CO').format(Number(this.dataset.fare)) + '?')">
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">

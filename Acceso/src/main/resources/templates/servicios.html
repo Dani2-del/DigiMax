@@ -23,6 +23,10 @@
             <strong>Recargas móviles</strong>
             <span>Saldo y paquetes para tu línea</span>
           </a>
+          <a class="primary service-choice" th:href="${billeteraUrl}">
+            <strong>Tarjeta universal</strong>
+            <span>Consulta y administra el saldo compartido entre servicios</span>
+          </a>
         </div>
         <a th:href="@{/cuenta/seguridad}" class="back-to-login">Seguridad de la cuenta</a>
         <form th:action="@{/logout}" method="post">

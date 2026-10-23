@@ -1,17 +1,148 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Recargas móviles — Digitrans</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Recargas móviles | Digitrans</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #17324d; }
+    body { margin: 0; background: #f3f6fa; }
+    main { max-width: 1050px; margin: 32px auto; padding: 20px; }
+    header, section { background: white; border-radius: 16px; padding: 22px; margin-bottom: 16px; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .wallet { color: white; background: linear-gradient(125deg, #14385b, #087c86); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
+    .package { border: 1px solid #dce4ed; border-radius: 12px; padding: 16px; }
+    form { display: flex; flex-direction: column; gap: 9px; }
+    input, select, button { box-sizing: border-box; width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
+    button { color: white; background: #087c86; border: 0; cursor: pointer; font-weight: 650; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
+    .secondary { color: #17324d; background: #e8eef5; }
+    .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
+    .error { background: #fff0ed; }
+    .muted { color: #64748b; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .row form { max-width: 135px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px 6px; border-bottom: 1px solid #e5eaf0; text-align: left; }
+    a { color: #087c86; }
+    @media (max-width: 600px) { main { padding: 12px; margin: 0 auto; } header, section { padding: 16px; } }
+  </style>
 </head>
 <body>
-  <main>
-    <h1>Servicio de recargas móviles</h1>
-    <p th:if="${name}">Hola, <span th:text="${name}"></span>.</p>
-    <p th:if="${email}">Sesión activa con <span th:text="${email}"></span>.</p>
-    <p th:if="${error}" th:text="${error}" role="alert"></p>
-    <a th:if="${accesoUrl}" th:href="${accesoUrl + '/servicios'}">Volver a elegir servicio</a>
-  </main>
+<main>
+  <header>
+    <div>
+      <h1>Recargas móviles</h1>
+      <p th:text="${'Hola, ' + (identity.name != null ? identity.name : identity.email) + '.'}"></p>
+    </div>
+    <nav>
+      <a th:href="${billeteraUrl}">Tarjeta universal</a>
+      <span> · </span>
+      <a th:href="${accesoUrl + '/servicios'}">Servicios</a>
+      <span th:if="${identity.role == 'ROLE_MODERATOR' or identity.role == 'ROLE_ADMIN'}">
+        · <a th:href="@{/admin/catalogo}">Administrar catálogo</a>
+      </span>
+    </nav>
+  </header>
+
+  <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
+  <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
+
+  <section class="wallet" th:if="${wallet}">
+    <div class="row">
+      <div>
+        <h2>Pago con tarjeta universal</h2>
+        <p th:text="${'Tarjeta ' + wallet.cardNumber}"></p>
+      </div>
+      <div>
+        <strong>Saldo disponible</strong>
+        <p th:text="${'$ ' + #numbers.formatDecimal(wallet.balance, 0, 'COMMA', 2, 'POINT') + ' COP'}"></p>
+      </div>
+    </div>
+    <p class="muted" style="color:#e0f2f1">El valor del paquete se descontará de esta billetera compartida.</p>
+  </section>
+
+  <section>
+    <h2>Mis líneas</h2>
+    <p class="muted">Guarda la línea SIM a la que quieres enviar paquetes. Las líneas solo son visibles en tu cuenta.</p>
+    <p th:if="${#lists.isEmpty(operadores)}" class="muted">
+      Todavía no hay operadores configurados. Un moderador debe habilitar el catálogo.
+    </p>
+    <form th:if="${not #lists.isEmpty(operadores)}" th:action="@{/lineas}" method="post" class="grid">
+      <label>Operador
+        <select name="operadorId" required>
+          <option value="" disabled selected>Selecciona operador</option>
+          <option th:each="operador : ${operadores}" th:value="${operador.id}"
+                  th:text="${operador.nombre}"></option>
+        </select>
+      </label>
+      <label>Número móvil
+        <input name="telefono" type="tel" autocomplete="tel" maxlength="16"
+               placeholder="+573001234567" required>
+      </label>
+      <label>Nombre para identificarla
+        <input name="alias" type="text" maxlength="40" placeholder="Mi SIM personal">
+      </label>
+      <button type="submit">Guardar línea</button>
+    </form>
+    <div th:if="${not #lists.isEmpty(lineas)}">
+      <h3>Líneas guardadas</h3>
+      <ul>
+        <li th:each="linea : ${lineas}"
+            th:text="${linea.alias + ' · ' + linea.telefono}"></li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>Paquetes disponibles</h2>
+    <p th:if="${#lists.isEmpty(paquetes)}" class="muted">No hay paquetes activos por ahora.</p>
+    <div class="grid" th:unless="${#lists.isEmpty(paquetes)}">
+      <article class="package" th:each="paquete : ${paquetes}">
+        <h3 th:text="${paquete.nombre}"></h3>
+        <p th:text="${paquete.descripcion}"></p>
+        <p th:text="${'$ ' + #numbers.formatDecimal(paquete.precio, 0, 'COMMA', 0, 'POINT') + ' COP'}"></p>
+        <form th:action="@{/recargar}" method="post">
+          <input type="hidden" name="paqueteId" th:value="${paquete.id}">
+          <input type="hidden" name="operationId" th:value="${operationIds[paquete.id]}">
+          <label>Enviar a
+            <select name="lineaId" required>
+              <option value="" disabled selected>Selecciona tu línea SIM</option>
+              <option th:each="linea : ${lineas}"
+                      th:if="${linea.operadorId == paquete.operadorId}"
+                      th:value="${linea.id}"
+                      th:text="${linea.alias + ' · ' + linea.telefono}"></option>
+            </select>
+          </label>
+          <button type="submit" th:disabled="${walletError or #lists.isEmpty(lineas)}">Comprar paquete (simulado)</button>
+        </form>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>Mis recargas recientes</h2>
+    <p th:if="${#lists.isEmpty(recargas)}" class="muted">Aún no has realizado recargas.</p>
+    <table th:unless="${#lists.isEmpty(recargas)}">
+      <thead><tr><th>Fecha</th><th>Línea</th><th>Paquete</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+      <tr th:each="recarga : ${recargas}">
+        <td th:text="${#temporals.format(recarga.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+        <td th:text="${recarga.operador + ' · ' + recarga.telefono}"></td>
+        <td th:text="${recarga.paquete}"></td>
+        <td th:text="${'$ ' + #numbers.formatDecimal(recarga.monto, 0, 'COMMA', 0, 'POINT')}"></td>
+        <td th:text="${recarga.estado}"></td>
+        <td>
+          <form th:if="${recarga.estado == 'PROCESANDO'}"
+                th:action="@{'/recargar/' + ${recarga.operacionId} + '/reintentar'}" method="post">
+            <button type="submit" class="secondary">Revisar estado</button>
+          </form>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </section>
+</main>
 </body>
 </html>

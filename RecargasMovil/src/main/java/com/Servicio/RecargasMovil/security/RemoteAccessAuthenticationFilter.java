@@ -23,6 +23,8 @@ import jakarta.servlet.http.HttpServletResponse;
 
 public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
 
+    public static final String TOKEN_ATTRIBUTE = RemoteAccessAuthenticationFilter.class.getName() + ".token";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(RemoteAccessAuthenticationFilter.class);
 
     private final RestClient restClient = RestClient.create();
@@ -53,10 +55,14 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                         .retrieve()
                         .body(Identity.class);
-                if (identity != null && identity.email() != null && identity.role() != null) {
+                if (identity != null && identity.id() != null && identity.email() != null
+                        && identity.role() != null && identity.active()) {
+                    AuthenticatedIdentity principal = new AuthenticatedIdentity(
+                            identity.id(), identity.email(), identity.name(), identity.role());
                     var authentication = new UsernamePasswordAuthenticationToken(
-                            identity.email(), null,
+                            principal, null,
                             List.of(new SimpleGrantedAuthority(identity.role())));
+                    request.setAttribute(TOKEN_ATTRIBUTE, token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
                     expireCookie(response);
@@ -99,6 +105,6 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                 "JWT_TOKEN=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax" + secure);
     }
 
-    private record Identity(String id, String email, String name, String role) {
+    private record Identity(String id, String email, String name, String role, boolean active) {
     }
 }

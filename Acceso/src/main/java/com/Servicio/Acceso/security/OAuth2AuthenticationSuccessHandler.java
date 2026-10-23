@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.UsuarioRepository;
 import com.Servicio.Acceso.service.LoginNotificationService;
+import com.Servicio.Acceso.service.UniversalWalletProvisioningClient;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -27,13 +28,17 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
     private final JwtService jwtService;
     private final JwtCookieService jwtCookieService;
     private final LoginNotificationService loginNotificationService;
+    private final UniversalWalletProvisioningClient walletProvisioningClient;
 
     public OAuth2AuthenticationSuccessHandler(UsuarioRepository usuarios, JwtService jwtService,
-            JwtCookieService jwtCookieService, LoginNotificationService loginNotificationService) {
+            JwtCookieService jwtCookieService,
+            LoginNotificationService loginNotificationService,
+            UniversalWalletProvisioningClient walletProvisioningClient) {
         this.usuarios = usuarios;
         this.jwtService = jwtService;
         this.jwtCookieService = jwtCookieService;
         this.loginNotificationService = loginNotificationService;
+        this.walletProvisioningClient = walletProvisioningClient;
     }
 
     @Override
@@ -51,6 +56,7 @@ public class OAuth2AuthenticationSuccessHandler implements AuthenticationSuccess
             nuevo.setVerificado(true);
             return usuarios.save(nuevo);
         });
+        walletProvisioningClient.provision(usuario.getId());
         String role = usuario.getRole() == null ? Usuario.ROLE_USER : usuario.getRole();
         if (!role.startsWith("ROLE_")) {
             role = "ROLE_" + role;

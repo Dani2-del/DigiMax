@@ -21,6 +21,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
+import java.util.UUID;
 
 @Controller
 @RequestMapping("/api/buses")
@@ -53,6 +54,7 @@ public class BusController {
             @PathVariable String usuarioId, 
             @PathVariable String busId,
             @RequestParam String numeroTarjeta,
+            @RequestParam(required = false) String operationId,
             HttpSession session) {
         try {
             SistemaTransporte sistema = obtenerSistemaActual(session);
@@ -64,7 +66,8 @@ public class BusController {
                         .body("Las operaciones de buses están disponibles por ahora solo para Transcaribe.");
             }
             String resultado = busService.pagarPasajeConTarjetaEspecifica(
-                    usuarioId, busId, numeroTarjeta, sistema);
+                    usuarioId, busId, numeroTarjeta, sistema,
+                    operationId == null || operationId.isBlank() ? UUID.randomUUID().toString() : operationId);
             if (resultado.contains("Saldo insuficiente") || resultado.contains("no es válida")) {
                 return ResponseEntity.badRequest().body(resultado);
             }
@@ -112,6 +115,7 @@ public class BusController {
     @PostMapping("/simular-viaje")
     public String simularViaje(@RequestParam String usuarioId,
                                @RequestParam String numeroTarjeta, 
+                               @RequestParam(required = false) String operationId,
                                RedirectAttributes redirectAttributes,
                                HttpSession session) {
         
@@ -130,6 +134,9 @@ public class BusController {
             usuarioId = usuarioRepository.findByCorreo(
                     SecurityContextHolder.getContext().getAuthentication().getName())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado")).getId();
+            String safeOperationId = operationId == null || operationId.isBlank()
+                    ? UUID.randomUUID().toString()
+                    : operationId;
             String resultado;
             if (sistema == SistemaTransporte.TRANSMILENIO) {
                 RutaTransmilenio ruta = catalogoRutasTransmilenioService.obtenerRutaAleatoria().orElse(null);
@@ -137,7 +144,8 @@ public class BusController {
                     redirectAttributes.addFlashAttribute("error", "No hay rutas activas de TransMilenio configuradas.");
                     return "redirect:/menu";
                 }
-                resultado = busService.simularViajeTransmilenio(usuarioId, numeroTarjeta, ruta);
+                resultado = busService.simularViajeTransmilenio(
+                        usuarioId, numeroTarjeta, ruta, safeOperationId);
             } else if (sistema == SistemaTransporte.TRANSMETRO) {
                 RutaTransmetro ruta = catalogoRutasTransmetroService.obtenerRutaAleatoriaActiva()
                         .orElse(null);
@@ -145,7 +153,8 @@ public class BusController {
                     redirectAttributes.addFlashAttribute("error", "No hay rutas activas de Transmetro configuradas.");
                     return "redirect:/menu";
                 }
-                resultado = busService.simularViajeTransmetro(usuarioId, numeroTarjeta, ruta);
+                resultado = busService.simularViajeTransmetro(
+                        usuarioId, numeroTarjeta, ruta, safeOperationId);
             } else {
                 var buses = busRepository.findAll().stream()
                         .filter(bus -> bus.getSistemaTransporte() == SistemaTransporte.TRANSCARIBE)
@@ -156,7 +165,7 @@ public class BusController {
                 }
                 String busId = buses.get(0).getId();
                 resultado = busService.pagarPasajeConTarjetaEspecifica(
-                        usuarioId, busId, numeroTarjeta, sistema);
+                        usuarioId, busId, numeroTarjeta, sistema, safeOperationId);
             }
 
             if (resultado.contains("Cobro exitoso")) {

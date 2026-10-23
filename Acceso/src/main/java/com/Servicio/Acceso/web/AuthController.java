@@ -89,13 +89,16 @@ public class AuthController {
     @PostMapping("/verificar-otp")
     public String verificarOtp(@RequestParam String correo, @RequestParam String codigo,
             Model model, RedirectAttributes redirectAttributes) {
-        if (accountService.verifyAccount(correo, codigo) == AccountService.VerificationResult.VERIFIED) {
+        AccountService.VerificationResult result = accountService.verifyAccount(correo, codigo);
+        if (result == AccountService.VerificationResult.VERIFIED) {
             redirectAttributes.addFlashAttribute("mensaje", "Cuenta activada. Ya puedes iniciar sesión.");
             return "redirect:/login";
         }
         model.addAttribute("correo", correo);
         model.addAttribute("correoNuevo", correo);
-        model.addAttribute("error", "El código es incorrecto o ya venció. Solicita uno nuevo.");
+        model.addAttribute("error", result == AccountService.VerificationResult.WALLET_PROVISIONING_FAILED
+                        ? "No se pudo emitir tu tarjeta universal. Inténtalo de nuevo en unos minutos."
+                        : "El código es incorrecto o ya venció. Solicita uno nuevo.");
         return "usuarios/auth/verificar-codigo";
     }
 

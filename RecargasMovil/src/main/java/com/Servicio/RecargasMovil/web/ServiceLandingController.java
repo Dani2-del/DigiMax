@@ -1,75 +1,157 @@
 package com.Servicio.RecargasMovil.web;
 
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.client.ResourceAccessException;
-import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import com.Servicio.RecargasMovil.model.PaqueteMovil;
+import com.Servicio.RecargasMovil.security.AuthenticatedIdentity;
+import com.Servicio.RecargasMovil.security.RemoteAccessAuthenticationFilter;
+import com.Servicio.RecargasMovil.service.InsufficientWalletBalanceException;
+import com.Servicio.RecargasMovil.service.RecargasService;
+import com.Servicio.RecargasMovil.service.WalletClient;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 public class ServiceLandingController {
 
-    private final RestClient restClient;
+    private final RecargasService recargasService;
+    private final WalletClient walletClient;
     private final String accesoUrl;
+    private final String billeteraUrl;
 
-    public ServiceLandingController(@Value("${app.acceso.base-url}") String accesoUrl) {
+    public ServiceLandingController(
+            RecargasService recargasService,
+            WalletClient walletClient,
+            @Value("${app.acceso.base-url}") String accesoUrl,
+            @Value("${app.billetera.base-url}") String billeteraUrl) {
+        this.recargasService = recargasService;
+        this.walletClient = walletClient;
         this.accesoUrl = accesoUrl;
-        this.restClient = RestClient.create();
+        this.billeteraUrl = billeteraUrl;
     }
 
     @GetMapping("/")
-    public String index(HttpServletRequest request, Model model) {
-        String token = token(request);
-        if (token == null) {
-            return "redirect:" + accesoUrl + "/login";
-        }
+    public String index(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
+            Model model) {
+        model.addAttribute("identity", identity);
+        var operators = recargasService.operadoresActivos();
+        var packages = recargasService.paquetesActivos();
+        model.addAttribute("operadores", operators);
+        model.addAttribute("paquetes", packages);
+        model.addAttribute("lineas", recargasService.lineasDelUsuario(identity.id()));
+        model.addAttribute("recargas", recargasService.historialDelUsuario(identity.id()));
+        model.addAttribute("operationIds", packages.stream()
+                .collect(Collectors.toMap(PaqueteMovil::getId, ignored -> UUID.randomUUID().toString())));
+        model.addAttribute("accesoUrl", accesoUrl);
+        model.addAttribute("billeteraUrl", billeteraUrl);
+        model.addAttribute("walletError", false);
         try {
-            Identity identity = restClient.get()
-                    .uri(accesoUrl + "/api/auth/me")
-                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                    .retrieve()
-                    .body(Identity.class);
-            if (identity == null) {
-                model.addAttribute("error", "No fue posible confirmar tu identidad. Intenta ingresar nuevamente.");
-                return "servicio-recargas";
-            }
-            model.addAttribute("name", identity.name());
-            model.addAttribute("email", identity.email());
-            model.addAttribute("role", identity.role());
-            model.addAttribute("accesoUrl", accesoUrl);
-        } catch (HttpClientErrorException.Unauthorized | HttpClientErrorException.Forbidden exception) {
-            return "redirect:" + accesoUrl + "/login";
+            model.addAttribute("wallet", walletClient.getWallet(token(request)));
         } catch (ResourceAccessException exception) {
-            model.addAttribute("error", "El servicio de Acceso no está disponible. Inténtalo más tarde.");
-        } catch (RestClientResponseException exception) {
+            model.addAttribute("walletError", true);
             model.addAttribute("error",
-                    "Acceso respondió con un error (HTTP " + exception.getStatusCode().value() + ").");
+                    "La billetera universal no está disponible. No se puede solicitar una recarga ahora.");
+        } catch (RestClientResponseException exception) {
+            model.addAttribute("walletError", true);
+            model.addAttribute("error", "Billetera respondió con un error (HTTP "
+                    + exception.getStatusCode().value() + ").");
+        } catch (IllegalStateException exception) {
+            model.addAttribute("walletError", true);
+            model.addAttribute("error", exception.getMessage());
         }
         return "servicio-recargas";
     }
 
-    private String token(HttpServletRequest request) {
-        String authorization = request.getHeader(HttpHeaders.AUTHORIZATION);
-        if (authorization != null && authorization.startsWith("Bearer ")) {
-            return authorization.substring(7);
+    @PostMapping("/lineas")
+    public String addLine(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @RequestParam String operadorId,
+            @RequestParam String telefono,
+            @RequestParam(required = false) String alias,
+            RedirectAttributes redirectAttributes) {
+        try {
+            recargasService.guardarLinea(identity.id(), operadorId, telefono, alias);
+            redirectAttributes.addFlashAttribute("mensaje", "La línea quedó guardada en tu perfil de Recargas.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo confirmar la respuesta de Billetera. La operación queda pendiente; revisa su estado antes de reintentar.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+                    + exception.getStatusCode().value()
+                    + "). La operación queda pendiente; revisa su estado antes de reintentar.");
         }
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                if ("JWT_TOKEN".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
+        return "redirect:/";
     }
 
-    private record Identity(String id, String email, String name, String role) {
+    @PostMapping("/recargar")
+    public String recharge(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
+            @RequestParam String lineaId,
+            @RequestParam String paqueteId,
+            @RequestParam String operationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            var recharge = recargasService.solicitarRecarga(
+                    identity.id(), lineaId, paqueteId, operationId, token(request));
+            redirectAttributes.addFlashAttribute("mensaje",
+                    recharge.getEstado().equals("SIMULADA")
+                            ? "Recarga simulada completada. El costo se descontó de tu tarjeta universal."
+                            : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
+        } catch (InsufficientWalletBalanceException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo confirmar la respuesta de Billetera. La operación sigue pendiente; vuelve a revisar su estado.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+                    + exception.getStatusCode().value()
+                    + "). La operación sigue pendiente; vuelve a revisar su estado.");
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/recargar/{operationId}/reintentar")
+    public String retryRecharge(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
+            @PathVariable String operationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            var recharge = recargasService.reintentarRecarga(identity.id(), operationId, token(request));
+            redirectAttributes.addFlashAttribute("mensaje", "Estado de recarga: " + recharge.getEstado());
+        } catch (InsufficientWalletBalanceException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/";
+    }
+
+    private static String token(HttpServletRequest request) {
+        Object value = request.getAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE);
+        if (value instanceof String token && !token.isBlank()) {
+            return token;
+        }
+        throw new IllegalStateException("No se encontró un token de Acceso válido para esta operación.");
     }
 }

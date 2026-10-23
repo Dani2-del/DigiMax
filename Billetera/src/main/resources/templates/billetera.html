@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tarjeta universal | Digitrans</title>
+    <style>
+        :root { color-scheme: light; font-family: system-ui, sans-serif; color: #17324d; }
+        body { margin: 0; background: #f3f6fa; }
+        main { max-width: 760px; margin: 40px auto; padding: 24px; }
+        .panel { background: white; border-radius: 18px; padding: 24px; box-shadow: 0 8px 28px #17324d12; }
+        .universal-card { position: relative; overflow: hidden; color: white; min-height: 220px; padding: 24px 28px; border-radius: 20px; background: linear-gradient(125deg, #14385b 0%, #087c86 100%); box-shadow: 0 14px 30px #17324d24; }
+        .card-heading, .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+        .card-title { margin: 0; font-weight: 700; letter-spacing: .08em; }
+        .card-chip { display: inline-block; width: 44px; height: 32px; margin-top: 22px; border: 1px solid #ffffff99; border-radius: 7px; background: linear-gradient(135deg, #e5d8a4, #b7a66b); }
+        .number { margin: 17px 0; font: 600 1.15rem ui-monospace, monospace; letter-spacing: .12em; }
+        .card-footer { align-items: end; }
+        .card-holder { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
+        .balance { font-size: 1.55rem; font-weight: 750; text-align: right; }
+        .card-glow { position: absolute; width: 220px; height: 220px; right: -75px; top: -100px; border: 1px solid #ffffff26; border-radius: 50%; box-shadow: 0 0 0 24px #ffffff0c, 0 0 0 48px #ffffff08; pointer-events: none; }
+        .panel { margin-top: 18px; }
+        form { display: flex; flex-direction: column; gap: 12px; }
+        input, button { font: inherit; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 9px; }
+        button { background: #087c86; color: white; border: 0; cursor: pointer; }
+        .payment-methods { display: flex; gap: 12px; flex-wrap: wrap; }
+        .payment-method { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; }
+        .payment-method input { margin: 0; }
+        .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
+        .error { background: #fff0ed; }
+        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
+        th, td { padding: 10px 6px; border-bottom: 1px solid #e5eaf0; text-align: left; }
+        .muted { color: #64748b; }
+        @media (max-width: 520px) { main { margin: 0 auto; padding: 14px; } .card, .panel { padding: 18px; } }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Tarjeta universal</h1>
+    <p th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '.'}"></p>
+    <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
+    <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
+
+    <section class="universal-card" aria-label="Tarjeta universal Digitrans">
+        <span class="card-glow" aria-hidden="true"></span>
+        <div class="card-heading">
+            <p class="card-title">DIGITRANS <span style="font-weight:400">· UNIVERSAL</span></p>
+            <span aria-hidden="true">●</span>
+        </div>
+        <span class="card-chip" aria-hidden="true"></span>
+        <p class="number" th:text="${wallet.numeroTarjeta}"></p>
+        <div class="card-footer">
+            <div>
+                <span class="card-holder" th:text="${identity.name() != null ? identity.name() : identity.email()}"></span>
+                <p><small>SALDO COMPARTIDO · COP</small></p>
+            </div>
+            <div class="balance"
+                 th:text="${'$ ' + #numbers.formatDecimal(wallet.saldo, 0, 'COMMA', 2, 'POINT')}"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Cargar saldo</h2>
+        <p class="muted">Elige un método de prueba. No se solicitarán credenciales bancarias y no se realizará ningún pago real.</p>
+        <form th:action="@{/saldo/abonar}" method="post">
+            <label for="monto">Monto (COP)</label>
+            <input id="monto" name="monto" type="number" min="1" max="1000000"
+                   step="1" required>
+            <fieldset style="border:0;padding:0;margin:0">
+                <legend>Método de pago simulado</legend>
+                <div class="payment-methods">
+                    <label class="payment-method">
+                        <input type="radio" name="metodoPago" value="PSE" checked required>
+                        PSE
+                    </label>
+                    <label class="payment-method">
+                        <input type="radio" name="metodoPago" value="TARJETA_DEBITO" required>
+                        Tarjeta débito
+                    </label>
+                </div>
+            </fieldset>
+            <button type="submit">Simular carga de saldo</button>
+        </form>
+    </section>
+
+    <section class="panel">
+        <h2>Movimientos recientes</h2>
+        <p th:if="${#lists.isEmpty(movimientos)}" class="muted">Todavía no hay movimientos.</p>
+        <table th:unless="${#lists.isEmpty(movimientos)}">
+            <thead><tr><th>Fecha</th><th>Detalle</th><th>Tipo</th><th>Monto</th></tr></thead>
+            <tbody>
+            <tr th:each="movimiento : ${movimientos}">
+                <td th:text="${movimiento.fecha != null ? #temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                <td th:text="${movimiento.descripcion}"></td>
+                <td th:text="${movimiento.tipo}"></td>
+                <td th:text="${'$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')}"></td>
+            </tr>
+            </tbody>
+        </table>
+    </section>
+    <p><a th:href="${accesoUrl + '/servicios'}">Volver a servicios</a></p>
+</main>
+</body>
+</html>

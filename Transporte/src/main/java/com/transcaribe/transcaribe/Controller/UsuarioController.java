@@ -10,6 +10,7 @@ import com.transcaribe.transcaribe.service.PlataformaService;
 import com.transcaribe.transcaribe.service.TransaccionService;
 import com.transcaribe.transcaribe.service.BusService;
 import com.transcaribe.transcaribe.service.AvisoAdministrativoService;
+import com.transcaribe.transcaribe.service.WalletClient;
 import com.transcaribe.transcaribe.Util.TarifaTranscaribe;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -29,8 +30,11 @@ import jakarta.servlet.http.HttpSession;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 
 @Controller
 public class UsuarioController {
@@ -51,6 +55,15 @@ public class UsuarioController {
 
     @Autowired
     private AvisoAdministrativoService avisoAdministrativoService;
+
+    @Autowired
+    private WalletClient walletClient;
+
+    @org.springframework.beans.factory.annotation.Value("${app.acceso.base-url:http://localhost:8080}")
+    private String accesoUrl;
+
+    @org.springframework.beans.factory.annotation.Value("${app.billetera.base-url:http://localhost:8082}")
+    private String billeteraUrl;
 
     @ModelAttribute
     public void agregarTemaDelSistema(Model model, HttpSession session) {
@@ -126,6 +139,22 @@ public class UsuarioController {
             model.addAttribute("valorPasaje", TarifaTranscaribe.paraSistema(sistemaActual));
         }
         model.addAttribute("sistemasTransporte", SistemaTransporte.disponibles());
+        model.addAttribute("rideOperationId", UUID.randomUUID().toString());
+        model.addAttribute("accesoUrl", accesoUrl);
+        model.addAttribute("billeteraUrl", billeteraUrl);
+        try {
+            model.addAttribute("tarjetaUniversal", walletClient.getWallet(usuario.getId()));
+            model.addAttribute("billeteraDisponible", true);
+        } catch (ResourceAccessException exception) {
+            model.addAttribute("billeteraDisponible", false);
+            model.addAttribute("errorTarjetaUniversal",
+                    "La tarjeta universal no está disponible en este momento.");
+        } catch (RestClientResponseException exception) {
+            model.addAttribute("billeteraDisponible", false);
+            model.addAttribute("errorTarjetaUniversal",
+                    "No se pudo consultar la tarjeta universal (HTTP "
+                            + exception.getStatusCode().value() + ").");
+        }
         model.addAttribute("alertasAdmin", avisoAdministrativoService.obtenerPendientes(usuario.getId(), sistemaActual));
         model.addAttribute("alertaReturnTo", "/menu");
         return "usuarios/cuenta/menu";

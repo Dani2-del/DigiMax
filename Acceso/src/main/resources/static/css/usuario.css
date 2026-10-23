@@ -1,24 +1,22 @@
 /* =============================================================
-   TRANSCARIBE — BASE COMÚN (tokens, reset, layout, componentes
-   compartidos). Este bloque se repite en usuario.css, admin.css
-   y conductor.css para que cada uno sea independiente.
+   ACCESO — ESTILOS COMPARTIDOS
    ============================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
 
 :root {
-  --tinta: #B75C16;
-  --tinta-2: #8B4611;
-  --caribe: #FF5600;
-  --caribe-soft: #FFECE3;
-  --coral: #FF5600;
-  --coral-2: #E3600F;
-  --mango: #B75C16;
-  --mango-soft: #FFF3DE;
-  --arena: #FBF7EE;
-  --piedra: #5B6E75;
-  --piedra-soft: #98A7AC;
-  --linea: rgba(183, 92, 22, 0.12);
+  --tinta: #0F172A;
+  --tinta-2: #1E293B;
+  --caribe: #334155;
+  --caribe-soft: #E2E8F0;
+  --coral: #FB8500;
+  --coral-2: #E87500;
+  --mango: #FB8500;
+  --mango-soft: #FFF0E2;
+  --arena: #F3F4F6;
+  --piedra: #475569;
+  --piedra-soft: #64748B;
+  --linea: rgba(15, 23, 42, 0.12);
 
   --card-bg: #ffffff;
   --radius: 16px;
@@ -140,7 +138,7 @@ body.login-page .center-card {
   padding: 10px 18px;
   border-radius: 12px;
   background: var(--tinta);
-  box-shadow: 0 8px 22px rgba(183, 92, 22, 0.22);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.22);
   border: none;
 }
 
@@ -167,7 +165,7 @@ body.login-page .center-card {
   background: var(--tinta);
   background-image: linear-gradient(120deg, var(--tinta) 0%, #FF7A1A 100%);
   padding: 12px 40px;
-  box-shadow: 0 6px 18px rgba(183, 92, 22, 0.25);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.25);
   border-radius: 0 0 16px 16px;
   border-bottom: 3px solid var(--caribe);
 }
@@ -255,7 +253,7 @@ body.login-page .center-card {
   background: var(--card-bg);
   border-radius: var(--radius);
   padding: 28px;
-  box-shadow: 0 14px 30px rgba(183, 92, 22, 0.08);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.08);
   border: 1px solid var(--linea);
   color: var(--text);
   position: relative;
@@ -284,7 +282,7 @@ body.login-page .center-card {
   color: var(--text);
   margin: 0 0 15px 0;
   padding: 10px;
-  background: rgba(183, 92, 22, 0.04);
+  background: rgba(15, 23, 42, 0.04);
   border-radius: 8px;
   text-align: center;
   border: 1px solid var(--linea);
@@ -292,21 +290,22 @@ body.login-page .center-card {
 
 .error-message,
 .error {
-  color: white;
+  color: #991B1B;
   text-align: center;
   margin: 20px 0;
   padding: 15px;
-  background: #E3600F;
+  background: #FEE2E2;
+  border: 1px solid rgba(220, 38, 38, 0.2);
   border-radius: 10px;
 }
 
 .success {
-  color: #0B6B4F;
+  color: #065F46;
   text-align: center;
   margin: 20px 0;
   padding: 12px 15px;
-  background: #E3F6EE;
-  border: 1px solid rgba(11, 107, 79, 0.25);
+  background: #D1FAE5;
+  border: 1px solid rgba(16, 185, 129, 0.28);
   border-radius: 10px;
   font-weight: 500;
 }
@@ -331,7 +330,7 @@ body.login-page .center-card {
 
 .form input:focus {
   border-color: var(--caribe);
-  box-shadow: 0 0 0 3px rgba(14, 167, 194, 0.18);
+  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.16);
   outline: none;
 }
 
@@ -351,10 +350,10 @@ button {
 .btn-recargar,
 .bus-btn {
   background: var(--coral) !important;
-  color: #ffffff !important;
+  color: var(--tinta) !important;
   font-weight: 700;
   border: none !important;
-  box-shadow: 0 6px 16px rgba(255, 106, 82, 0.32) !important;
+  box-shadow: 0 6px 16px rgba(251, 133, 0, 0.24) !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -365,7 +364,7 @@ button {
 .bus-btn:hover {
   background: var(--coral-2) !important;
   transform: translateY(-2px);
-  box-shadow: 0 14px 26px rgba(255, 106, 82, 0.32) !important;
+  box-shadow: 0 14px 26px rgba(251, 133, 0, 0.28) !important;
 }
 
 .ghost {
@@ -377,7 +376,7 @@ button {
 }
 
 .ghost:hover {
-  background: rgba(183, 92, 22, 0.04) !important;
+  background: rgba(15, 23, 42, 0.04) !important;
   border-color: var(--tinta) !important;
   transform: translateY(-2px);
 }
@@ -396,13 +395,13 @@ button {
   font-size: 0.95rem;
   text-decoration: none;
   transition: all 0.18s ease;
-  box-shadow: 0 8px 20px rgba(14, 167, 194, 0.15);
+  box-shadow: 0 8px 20px rgba(51, 65, 85, 0.12);
 }
 
 .button-link:hover {
   transform: translateY(-2px);
   background: var(--caribe-soft);
-  box-shadow: 0 12px 24px rgba(14, 167, 194, 0.22);
+  box-shadow: 0 12px 24px rgba(51, 65, 85, 0.16);
 }
 
 .register-row { margin-top: 16px; gap: 10px; display: flex; align-items: center; justify-content: center; }
@@ -415,7 +414,7 @@ button {
   border-radius: 12px;
   background: white;
   color: var(--tinta) !important;
-  box-shadow: 0 4px 12px rgba(183, 92, 22, 0.08);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
   cursor: pointer;
   border: 1px solid var(--linea);
   font-weight: 600;
@@ -580,7 +579,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   margin: 50px auto 80px;
   padding: 36px 32px;
   border-radius: 24px;
-  box-shadow: 0 18px 40px rgba(183, 92, 22, 0.22);
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.22);
   text-align: center;
   position: relative;
 }
@@ -632,7 +631,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   background: var(--caribe-soft);
   padding: 24px;
   border-radius: var(--radius);
-  border: 1px solid rgba(14, 167, 194, 0.25);
+  border: 1px solid rgba(51, 65, 85, 0.16);
   margin-top: 20px;
   width: 100%;
   grid-column: span 2;
@@ -693,7 +692,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   align-items: center;
   justify-content: center;
   background-color: white;
-  color: #5B6E75;
+  color: #475569;
   border: 1px solid var(--linea);
   padding: 10px;
   border-radius: 10px;
@@ -1020,7 +1019,7 @@ body::after {
 .tarjeta-slim:hover,
 .ruta-slim:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 24px rgba(183, 92, 22, 0.12);
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
   border-left-color: var(--coral);
 }
 
@@ -1163,7 +1162,7 @@ body::after {
   border-radius: 24px;
   color: white;
   background: linear-gradient(118deg, var(--tinta), #FF7A1A);
-  box-shadow: 0 18px 42px rgba(183, 92, 22, 0.2);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.2);
   animation: dashboard-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -1247,7 +1246,7 @@ body::after {
   border: 1px solid rgba(14, 167, 194, 0.18);
   border-radius: 18px;
   background: linear-gradient(105deg, white 40%, #f2fbfc);
-  box-shadow: 0 10px 28px rgba(183, 92, 22, 0.07);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.07);
   animation: dashboard-in 0.62s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
@@ -1381,7 +1380,7 @@ body::after {
   border: 1px solid var(--linea);
   border-radius: 17px;
   background: white;
-  box-shadow: 0 5px 18px rgba(183, 92, 22, 0.045);
+  box-shadow: 0 5px 18px rgba(15, 23, 42, 0.045);
   color: var(--tinta);
   text-decoration: none;
   transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1),
@@ -1399,7 +1398,7 @@ body::after {
 .dashboard-action:hover {
   transform: translateY(-5px);
   border-color: color-mix(in srgb, var(--action-color) 42%, white);
-  box-shadow: 0 16px 30px rgba(183, 92, 22, 0.11);
+  box-shadow: 0 16px 30px rgba(15, 23, 42, 0.11);
 }
 
 .dashboard-action.is-disabled,
@@ -1806,7 +1805,7 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
   border: 1px solid rgba(232, 90, 11, 0.3);
   border-radius: 20px;
   background: linear-gradient(115deg, #fff0e6, #fff 68%);
-  box-shadow: 0 8px 24px rgba(183, 92, 22, 0.055);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.055);
   animation: dashboard-in 0.65s 0.3s both;
 }
 
@@ -1979,7 +1978,7 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
 /* ===== REGISTRO EN DOS PANELES ===== */
 body.registration-page {
   align-items: stretch;
-  background: #f7f3eb;
+  background: #F3F4F6;
 }
 
 body.registration-page::before {
@@ -2008,9 +2007,9 @@ body.registration-page::after {
   margin: auto;
   overflow: hidden;
   background: #fff;
-  border: 1px solid rgba(183, 92, 22, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 24px;
-  box-shadow: 0 24px 70px rgba(88, 52, 27, 0.14);
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.14);
   animation: registration-card-enter 0.75s cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
 
@@ -2023,7 +2022,7 @@ body.registration-page::after {
   padding: clamp(28px, 4vw, 54px);
   color: #fff;
   background:
-    linear-gradient(155deg, rgba(255, 86, 0, 0.56), rgba(111, 48, 14, 0.82)),
+    linear-gradient(155deg, rgba(15, 23, 42, 0.84), rgba(30, 41, 59, 0.92)),
     url("/images/bus.png") center / cover;
   animation: registration-art-enter 0.85s cubic-bezier(0.2, 0.75, 0.25, 1) both;
 }
@@ -2033,7 +2032,7 @@ body.registration-page::after {
   inset: 0;
   content: "";
   pointer-events: none;
-  background: linear-gradient(0deg, rgba(73, 34, 12, 0.36), transparent 58%);
+  background: linear-gradient(0deg, rgba(15, 23, 42, 0.36), transparent 58%);
 }
 
 .registration-brand,
@@ -2061,16 +2060,19 @@ body.registration-page::after {
   object-fit: contain;
 }
 
-.registration-art-copy > span,
-.registration-kicker {
-  color: var(--coral);
+.registration-art-copy > span {
+  color: #FDBA74;
   font-size: 0.74rem;
   font-weight: 700;
   letter-spacing: 0.12em;
 }
 
-.registration-art-copy > span {
-  color: #ffe3bd;
+.registration-kicker {
+  color: var(--coral);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #9A4C00;
 }
 
 .registration-art-copy {
@@ -2129,20 +2131,20 @@ body.registration-page::after {
   width: 100%;
   min-height: 50px;
   padding: 13px 15px;
-  border-color: rgba(183, 92, 22, 0.2);
+  border-color: rgba(15, 23, 42, 0.16);
   border-radius: 11px;
   font-size: 0.94rem;
 }
 
 .registration-card .form input:focus {
   border-color: var(--caribe);
-  box-shadow: 0 0 0 3px rgba(255, 86, 0, 0.12);
+  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.16);
 }
 
 .registration-card .form select:focus {
   outline: none;
   border-color: var(--caribe);
-  box-shadow: 0 0 0 3px rgba(255, 86, 0, 0.12);
+  box-shadow: 0 0 0 3px rgba(51, 65, 85, 0.16);
 }
 
 .registration-card .form .primary {
@@ -2150,7 +2152,8 @@ body.registration-page::after {
   min-height: 50px;
   margin-top: 4px;
   border-radius: 11px;
-  box-shadow: 0 10px 22px rgba(255, 86, 0, 0.23) !important;
+  color: var(--tinta) !important;
+  box-shadow: 0 10px 22px rgba(251, 133, 0, 0.24) !important;
 }
 
 .registration-card .form .primary:disabled {
@@ -2199,9 +2202,9 @@ body.registration-page::after {
 }
 
 .login-page .registration-feedback .success {
-  color: #176b45;
-  background: #eaf7ef;
-  border: 1px solid rgba(23, 107, 69, 0.16);
+  color: #065F46;
+  background: #D1FAE5;
+  border: 1px solid rgba(16, 185, 129, 0.28);
 }
 
 .registration-login-link {
@@ -2245,7 +2248,7 @@ body.registration-page::after {
   gap: 10px;
   border: 1px solid var(--linea);
   border-radius: 12px;
-  background: #fffaf5;
+  background: #FFFFFF;
   text-align: left;
 }
 
@@ -2387,7 +2390,7 @@ body.registration-page::after {
 body.login-page {
   align-items: stretch;
   justify-content: flex-start;
-  background: #f7f3eb;
+  background: #F3F4F6;
 }
 
 body.login-page::before {

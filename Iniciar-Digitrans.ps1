@@ -2,17 +2,17 @@ $ErrorActionPreference = 'Stop'
 
 $services = @(
     @{
-        Name = 'Correo'
-        Port = 8084
-        MainClass = 'com.Servicio.Correo.CorreoApplication'
-        Folder = 'Correo'
-        Command = '.\gradlew.bat --no-daemon bootRun'
-    },
-    @{
         Name = 'Acceso'
         Port = 8080
         MainClass = 'com.Servicio.Acceso.AccesoApplication'
         Folder = 'Acceso'
+        Command = '.\gradlew.bat --no-daemon bootRun'
+    },
+    @{
+        Name = 'Billetera'
+        Port = 8082
+        MainClass = 'com.Servicio.Billetera.BilleteraApplication'
+        Folder = 'Billetera'
         Command = '.\gradlew.bat --no-daemon bootRun'
     },
     @{
@@ -21,6 +21,20 @@ $services = @(
         MainClass = 'com.transcaribe.transcaribe.DigitransMaxApplication'
         Folder = 'Transporte'
         Command = '.\mvnw.cmd spring-boot:run'
+    },
+    @{
+        Name = 'RecargasMovil'
+        Port = 8083
+        MainClass = 'com.Servicio.RecargasMovil.RecargasMovilApplication'
+        Folder = 'RecargasMovil'
+        Command = '.\gradlew.bat --no-daemon bootRun'
+    },
+    @{
+        Name = 'Correo'
+        Port = 8084
+        MainClass = 'com.Servicio.Correo.CorreoApplication'
+        Folder = 'Correo'
+        Command = '.\gradlew.bat --no-daemon bootRun'
     }
 )
 
@@ -107,7 +121,7 @@ try {
         Write-Host "$($service.Name) está escuchando en el puerto $($service.Port)."
     }
 
-    Write-Host 'Los tres módulos están iniciados.'
+    Write-Host 'Los cinco módulos están iniciados.'
 }
 catch {
     Write-Error $_

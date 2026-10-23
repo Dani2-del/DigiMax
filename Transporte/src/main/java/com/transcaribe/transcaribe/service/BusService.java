@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.UUID;
 import com.transcaribe.transcaribe.Model.RutaTransmilenio;
 import com.transcaribe.transcaribe.Model.RutaTransmetro;
 
@@ -31,6 +32,9 @@ public class BusService {
 
     @Autowired
     private TransaccionRepository transaccionRepository;
+
+    @Autowired
+    private WalletClient walletClient;
 
     public void crearBusDePrueba() {
         List<String> rutasCartagena = List.of("T100E", "T101", "T102", "T103", 
@@ -50,6 +54,16 @@ public class BusService {
 
     public String pagarPasajeConTarjetaEspecifica(
             String usuarioId, String busId, String numeroTarjeta, SistemaTransporte sistemaTransporte) {
+        return pagarPasajeConTarjetaEspecifica(
+                usuarioId, busId, numeroTarjeta, sistemaTransporte, UUID.randomUUID().toString());
+    }
+
+    public String pagarPasajeConTarjetaEspecifica(
+            String usuarioId,
+            String busId,
+            String numeroTarjeta,
+            SistemaTransporte sistemaTransporte,
+            String operacionId) {
     Usuario usuario = usuarioRepository.findById(usuarioId)
             .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         Bus bus = busRepository.findById(busId)
@@ -68,6 +82,11 @@ public class BusService {
     String rutaSeleccionada = bus.getRutas().get(rand.nextInt(bus.getRutas().size()));
 
     BigDecimal costo = BigDecimal.valueOf(TarifaTranscaribe.paraSistema(sistemaTransporte));
+
+    if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
+        return cobrarConTarjetaUniversal(usuario, costo, sistemaTransporte, operacionId,
+                "Pasaje Transcaribe: ruta " + rutaSeleccionada);
+    }
 
     Tarjeta tarjetaSeleccionada = usuario.getTarjetas().stream()
             .filter(t -> numeroTarjeta.equals(t.getNumeroTarjeta()))
@@ -105,12 +124,21 @@ public class BusService {
 
     public String simularViajeTransmilenio(String usuarioId, String numeroTarjeta,
                                            RutaTransmilenio ruta) {
+        return simularViajeTransmilenio(usuarioId, numeroTarjeta, ruta, UUID.randomUUID().toString());
+    }
+
+    public String simularViajeTransmilenio(String usuarioId, String numeroTarjeta,
+                                           RutaTransmilenio ruta, String operacionId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         if (!usuario.isActivo()) return "La cuenta está inactiva.";
 
         BigDecimal costo = BigDecimal.valueOf(
                 TarifaTranscaribe.paraSistema(SistemaTransporte.TRANSMILENIO));
+        if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
+            return cobrarConTarjetaUniversal(usuario, costo, SistemaTransporte.TRANSMILENIO, operacionId,
+                    "Pasaje TransMilenio: ruta " + ruta.getCodigoLinea());
+        }
         Tarjeta tarjeta = usuario.getTarjetas().stream()
                 .filter(t -> numeroTarjeta.equals(t.getNumeroTarjeta()))
                 .filter(t -> t.getSistemaTransporte() == SistemaTransporte.TRANSMILENIO)
@@ -138,12 +166,21 @@ public class BusService {
 
     public String simularViajeTransmetro(String usuarioId, String numeroTarjeta,
                                          RutaTransmetro ruta) {
+        return simularViajeTransmetro(usuarioId, numeroTarjeta, ruta, UUID.randomUUID().toString());
+    }
+
+    public String simularViajeTransmetro(String usuarioId, String numeroTarjeta,
+                                         RutaTransmetro ruta, String operacionId) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
         if (!usuario.isActivo()) return "La cuenta está inactiva.";
 
         BigDecimal costo = BigDecimal.valueOf(
                 TarifaTranscaribe.paraSistema(SistemaTransporte.TRANSMETRO));
+        if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
+            return cobrarConTarjetaUniversal(usuario, costo, SistemaTransporte.TRANSMETRO, operacionId,
+                    "Pasaje Transmetro: ruta " + ruta.codigo());
+        }
         Tarjeta tarjeta = usuario.getTarjetas().stream()
                 .filter(t -> numeroTarjeta.equals(t.getNumeroTarjeta()))
                 .filter(t -> t.getSistemaTransporte() == SistemaTransporte.TRANSMETRO)
@@ -169,6 +206,26 @@ public class BusService {
         return "Cobro exitoso. Ruta " + ruta.codigo() + ": " + ruta.paradas().get(0)
                 + " → " + ruta.paradas().get(ruta.paradas().size() - 1)
                 + ". Saldo restante: $" + nuevoSaldo;
+    }
+
+    private String cobrarConTarjetaUniversal(
+            Usuario usuario, BigDecimal monto, SistemaTransporte sistema, String operacionId, String descripcion) {
+        if (!usuario.isActivo()) {
+            return "La cuenta está inactiva.";
+        }
+        WalletClient.Wallet wallet;
+        try {
+            wallet = walletClient.debit(usuario.getId(), monto, operacionId, descripcion);
+        } catch (WalletClient.InsufficientWalletBalanceException exception) {
+            return exception.getMessage();
+        }
+        Transaccion transaccion = new Transaccion(
+                monto.doubleValue(), LocalDateTime.now(),
+                "PASAJE [TARJETA UNIVERSAL] - " + descripcion, usuario);
+        transaccion.setSistemaTransporte(sistema);
+        transaccion.setTarjetaTranscaribe(WalletClient.UNIVERSAL_CARD_OPTION);
+        transaccionRepository.save(transaccion);
+        return "Cobro exitoso con tarjeta universal. Saldo restante: $" + wallet.balance();
     }
 
     public List<String> obtenerTodasLasRutas() {
