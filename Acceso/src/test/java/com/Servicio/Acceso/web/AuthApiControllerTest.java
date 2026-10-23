@@ -5,6 +5,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -64,6 +65,44 @@ class AuthApiControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AuthApiController.AuthenticatedUserResponse(
-                "123", "persona@example.com", "Persona", Usuario.ROLE_USER));
+                "123", "persona@example.com", "Persona", Usuario.ROLE_USER,
+                true, false, usuario.getFechaRegistro(), null));
+    }
+
+    @Test
+    void returnsOnlyOperationalIdentitiesForAuthorizedTransportRoles() {
+        UserDetails conductor = User.withUsername("conductor@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_CONDUCTOR)
+                .build();
+        Usuario target = new Usuario("pasajero@example.com", "", "Pasajero");
+        target.setId("user-2");
+        when(jwtService.extractUsername("token-valido")).thenReturn("conductor@example.com");
+        when(userDetailsService.loadUserByUsername("conductor@example.com")).thenReturn(conductor);
+        when(jwtService.isTokenValid("token-valido", conductor)).thenReturn(true);
+        when(usuarios.findById("user-2")).thenReturn(Optional.of(target));
+
+        var response = controller.transportIdentities("Bearer token-valido", List.of("user-2"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(new AuthApiController.AuthenticatedUserResponse(
+                "user-2", "pasajero@example.com", "Pasajero", Usuario.ROLE_USER,
+                true, false, target.getFechaRegistro(), null));
+    }
+
+    @Test
+    void rejectsOperationalIdentityLookupForRegularUsers() {
+        UserDetails user = User.withUsername("persona@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_USER)
+                .build();
+        when(jwtService.extractUsername("token-valido")).thenReturn("persona@example.com");
+        when(userDetailsService.loadUserByUsername("persona@example.com")).thenReturn(user);
+        when(jwtService.isTokenValid("token-valido", user)).thenReturn(true);
+
+        var response = controller.transportIdentities("Bearer token-valido", List.of("user-2"));
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(usuarios, never()).findById("user-2");
     }
 }

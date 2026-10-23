@@ -31,6 +31,7 @@ import com.transcaribe.transcaribe.Repository.UsuarioRepository;
 import com.transcaribe.transcaribe.service.ExcelReportService;
 import com.transcaribe.transcaribe.service.PlataformaService;
 import com.transcaribe.transcaribe.service.AvisoAdministrativoService;
+import com.transcaribe.transcaribe.service.AccessIdentityClient;
 import org.springframework.http.ContentDisposition;
 
 @Controller
@@ -42,6 +43,7 @@ public class AdminController {
     private final ExcelReportService excelService;
     private final BusRepository busRepository;
     private final MongoTemplate mongoTemplate;
+    private final AccessIdentityClient accessIdentityClient;
 
     @Autowired
     private AvisoAdministrativoService avisoAdministrativoService;
@@ -50,12 +52,14 @@ public class AdminController {
                            PlataformaService plataformaService,
                            ExcelReportService excelService,
                            BusRepository busRepository,
-                           MongoTemplate mongoTemplate) {
+                           MongoTemplate mongoTemplate,
+                           AccessIdentityClient accessIdentityClient) {
         this.usuarioRepository = usuarioRepository;
         this.plataformaService = plataformaService;
         this.excelService = excelService;
         this.busRepository = busRepository;
         this.mongoTemplate = mongoTemplate;
+        this.accessIdentityClient = accessIdentityClient;
     }
 
     private static final int TAMANO_PAGINA = 20;
@@ -120,7 +124,8 @@ public class AdminController {
             @RequestParam(defaultValue = "") String estado,
             @RequestParam(defaultValue = "") String verificacion,
             Model model,
-            jakarta.servlet.http.HttpSession session) {
+            jakarta.servlet.http.HttpSession session,
+            org.springframework.security.core.Authentication authentication) {
         SistemaTransporte sistemaActual = (SistemaTransporte) session.getAttribute(
                 SistemaTransporte.SESSION_ATTRIBUTE);
         String busqueda = search == null ? "" : search.trim();
@@ -156,44 +161,40 @@ public class AdminController {
             filtrosValidos = false;
         }
 
-        Query filtro = new Query();
-        filtro.addCriteria(criterioSistemaUsuario(sistemaActual));
-        if (!busqueda.isBlank()) {
-            String busquedaLiteral = Pattern.quote(busqueda);
-            filtro.addCriteria(new Criteria().orOperator(
-                    Criteria.where("nombre").regex(busquedaLiteral, "i"),
-                    Criteria.where("correo").regex(busquedaLiteral, "i")));
-        }
-        if (!role.isBlank()) {
-            filtro.addCriteria(Criteria.where("role").is(role));
-        }
-        if ("activos".equals(estado)) {
-            filtro.addCriteria(Criteria.where("activo").is(true));
-        } else if ("inactivos".equals(estado)) {
-            filtro.addCriteria(Criteria.where("activo").is(false));
-        }
-        if ("verificados".equals(verificacion)) {
-            filtro.addCriteria(Criteria.where("verificado").is(true));
-        } else if ("pendientes".equals(verificacion)) {
-            filtro.addCriteria(Criteria.where("verificado").is(false));
-        }
-        if (desde != null || hasta != null) {
-            filtro.addCriteria(criterioRangoFechaRegistro(desde, hasta));
-        }
-
-        long totalFiltrado = filtrosValidos ? mongoTemplate.count(filtro, Usuario.class) : 0;
+        String busquedaNormalizada = busqueda.toLowerCase(Locale.ROOT);
+        List<Usuario> usuariosFiltrados = filtrosValidos
+                ? usuarioRepository.findAll().stream()
+                        .filter(usuario -> perteneceASistema(usuario, sistemaActual))
+                        .filter(usuario -> busquedaNormalizada.isBlank()
+                                || contieneIgnoreCase(usuario.getNombre(), busquedaNormalizada)
+                                || contieneIgnoreCase(usuario.getCorreo(), busquedaNormalizada))
+                        .filter(usuario -> role.isBlank() || role.equals(usuario.getRole()))
+                        .filter(usuario -> estado.isBlank()
+                                || ("activos".equals(estado) == usuario.isActivo()))
+                        .filter(usuario -> verificacion.isBlank()
+                                || ("verificados".equals(verificacion) == usuario.isVerificado()))
+                        .filter(usuario -> desde == null || (usuario.getFechaRegistro() != null
+                                && !usuario.getFechaRegistro().toLocalDate().isBefore(desde)))
+                        .filter(usuario -> hasta == null || (usuario.getFechaRegistro() != null
+                                && !usuario.getFechaRegistro().toLocalDate().isAfter(hasta)))
+                        .sorted(Comparator.comparing(Usuario::getNombre,
+                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                        .toList()
+                : List.of();
+        long totalFiltrado = usuariosFiltrados.size();
         int totalPaginas = Math.max(1, (int) Math.ceil((double) totalFiltrado / TAMANO_PAGINA));
         int paginaSegura = Math.min(Math.max(page, 0), totalPaginas - 1);
-        PageRequest pageable = PageRequest.of(paginaSegura, TAMANO_PAGINA, Sort.by("nombre").ascending());
-        List<Usuario> usuarios = filtrosValidos
-                ? mongoTemplate.find(filtro.with(pageable), Usuario.class)
-                : List.of();
+        int inicio = paginaSegura * TAMANO_PAGINA;
+        int fin = Math.min(inicio + TAMANO_PAGINA, usuariosFiltrados.size());
+        List<Usuario> usuarios = usuariosFiltrados.subList(inicio, fin);
 
         model.addAttribute("usuarios", usuarios);
         model.addAttribute("currentPage", paginaSegura);
         model.addAttribute("totalPages", totalPaginas);
         model.addAttribute("totalUsuarios", contarUsuariosSistema(sistemaActual));
         model.addAttribute("sistemaActual", sistemaActual);
+        model.addAttribute("esAdministradorGlobal", authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())));
         model.addAttribute("sistemasTransporte", SistemaTransporte.disponibles());
         model.addAttribute("totalFiltrado", totalFiltrado);
         model.addAttribute("search", search != null ? search : "");
@@ -209,9 +210,9 @@ public class AdminController {
     }
 
     private long contarUsuariosSistema(SistemaTransporte sistemaActual) {
-        Query filtro = new Query();
-        filtro.addCriteria(criterioSistemaUsuario(sistemaActual));
-        return mongoTemplate.count(filtro, Usuario.class);
+        try (var usuarios = usuarioRepository.streamBySistemaTransporte(sistemaActual)) {
+            return usuarios.count();
+        }
     }
 
     private Criteria criterioSistemaUsuario(SistemaTransporte sistemaActual) {
@@ -228,7 +229,12 @@ public class AdminController {
                     Criteria.where("role").is(Usuario.ROLE_CONDUCTOR),
                     Criteria.where("sitm").is(null)));
         }
+
         return new Criteria().orOperator(criterios.toArray(Criteria[]::new));
+    }
+
+    private static boolean contieneIgnoreCase(String valor, String busqueda) {
+        return valor != null && valor.toLowerCase(Locale.ROOT).contains(busqueda);
     }
 
     private LocalDate parseFechaUsuario(String fecha) {
@@ -320,12 +326,13 @@ public class AdminController {
             filtro.addCriteria(Criteria.where("sistemaTransporte").is(sistemaActual));
         }
         if (!usuario.isBlank()) {
-            List<Usuario> usuarios = usuarioRepository
+            List<String> usuarioIds = usuarioRepository
                     .findByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCase(usuario, usuario)
                     .stream()
-                    .filter(resultado -> resultado.getId() != null)
+                    .map(Usuario::getId)
+                    .filter(Objects::nonNull)
                     .toList();
-            filtro.addCriteria(Criteria.where("usuario").in(usuarios));
+            filtro.addCriteria(Criteria.where("usuario_id").in(usuarioIds));
         }
         switch (tipo) {
             case "recarga" -> filtro.addCriteria(Criteria.where("tipo").regex("recarga", "i"));
@@ -391,9 +398,12 @@ public class AdminController {
             nombreArchivo += ".xlsx";
         }
 
+        List<Usuario> directorioUsuarios = incluirUsuarios || incluirRutas || incluirAvisos
+                ? usuarioRepository.findAll()
+                : List.of();
         StreamingResponseBody file = out -> excelService.generarReporte(
                 tipo, anio, mes, dia, incluirUsuarios, incluirTransacciones,
-                incluirRutas, incluirAvisos, sistemaActual, out);
+                incluirRutas, incluirAvisos, sistemaActual, directorioUsuarios, out);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION,
@@ -446,13 +456,15 @@ public class AdminController {
             @RequestParam String correo,
             @RequestParam String role,
             @RequestParam(required = false) SistemaTransporte sistemaAsignado,
-            @RequestParam(required = false) String password,
+            org.springframework.security.core.Authentication authentication,
             jakarta.servlet.http.HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
             Optional<Usuario> opt = usuarioRepository.findById(userId);
             SistemaTransporte sistemaActual = (SistemaTransporte) session.getAttribute(
                     SistemaTransporte.SESSION_ATTRIBUTE);
+            boolean administradorGlobal = authentication.getAuthorities().stream()
+                    .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
             Set<String> rolesPermitidos = Set.of(Usuario.ROLE_USER, Usuario.ROLE_ADMIN,
                     Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
             if (!rolesPermitidos.contains(role)) {
@@ -472,8 +484,25 @@ public class AdminController {
                 response.put("message", "Selecciona un servicio válido para el moderador.");
                 return ResponseEntity.badRequest().body(response);
             }
+            if (!administradorGlobal && sistemaAsignado != null && sistemaAsignado != sistemaActual) {
+                response.put("status", "error");
+                response.put("message", "Solo puedes asignar moderadores al servicio que estás gestionando.");
+                return ResponseEntity.status(403).body(response);
+            }
             if (opt.isPresent() && perteneceASistema(opt.get(), sistemaActual)) {
                 Usuario u = opt.get();
+                if (!administradorGlobal
+                        && (!Objects.equals(nombre, u.getNombre())
+                                || !Objects.equals(correo, u.getCorreo())
+                                || !Objects.equals(role, u.getRole()))) {
+                    response.put("status", "error");
+                    response.put("message",
+                            "Solo un administrador global puede cambiar identidad o rol. Gestiona esos datos en Acceso.");
+                    return ResponseEntity.status(403).body(response);
+                }
+                if (administradorGlobal) {
+                    accessIdentityClient.updateUser(userId, nombre, correo, role, u.isActivo());
+                }
                 u.setNombre(nombre);
                 u.setCorreo(correo);
                 boolean eraModerador = Usuario.ROLE_MODERATOR.equals(u.getRole());
@@ -488,7 +517,6 @@ public class AdminController {
                 if (eraModerador && !Usuario.ROLE_MODERATOR.equals(role) && u.getSitm() == null) {
                     u.setSitm(sistemaActual);
                 }
-                if (password != null && !password.trim().isEmpty()) u.setPasswordHash(password);
 
                 usuarioRepository.save(u);
                 response.put("status", "ok");
@@ -508,9 +536,18 @@ public class AdminController {
     @PostMapping("/deleteUser")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> deleteUser(
-            @RequestParam String userId, jakarta.servlet.http.HttpSession session) {
+            @RequestParam String userId,
+            org.springframework.security.core.Authentication authentication,
+            jakarta.servlet.http.HttpSession session) {
         Map<String, Object> response = new HashMap<>();
         try {
+            boolean administradorGlobal = authentication.getAuthorities().stream()
+                    .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+            if (!administradorGlobal) {
+                response.put("status", "error");
+                response.put("message", "Solo un administrador global puede desactivar cuentas.");
+                return ResponseEntity.status(403).body(response);
+            }
             SistemaTransporte sistemaActual = (SistemaTransporte) session.getAttribute(
                     SistemaTransporte.SESSION_ATTRIBUTE);
             Usuario usuario = usuarioRepository.findById(userId).orElse(null);

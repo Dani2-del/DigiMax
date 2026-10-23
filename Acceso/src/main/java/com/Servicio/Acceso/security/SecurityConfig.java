@@ -7,6 +7,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -70,6 +71,9 @@ public class SecurityConfig {
                                 "/confirmar-restablecimiento", "/css/**", "/js/**", "/images/**",
                                 "/oauth2/**", "/login/oauth2/**", "/error")
                         .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
+                        .hasAnyRole("ADMIN", "MODERATOR")
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .formLogin(form -> form
                         .loginPage("/login")

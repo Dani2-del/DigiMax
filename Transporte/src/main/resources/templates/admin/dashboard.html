@@ -118,8 +118,8 @@
                             <button class="card-btn"
                                     th:attr="data-id=${u.id}, data-nombre=${u.nombre}, data-correo=${u.correo}, data-role=${u.role}, data-sistema-asignado=${u.sistemaAsignado}"
                                     onclick="openEditModal(this)">Editar</button>
-                            <button class="card-btn2" th:if="${u.role != 'ROLE_ADMIN'}"
-                                    th:attr="data-id=${u.id}" onclick="deleteUser(this)">Eliminar</button>
+                            <button class="card-btn2" th:if="${esAdministradorGlobal and u.role != 'ROLE_ADMIN'}"
+                                    th:attr="data-id=${u.id}" onclick="deleteUser(this)">Desactivar</button>
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(usuarios)}">
@@ -167,11 +167,11 @@
         <input type="hidden" id="editUserId" />
         <input type="hidden" id="currentService" th:value="${sistemaActual}" />
         <label style="font-size:13px;color:#666;">Nombre completo:</label>
-        <input type="text" id="editNombre" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
+        <input type="text" id="editNombre" th:disabled="${!esAdministradorGlobal}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
         <label style="font-size:13px;color:#666;">Correo electrónico:</label>
-        <input type="email" id="editCorreo" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
+        <input type="email" id="editCorreo" th:disabled="${!esAdministradorGlobal}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
         <label style="font-size:13px;color:#666;">Rol asignado:</label>
-        <select id="editRole" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;">
+        <select id="editRole" th:disabled="${!esAdministradorGlobal}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;">
             <option value="ROLE_USER">Usuario (ROLE_USER)</option>
             <option value="ROLE_ADMIN">Administrador (ROLE_ADMIN)</option>
             <option value="ROLE_MODERATOR">Moderador (ROLE_MODERATOR)</option>
@@ -181,15 +181,14 @@
             <label for="editSistemaAsignado" style="font-size:13px;color:#666;">Servicio del moderador:</label>
             <select id="editSistemaAsignado" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
                 <option th:each="sistema : ${sistemasTransporte}"
-                        th:value="${sistema.name()}" th:text="${sistema.nombre}"></option>
+                        th:value="${sistema.name()}" th:text="${sistema.nombre}"
+                        th:disabled="${!esAdministradorGlobal and sistema != sistemaActual}"></option>
             </select>
         </div>
         <div id="editConductorService" style="display:none;margin-bottom:12px;padding:10px 12px;border-radius:8px;background:#f7fafc;color:#4a5568;font-size:13px;">
             El conductor quedará asignado a <strong th:text="${sistemaActual.nombre}">Transcaribe</strong> y recibirá las rutas programadas para ese servicio.
         </div>
 
-        <label style="font-size:13px;color:#666;">Seguridad:</label>
-        <input type="password" id="editPassword" placeholder="Nueva contraseña (dejar en blanco)" style="width:100%;padding:8px;margin-bottom:15px;border:1px solid #ccc;border-radius:6px;">
         <div style="display:flex;gap:10px;">
             <button type="button" onclick="submitEdit()" class="primary" style="flex:1;">Guardar cambios</button>
             <button type="button" onclick="closeEditModal()" class="ghost" style="flex:1;">Cancelar</button>
@@ -250,7 +249,6 @@
         assignedService.value = btn.getAttribute('data-sistema-asignado')
             || document.getElementById('currentService').value;
         updateModeratorServiceVisibility();
-        document.getElementById('editPassword').value = '';
         document.getElementById('editMsg').textContent = '';
         editModal.style.display = 'flex';
     }
@@ -262,12 +260,11 @@
         const correo = document.getElementById('editCorreo').value;
         const role = document.getElementById('editRole').value;
         const sistemaAsignado = role === 'ROLE_MODERATOR' ? assignedService.value : '';
-        const password = document.getElementById('editPassword').value;
         const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ?? "";
         const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') ?? "";
         const headers = {'Content-Type':'application/x-www-form-urlencoded'};
         if (header && token) headers[header] = token;
-        fetch('/admin/editUser', {method:'POST', headers, body: new URLSearchParams({userId, nombre, correo, role, sistemaAsignado, password})})
+        fetch('/admin/editUser', {method:'POST', headers, body: new URLSearchParams({userId, nombre, correo, role, sistemaAsignado})})
             .then(r => r.json()).then(res => {
             if(res.status==='ok') {
                 document.getElementById('editMsg').style.color = "green";
@@ -284,14 +281,17 @@
     }
 
     function deleteUser(btn) {
-        if(!confirm("¿Está seguro de que desea eliminar este usuario?")) return;
+        if(!confirm("¿Está seguro de que desea desactivar esta cuenta? Sus datos de Transporte se conservarán.")) return;
         const userId = btn.getAttribute('data-id');
         const token = document.querySelector('meta[name="_csrf"]')?.getAttribute('content') ?? "";
         const header = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content') ?? "";
         const headers = {'Content-Type':'application/x-www-form-urlencoded'};
         if (header && token) headers[header] = token;
         fetch('/admin/deleteUser', {method:'POST', headers, body: new URLSearchParams({userId})})
-            .then(r => r.json()).then(res => { if(res.status==='ok') location.reload(); });
+            .then(r => r.json()).then(res => {
+                if(res.status==='ok') location.reload();
+                else alert(res.message || "No se pudo desactivar la cuenta.");
+            }).catch(() => alert("Ocurrió un error al desactivar la cuenta."));
     }
 </script>
     <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>

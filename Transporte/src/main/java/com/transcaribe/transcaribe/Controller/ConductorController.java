@@ -10,6 +10,7 @@ import com.transcaribe.transcaribe.Repository.UsuarioRepository;
 import com.transcaribe.transcaribe.service.RutaNotificacionService;
 import com.transcaribe.transcaribe.service.EmailService;
 import com.transcaribe.transcaribe.service.AvisoAdministrativoService;
+import com.transcaribe.transcaribe.service.AccessIdentityClient;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
@@ -41,6 +42,9 @@ public class ConductorController {
 
     @Autowired
     private HorarioConductorRepository horarioRepository;
+
+    @Autowired
+    private AccessIdentityClient accessIdentityClient;
 
     private Usuario obtenerUsuarioLogueado() {
         String correo = SecurityContextHolder.getContext().getAuthentication().getName();
@@ -190,8 +194,8 @@ public class ConductorController {
         }
 
         SistemaTransporte sistema = sistemaConductor(conductor);
-        List<String> administradores = usuarioRepository.findAll().stream()
-                .filter(Usuario::isActivo)
+        List<String> administradores = accessIdentityClient.findAdministrativeContacts().stream()
+                .map(usuarioRepository::fromAccessIdentity)
                 .filter(usuario -> Usuario.ROLE_ADMIN.equals(usuario.getRole())
                         || (Usuario.ROLE_MODERATOR.equals(usuario.getRole())
                             && usuario.getSistemaAsignado() == sistema))

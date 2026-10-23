@@ -56,6 +56,15 @@ public class ExcelReportService {
                                boolean incluirUsuarios, boolean incluirTransacciones,
                                boolean incluirRutas, boolean incluirAvisos,
                                SistemaTransporte sistemaTransporte, OutputStream out) throws IOException {
+        generarReporte(tipo, anio, mes, dia, incluirUsuarios, incluirTransacciones,
+                incluirRutas, incluirAvisos, sistemaTransporte, null, out);
+    }
+
+    public void generarReporte(String tipo, Integer anio, Integer mes, Integer dia,
+                               boolean incluirUsuarios, boolean incluirTransacciones,
+                               boolean incluirRutas, boolean incluirAvisos,
+                               SistemaTransporte sistemaTransporte, List<Usuario> directorioUsuarios,
+                               OutputStream out) throws IOException {
         if (sistemaTransporte != null && !sistemaTransporte.estaDisponible()) {
             throw new IllegalArgumentException("El servicio del reporte no está disponible.");
         }
@@ -69,7 +78,12 @@ public class ExcelReportService {
             DateRange rango = buildRango(tipo, anio, mes, dia);
             List<Usuario> usuariosDelSistema = List.of();
             boolean requiereUsuariosSistema = incluirUsuarios || incluirRutas || incluirAvisos;
-            if (requiereUsuariosSistema && sistemaTransporte != null) {
+            if (requiereUsuariosSistema && directorioUsuarios != null) {
+                usuariosDelSistema = directorioUsuarios.stream()
+                        .filter(usuario -> sistemaTransporte == null
+                                || perteneceAlSistema(usuario, sistemaTransporte))
+                        .toList();
+            } else if (requiereUsuariosSistema && sistemaTransporte != null) {
                 try (Stream<Usuario> usuarios = usuarioRepository.streamBySistemaTransporte(sistemaTransporte)) {
                     usuariosDelSistema = usuarios.toList();
                 }
@@ -113,6 +127,16 @@ public class ExcelReportService {
         } finally {
             workbook.dispose();
         }
+    }
+
+    private static boolean perteneceAlSistema(Usuario usuario, SistemaTransporte sistema) {
+        if (Usuario.ROLE_MODERATOR.equals(usuario.getRole())) {
+            return usuario.getSistemaAsignado() == sistema;
+        }
+        return usuario.getSitm() == sistema
+                || (Usuario.ROLE_CONDUCTOR.equals(usuario.getRole())
+                        && usuario.getSitm() == null
+                        && sistema == SistemaTransporte.TRANSCARIBE);
     }
 
     private CellStyle crearEstiloEncabezado(Workbook workbook) {

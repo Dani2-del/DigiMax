@@ -14,7 +14,8 @@ import com.transcaribe.transcaribe.Model.Usuario;
 
 @Repository
 public interface TransaccionRepository extends MongoRepository<Transaccion, String> {
-    List<Transaccion> findByUsuario(Usuario usuario);
+    @Query("{ 'usuario_id': ?0 }")
+    List<Transaccion> findByUsuarioId(String usuarioId);
 
     @Query("{}")
     Stream<Transaccion> streamAll();

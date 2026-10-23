@@ -2,6 +2,7 @@ package com.transcaribe.transcaribe.Model;
 
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -41,6 +42,18 @@ public class Transaccion {
 
     @DBRef
     @Field("usuario")
+    private Usuario legacyUsuario;
+
+    @Field("usuario_id")
+    private String usuarioId;
+
+    @Field("usuario_correo")
+    private String usuarioCorreo;
+
+    @Field("usuario_nombre")
+    private String usuarioNombre;
+
+    @Transient
     private Usuario usuario;
 
     public Transaccion() {}
@@ -83,6 +96,59 @@ public class Transaccion {
     public Integer getCantidadPasajes() { return cantidadPasajes; }
     public void setCantidadPasajes(Integer cantidadPasajes) { this.cantidadPasajes = cantidadPasajes; }
 
-    public Usuario getUsuario() { return usuario; }
-    public void setUsuario(Usuario usuario) { this.usuario = usuario; }
+    public Usuario getUsuario() {
+        if (usuario != null) {
+            return usuario;
+        }
+        if (legacyUsuario != null) {
+            return legacyUsuario;
+        }
+        if (usuarioId == null && usuarioCorreo == null && usuarioNombre == null) {
+            return null;
+        }
+        Usuario snapshot = new Usuario();
+        snapshot.setId(usuarioId);
+        snapshot.setCorreo(usuarioCorreo);
+        snapshot.setNombre(usuarioNombre);
+        usuario = snapshot;
+        return snapshot;
+    }
+
+    public void setUsuario(Usuario usuario) {
+        this.usuario = usuario;
+        this.legacyUsuario = null;
+        if (usuario == null) {
+            this.usuarioId = null;
+            this.usuarioCorreo = null;
+            this.usuarioNombre = null;
+            return;
+        }
+        this.usuarioId = usuario.getId();
+        this.usuarioCorreo = usuario.getCorreo();
+        this.usuarioNombre = usuario.getNombre();
+    }
+
+    public String getUsuarioId() {
+        return usuarioId;
+    }
+
+    public void setUsuarioId(String usuarioId) {
+        this.usuarioId = usuarioId;
+    }
+
+    public String getUsuarioCorreo() {
+        return usuarioCorreo;
+    }
+
+    public void setUsuarioCorreo(String usuarioCorreo) {
+        this.usuarioCorreo = usuarioCorreo;
+    }
+
+    public String getUsuarioNombre() {
+        return usuarioNombre;
+    }
+
+    public void setUsuarioNombre(String usuarioNombre) {
+        this.usuarioNombre = usuarioNombre;
+    }
 }

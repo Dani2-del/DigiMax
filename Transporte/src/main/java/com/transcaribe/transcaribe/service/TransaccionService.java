@@ -48,7 +48,9 @@ public class TransaccionService {
     }
 
     public List<Transaccion> obtenerTransaccionesPorUsuario(Usuario usuario) {
-        return repositorioTransacciones.findByUsuario(usuario);
+        return usuario == null || usuario.getId() == null
+                ? List.of()
+                : repositorioTransacciones.findByUsuarioId(usuario.getId());
     }
 
     public Optional<Transaccion> obtenerTransaccionDeUsuario(String id, Usuario usuario) {

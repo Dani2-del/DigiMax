@@ -5,11 +5,7 @@ import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Document(collection = "usuarios")
 public class Usuario {
@@ -41,13 +37,6 @@ public class Usuario {
     @Field("role")
     private String role = ROLE_USER;
 
-    /** Sistema que puede administrar una cuenta moderadora. */
-    @Field("sistema_asignado")
-    private SistemaTransporte sistemaAsignado;
-
-    @Field("sitm")
-    private SistemaTransporte sitm;
-
     @Field("activo")
     private boolean activo = true;
 
@@ -59,18 +48,6 @@ public class Usuario {
 
     @Field("verificado")
     private boolean verificado = false;
-
-    @Field("tarjetas")
-    private List<Tarjeta> tarjetas = new ArrayList<>();
-
-    @Field("rutas_favoritas")
-    private List<String> rutasFavoritas = new ArrayList<>();
-
-    @Field("preferencias_notificacion_rutas")
-    private List<PreferenciaRutaNotificacion> preferenciasNotificacionRutas = new ArrayList<>();
-
-    @Field("bus_asignado")
-    private String busAsignado;
 
     @Field("reset_token")
     private String resetToken;
@@ -92,8 +69,6 @@ public class Usuario {
         this.role = ROLE_USER;
         this.activo = true;
         this.verificado = false;
-        this.tarjetas = new ArrayList<>();
-        this.rutasFavoritas = new ArrayList<>();
     }
 
     public String getId() { return id; }
@@ -116,11 +91,6 @@ public class Usuario {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
-
-    public SistemaTransporte getSistemaAsignado() { return sistemaAsignado; }
-    public void setSistemaAsignado(SistemaTransporte sistemaAsignado) { this.sistemaAsignado = sistemaAsignado; }
-    public SistemaTransporte getSitm() { return sitm; }
-    public void setSitm(SistemaTransporte sitm) { this.sitm = sitm; }
 
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }
@@ -146,88 +116,5 @@ public class Usuario {
     public void setPendingPasswordHash(String pendingPasswordHash) {
         this.pendingPasswordHash = pendingPasswordHash;
     }
-
-    public List<Tarjeta> getTarjetas() {
-        if (this.tarjetas == null) {
-            this.tarjetas = new ArrayList<>();
-        }
-        return tarjetas;
-    }
-    public void setTarjetas(List<Tarjeta> tarjetas) { this.tarjetas = tarjetas; }
-
-    public void agregarTarjeta(String numero, BigDecimal saldoInicial) {
-        agregarTarjeta(numero, saldoInicial, SistemaTransporte.TRANSCARIBE);
-    }
-
-    public void agregarTarjeta(String numero, BigDecimal saldoInicial, SistemaTransporte sistemaTransporte) {
-        if (this.tarjetas == null) this.tarjetas = new ArrayList<>();
-        this.tarjetas.add(new Tarjeta(numero, saldoInicial, sistemaTransporte));
-    }
-
-    public void eliminarTarjeta(String numero) {
-        if (this.tarjetas != null) {
-            this.tarjetas.removeIf(t -> t.getNumeroTarjeta().equals(numero));
-        }
-    }
-
-    public BigDecimal getSaldoTotal() {
-        if (this.tarjetas == null || this.tarjetas.isEmpty()) {
-            return BigDecimal.ZERO;
-        }
-        return tarjetas.stream()
-                .map(Tarjeta::getSaldo)
-                .filter(s -> s != null)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
-
-    public List<String> getRutasFavoritas() {
-        if (this.rutasFavoritas == null) {
-            this.rutasFavoritas = new ArrayList<>();
-        }
-        return rutasFavoritas;
-    }
-    public void setRutasFavoritas(List<String> rutasFavoritas) { this.rutasFavoritas = rutasFavoritas; }
-
-    public void agregarRutaFavorita(String ruta) {
-        if (this.rutasFavoritas == null) this.rutasFavoritas = new ArrayList<>();
-        if (!this.rutasFavoritas.contains(ruta)) {
-            this.rutasFavoritas.add(ruta);
-        }
-    }
-
-    public void eliminarRutaFavorita(String ruta) {
-        if (this.rutasFavoritas != null) {
-            this.rutasFavoritas.remove(ruta);
-        }
-        getPreferenciasNotificacionRutas().removeIf(preferencia -> ruta.equals(preferencia.getRuta()));
-    }
-
-    public List<PreferenciaRutaNotificacion> getPreferenciasNotificacionRutas() {
-        if (preferenciasNotificacionRutas == null) {
-            preferenciasNotificacionRutas = new ArrayList<>();
-        }
-        return preferenciasNotificacionRutas;
-    }
-
-    public void setPreferenciasNotificacionRutas(
-            List<PreferenciaRutaNotificacion> preferenciasNotificacionRutas) {
-        this.preferenciasNotificacionRutas = preferenciasNotificacionRutas;
-    }
-
-    public PreferenciaRutaNotificacion obtenerPreferenciaNotificacionRuta(String ruta) {
-        return getPreferenciasNotificacionRutas().stream()
-                .filter(preferencia -> ruta.equals(preferencia.getRuta()))
-                .findFirst()
-                .orElseGet(() -> new PreferenciaRutaNotificacion(
-                        ruta, false, LocalTime.of(6, 0), LocalTime.of(8, 0)));
-    }
-
-    public void guardarPreferenciaNotificacionRuta(PreferenciaRutaNotificacion preferencia) {
-        getPreferenciasNotificacionRutas().removeIf(actual -> actual.getRuta().equals(preferencia.getRuta()));
-        getPreferenciasNotificacionRutas().add(preferencia);
-    }
-
-    public String getBusAsignado() { return busAsignado; }
-    public void setBusAsignado(String busAsignado) { this.busAsignado = busAsignado; }
 
 }

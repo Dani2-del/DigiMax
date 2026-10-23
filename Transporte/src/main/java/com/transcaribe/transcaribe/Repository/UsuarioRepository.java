@@ -2,49 +2,268 @@ package com.transcaribe.transcaribe.Repository;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.mongodb.repository.MongoRepository;
-import org.springframework.data.mongodb.repository.Query;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.stereotype.Repository;
 
-import com.transcaribe.transcaribe.Model.Usuario;
+import com.transcaribe.transcaribe.Model.PerfilTransporte;
 import com.transcaribe.transcaribe.Model.SistemaTransporte;
+import com.transcaribe.transcaribe.Model.Usuario;
+import com.transcaribe.transcaribe.service.AccessIdentityClient;
+import com.transcaribe.transcaribe.service.AccessUser;
 
-public interface UsuarioRepository extends MongoRepository<Usuario, String> {
+@Repository
+public class UsuarioRepository {
 
-    Optional<Usuario> findByCorreo(String correo);
+    private final PerfilTransporteRepository perfiles;
+    private final MongoOperations mongoTemplate;
+    private final AccessIdentityClient acceso;
 
-    Optional<Usuario> findByCorreoIgnoreCase(String correo);
+    public UsuarioRepository(
+            PerfilTransporteRepository perfiles,
+            MongoOperations mongoTemplate,
+            AccessIdentityClient acceso) {
+        this.perfiles = perfiles;
+        this.mongoTemplate = mongoTemplate;
+        this.acceso = acceso;
+    }
 
-    // Búsqueda paginada por nombre o correo (usada en el dashboard admin)
-    Page<Usuario> findByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCase(
-            String nombre, String correo, Pageable pageable);
+    public Optional<Usuario> findById(String id) {
+        if (id == null || id.isBlank()) {
+            return Optional.empty();
+        }
+        AccessUser identity = acceso.findById(id);
+        return Optional.ofNullable(identity).map(this::toUsuario);
+    }
 
-    List<Usuario> findByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCase(
-            String nombre, String correo);
+    public Optional<Usuario> findByIdAndActivoTrue(String id) {
+        return findById(id).filter(Usuario::isActivo);
+    }
 
-    List<Usuario> findByRoleAndActivoTrue(String role);
+    public Optional<Usuario> findByCorreo(String correo) {
+        return findByCorreoIgnoreCase(correo);
+    }
 
-    Optional<Usuario> findByIdAndActivoTrue(String id);
+    public Optional<Usuario> findByCorreoIgnoreCase(String correo) {
+        if (correo == null || correo.isBlank()) {
+            return Optional.empty();
+        }
+        AccessUser identity = acceso.findByEmail(correo);
+        return Optional.ofNullable(identity).map(this::toUsuario);
+    }
 
-    @Query("{}")
-    Stream<Usuario> streamAll();
+    public Usuario fromAccessIdentity(AccessUser identity) {
+        return toUsuario(identity);
+    }
 
-    @Query("{ '$or': [ " +
-            "{ 'role': 'ROLE_MODERATOR', 'sistema_asignado': ?0 }, " +
-            "{ 'role': { '$ne': 'ROLE_MODERATOR' }, 'sitm': ?0 } " +
-            "] }")
-    Stream<Usuario> streamBySistemaTransporte(SistemaTransporte sistemaTransporte);
+    public List<Usuario> findAll() {
+        return acceso.findAll().stream().map(this::toUsuario).toList();
+    }
 
-    @Query("{ 'rutas_favoritas': { $regex: ?0, $options: 'i' } }")
-    List<Usuario> findByRutaFavoritaIgnoreCase(String rutaRegex);
+    public List<Usuario> findByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCase(
+            String nombre, String correo) {
+        String search = nombre == null || nombre.isBlank() ? correo : nombre;
+        return acceso.search(search == null ? "" : search).stream().map(this::toUsuario).toList();
+    }
 
-    @Query("{ 'tarjetas.numeroTarjeta': ?0 }")
-    Optional<Usuario> findByNumeroTarjetaEnLista(String numeroTarjeta);
+    public List<Usuario> findByRoleAndActivoTrue(String role) {
+        return findAll().stream()
+                .filter(Usuario::isActivo)
+                .filter(usuario -> role.equals(usuario.getRole()))
+                .toList();
+    }
 
-    @Query("{ 'tarjetas': { '$elemMatch': { 'numeroTarjeta': ?0, 'sistemaTransporte': ?1 } } }")
-    Optional<Usuario> findByNumeroTarjetaEnListaYSistema(
-            String numeroTarjeta, SistemaTransporte sistemaTransporte);
+    public Stream<Usuario> streamAll() {
+        return findAll().stream();
+    }
+
+    public Stream<Usuario> streamBySistemaTransporte(SistemaTransporte sistema) {
+        return findAll().stream().filter(usuario -> perteneceAlSistema(usuario, sistema));
+    }
+
+    public List<Usuario> findByRutaFavoritaIgnoreCase(String rutaRegex) {
+        Pattern pattern = Pattern.compile(rutaRegex, Pattern.CASE_INSENSITIVE);
+        List<PerfilTransporte> matchingProfiles = perfiles.findByRutaFavoritaIgnoreCase(rutaRegex);
+        if (matchingProfiles.isEmpty()) {
+            return List.of();
+        }
+        List<String> ids = matchingProfiles.stream()
+                .map(PerfilTransporte::getUsuarioId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+        return acceso.findTransportUsers(ids).stream()
+                .map(this::toUsuario)
+                .filter(Usuario::isActivo)
+                .filter(Usuario::isVerificado)
+                .filter(usuario -> usuario.getRutasFavoritas().stream()
+                        .anyMatch(ruta -> pattern.matcher(ruta).find()))
+                .toList();
+    }
+
+    public Optional<Usuario> findByNumeroTarjetaEnLista(String numeroTarjeta) {
+        Optional<PerfilTransporte> profile = perfiles.findByNumeroTarjetaEnLista(numeroTarjeta);
+        if (profile.isPresent()) {
+            return Optional.of(profileReference(profile.get()));
+        }
+        return legacyProfileByCard(numeroTarjeta, null);
+    }
+
+    public Optional<Usuario> findByNumeroTarjetaEnListaYSistema(
+            String numeroTarjeta, SistemaTransporte sistemaTransporte) {
+        Optional<PerfilTransporte> profile =
+                perfiles.findByNumeroTarjetaEnListaYSistema(numeroTarjeta, sistemaTransporte);
+        if (profile.isPresent()) {
+            return Optional.of(profileReference(profile.get()));
+        }
+        return legacyProfileByCard(numeroTarjeta, sistemaTransporte);
+    }
+
+    public Usuario save(Usuario usuario) {
+        if (usuario == null || usuario.getId() == null || usuario.getId().isBlank()) {
+            throw new IllegalArgumentException("El usuario central debe tener un ID para guardar su perfil.");
+        }
+        PerfilTransporte perfil = perfiles.findByUsuarioId(usuario.getId())
+                .orElseGet(() -> profileFromLegacy(usuario).orElseGet(PerfilTransporte::new));
+        copyProfile(usuario, perfil);
+        perfil.setId(usuario.getId());
+        perfil.setUsuarioId(usuario.getId());
+        perfiles.save(perfil);
+        return usuario;
+    }
+
+    public List<Usuario> saveAll(Iterable<Usuario> usuarios) {
+        java.util.ArrayList<Usuario> saved = new java.util.ArrayList<>();
+        for (Usuario usuario : usuarios) {
+            saved.add(save(usuario));
+        }
+        return saved;
+    }
+
+    public void delete(Usuario usuario) {
+        if (usuario == null) {
+            return;
+        }
+        acceso.updateUser(usuario.getId(), usuario.getNombre(), usuario.getCorreo(), usuario.getRole(), false);
+    }
+
+    private Usuario toUsuario(AccessUser identity) {
+        if (identity == null || identity.id() == null) {
+            throw new IllegalStateException("Acceso devolvió una identidad incompleta.");
+        }
+        Optional<PerfilTransporte> storedProfile = perfiles.findByUsuarioId(identity.id());
+        PerfilTransporte profile = storedProfile.orElseGet(() ->
+                profileFromLegacy(identity).orElseGet(() -> {
+                    PerfilTransporte empty = new PerfilTransporte();
+                    empty.setId(identity.id());
+                    empty.setUsuarioId(identity.id());
+                    return empty;
+                }));
+        if (storedProfile.isPresent()
+                && (profile.getId() == null || !identity.id().equals(profile.getId()))) {
+            profile.setId(identity.id());
+            profile.setUsuarioId(identity.id());
+            profile = perfiles.save(profile);
+        } else if (storedProfile.isPresent() && profile.getUsuarioId() == null) {
+            profile.setUsuarioId(identity.id());
+            profile = perfiles.save(profile);
+        }
+        return toUsuario(identity, profile);
+    }
+
+    private Usuario toUsuario(AccessUser identity, PerfilTransporte profile) {
+        Usuario usuario = new Usuario();
+        usuario.setId(identity.id());
+        usuario.setCorreo(identity.email());
+        usuario.setNombre(identity.name());
+        usuario.setRole(identity.role());
+        usuario.setActivo(identity.active());
+        usuario.setVerificado(identity.verified());
+        usuario.setFechaRegistro(identity.registeredAt());
+        usuario.setTelefono(identity.phone());
+        usuario.setSistemaAsignado(profile.getSistemaAsignado());
+        usuario.setSitm(profile.getSitm());
+        usuario.setTarjetas(profile.getTarjetas());
+        usuario.setRutasFavoritas(profile.getRutasFavoritas());
+        usuario.setPreferenciasNotificacionRutas(profile.getPreferenciasNotificacionRutas());
+        usuario.setBusAsignado(profile.getBusAsignado());
+        return usuario;
+    }
+
+    private Optional<PerfilTransporte> profileFromLegacy(Usuario identity) {
+        if (identity == null || identity.getCorreo() == null) {
+            return Optional.empty();
+        }
+        String escapedEmail = Pattern.quote(identity.getCorreo().trim());
+        Document legacy = mongoTemplate.findOne(
+                Query.query(Criteria.where("correo").regex("^" + escapedEmail + "$", "i")),
+                Document.class,
+                "usuarios");
+        if (legacy == null) {
+            return Optional.empty();
+        }
+        PerfilTransporte profile = mongoTemplate.getConverter().read(PerfilTransporte.class, legacy);
+        profile.setId(identity.getId());
+        profile.setUsuarioId(identity.getId());
+        return Optional.of(profile);
+    }
+
+    private Optional<PerfilTransporte> profileFromLegacy(AccessUser identity) {
+        Usuario user = new Usuario();
+        user.setId(identity.id());
+        user.setCorreo(identity.email());
+        return profileFromLegacy(user);
+    }
+
+    private Optional<Usuario> legacyProfileByCard(String numeroTarjeta, SistemaTransporte sistema) {
+        Criteria tarjeta = Criteria.where("tarjetas").elemMatch(
+                sistema == null
+                        ? Criteria.where("numeroTarjeta").is(numeroTarjeta)
+                        : new Criteria().andOperator(
+                                Criteria.where("numeroTarjeta").is(numeroTarjeta),
+                                Criteria.where("sistemaTransporte").is(sistema)));
+        Document legacy = mongoTemplate.findOne(
+                Query.query(tarjeta), Document.class, "usuarios");
+        if (legacy == null) {
+            return Optional.empty();
+        }
+        Object email = legacy.get("correo");
+        if (!(email instanceof String correo) || correo.isBlank()) {
+            return Optional.empty();
+        }
+        return Optional.ofNullable(acceso.findByEmail(correo)).map(this::toUsuario);
+    }
+
+    private static Usuario profileReference(PerfilTransporte profile) {
+        Usuario reference = new Usuario();
+        reference.setId(profile.getUsuarioId());
+        return reference;
+    }
+
+    private static void copyProfile(Usuario usuario, PerfilTransporte profile) {
+        profile.setSistemaAsignado(usuario.getSistemaAsignado());
+        profile.setSitm(usuario.getSitm());
+        profile.setTarjetas(usuario.getTarjetas());
+        profile.setRutasFavoritas(usuario.getRutasFavoritas());
+        profile.setPreferenciasNotificacionRutas(usuario.getPreferenciasNotificacionRutas());
+        profile.setBusAsignado(usuario.getBusAsignado());
+    }
+
+    private static boolean perteneceAlSistema(Usuario usuario, SistemaTransporte sistema) {
+        if (sistema == null) {
+            return true;
+        }
+        if (Usuario.ROLE_MODERATOR.equals(usuario.getRole())) {
+            return usuario.getSistemaAsignado() == sistema;
+        }
+        return usuario.getSitm() == sistema
+                || (Usuario.ROLE_CONDUCTOR.equals(usuario.getRole())
+                        && usuario.getSitm() == null
+                        && sistema == SistemaTransporte.TRANSCARIBE);
+    }
 }
