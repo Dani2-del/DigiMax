@@ -60,7 +60,7 @@ class AdminUsersControllerTest {
         assertThat(response.getBody()).isEqualTo(new AdminUsersController.UserPage(
                 List.of(new AdminUsersController.UserSummary(
                         "user-1", "Persona", "persona@example.com", Usuario.ROLE_USER,
-                        true, false, user.getFechaRegistro(), null)),
+                        true, false, user.getFechaRegistro(), null, null)),
                 1, 1, 0, 50));
         verify(mongoTemplate).find(any(Query.class), eq(Usuario.class));
     }
@@ -76,7 +76,7 @@ class AdminUsersControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AdminUsersController.UserSummary(
                 "user-1", "Persona", "persona@example.com", Usuario.ROLE_USER,
-                true, false, user.getFechaRegistro(), null));
+                true, false, user.getFechaRegistro(), null, null));
     }
 
     @Test
@@ -102,7 +102,7 @@ class AdminUsersControllerTest {
 
         var response = controller.updateUser("user-1",
                 new AdminUsersController.UpdateUserRequest(
-                        "Persona nueva", " Persona.Nueva@Example.com ", Usuario.ROLE_CONDUCTOR, true),
+                        "Persona nueva", " Persona.Nueva@Example.com ", Usuario.ROLE_CONDUCTOR, true, null),
                 administrator);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
@@ -110,5 +110,26 @@ class AdminUsersControllerTest {
         assertThat(user.getCorreo()).isEqualTo("persona.nueva@example.com");
         assertThat(user.getRole()).isEqualTo(Usuario.ROLE_CONDUCTOR);
         verify(usuarios).save(user);
+    }
+
+    @Test
+    void assignsModeratorToValidService() {
+        Usuario user = new Usuario("persona@example.com", "password-hash", "Persona");
+        user.setId("user-1");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(user));
+        when(usuarios.findByCorreoIgnoreCase("persona@example.com")).thenReturn(Optional.of(user));
+        when(usuarios.save(user)).thenReturn(user);
+        var administrator = User.withUsername("admin@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_ADMIN)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Persona", "persona@example.com", Usuario.ROLE_MODERATOR, true, "TRANSMILENIO"),
+                administrator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(user.getServicioAsignado()).isEqualTo("TRANSMILENIO");
     }
 }

@@ -4,100 +4,265 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjeta universal | Digitrans</title>
-    <style>
-        :root { color-scheme: light; font-family: system-ui, sans-serif; color: #17324d; }
-        body { margin: 0; background: #f3f6fa; }
-        main { max-width: 760px; margin: 40px auto; padding: 24px; }
-        .panel { background: white; border-radius: 18px; padding: 24px; box-shadow: 0 8px 28px #17324d12; }
-        .universal-card { position: relative; overflow: hidden; color: white; min-height: 220px; padding: 24px 28px; border-radius: 20px; background: linear-gradient(125deg, #14385b 0%, #087c86 100%); box-shadow: 0 14px 30px #17324d24; }
-        .card-heading, .card-footer { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
-        .card-title { margin: 0; font-weight: 700; letter-spacing: .08em; }
-        .card-chip { display: inline-block; width: 44px; height: 32px; margin-top: 22px; border: 1px solid #ffffff99; border-radius: 7px; background: linear-gradient(135deg, #e5d8a4, #b7a66b); }
-        .number { margin: 17px 0; font: 600 1.15rem ui-monospace, monospace; letter-spacing: .12em; }
-        .card-footer { align-items: end; }
-        .card-holder { text-transform: uppercase; letter-spacing: .08em; font-size: .78rem; }
-        .balance { font-size: 1.55rem; font-weight: 750; text-align: right; }
-        .card-glow { position: absolute; width: 220px; height: 220px; right: -75px; top: -100px; border: 1px solid #ffffff26; border-radius: 50%; box-shadow: 0 0 0 24px #ffffff0c, 0 0 0 48px #ffffff08; pointer-events: none; }
-        .panel { margin-top: 18px; }
-        form { display: flex; flex-direction: column; gap: 12px; }
-        input, button { font: inherit; padding: 11px 14px; border: 1px solid #cbd5e1; border-radius: 9px; }
-        button { background: #087c86; color: white; border: 0; cursor: pointer; }
-        .payment-methods { display: flex; gap: 12px; flex-wrap: wrap; }
-        .payment-method { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 10px; }
-        .payment-method input { margin: 0; }
-        .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
-        .error { background: #fff0ed; }
-        table { width: 100%; border-collapse: collapse; margin-top: 14px; }
-        th, td { padding: 10px 6px; border-bottom: 1px solid #e5eaf0; text-align: left; }
-        .muted { color: #64748b; }
-        @media (max-width: 520px) { main { margin: 0 auto; padding: 14px; } .card, .panel { padding: 18px; } }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/billetera.css}">
 </head>
 <body>
-<main>
-    <h1>Tarjeta universal</h1>
-    <p th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '.'}"></p>
+<main class="wallet-page">
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">DIGITRANS · BILLETERA</p>
+            <h1>Tu tarjeta universal</h1>
+            <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '.'}"></p>
+        </div>
+        <a class="back-link" th:href="${accesoUrl + '/servicios'}">← Servicios</a>
+    </header>
     <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
     <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
 
-    <section class="universal-card" aria-label="Tarjeta universal Digitrans">
+    <section th:if="${walletExists}" class="universal-card" aria-label="Tarjeta universal Digitrans">
         <span class="card-glow" aria-hidden="true"></span>
         <div class="card-heading">
-            <p class="card-title">DIGITRANS <span style="font-weight:400">· UNIVERSAL</span></p>
-            <span aria-hidden="true">●</span>
+            <p class="card-title">DIGITRANS <span>· UNIVERSAL</span></p>
+            <span class="card-mark" aria-hidden="true">●</span>
         </div>
         <span class="card-chip" aria-hidden="true"></span>
         <p class="number" th:text="${wallet.numeroTarjeta}"></p>
         <div class="card-footer">
             <div>
                 <span class="card-holder" th:text="${identity.name() != null ? identity.name() : identity.email()}"></span>
-                <p><small>SALDO COMPARTIDO · COP</small></p>
+                <p class="card-caption">SALDO DISPONIBLE · COP</p>
             </div>
             <div class="balance"
                  th:text="${'$ ' + #numbers.formatDecimal(wallet.saldo, 0, 'COMMA', 2, 'POINT')}"></div>
         </div>
     </section>
 
-    <section class="panel">
-        <h2>Cargar saldo</h2>
-        <p class="muted">Elige un método de prueba. No se solicitarán credenciales bancarias y no se realizará ningún pago real.</p>
+    <section th:unless="${walletExists}" class="panel">
+        <h2>Tu tarjeta universal no está activa</h2>
+        <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si el sistema ya había generado una tarjeta, la activaremos conservando su saldo y movimientos; de lo contrario, crearemos una nueva. No se activará hasta que confirmes.</p>
+        <div class="activation-step">
+            <button type="button" class="button-secondary" data-activation-first>
+                Sí, quiero activar mi tarjeta
+            </button>
+        </div>
+        <div class="activation-step" data-activation-final hidden>
+            <p role="status"><strong>Segunda confirmación:</strong> al continuar se activará tu tarjeta Digitrans.</p>
+            <form th:action="@{/tarjeta/crear}" method="post">
+                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit">Confirmar y activar mi tarjeta Digitrans</button>
+            </form>
+        </div>
+        <p><a th:href="${accesoUrl + '/servicios'}">Ahora no, volver a servicios</a></p>
+    </section>
+
+    <section th:if="${walletExists}" class="panel">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">FONDOS</p>
+                <h2>Cargar saldo</h2>
+            </div>
+            <span class="section-icon" aria-hidden="true">＋</span>
+        </div>
+        <p class="muted">Esta es una demostración: no se realizará ningún pago real.</p>
+        <p class="notice demo-warning" role="note">
+            Usa únicamente datos ficticios. No ingreses tu contraseña real de PSE ni datos reales de tarjeta.
+            Estos campos son solo visuales y no se envían ni se guardan.
+        </p>
         <form th:action="@{/saldo/abonar}" method="post">
             <label for="monto">Monto (COP)</label>
             <input id="monto" name="monto" type="number" min="1" max="1000000"
                    step="1" required>
             <fieldset style="border:0;padding:0;margin:0">
-                <legend>Método de pago simulado</legend>
+                <legend>Método de pago (simulación)</legend>
                 <div class="payment-methods">
                     <label class="payment-method">
-                        <input type="radio" name="metodoPago" value="PSE" checked required>
+                        <input type="radio" name="metodoPago" value="PSE" checked required data-payment-method>
                         PSE
                     </label>
                     <label class="payment-method">
-                        <input type="radio" name="metodoPago" value="TARJETA_DEBITO" required>
-                        Tarjeta débito
+                        <input type="radio" name="metodoPago" value="TARJETA_CREDITO_DEBITO" required data-payment-method>
+                        Tarjeta de crédito/débito
                     </label>
                 </div>
             </fieldset>
+            <div class="payment-details" data-payment-details="PSE">
+                <div class="payment-fields">
+                    <label for="pse-email">Correo PSE de prueba
+                        <input id="pse-email" type="email" placeholder="correo@ejemplo.com"
+                               autocomplete="off" data-demo-field>
+                    </label>
+                    <label for="pse-password">Contraseña ficticia
+                        <input id="pse-password" type="password" placeholder="Solo para la demostración"
+                               autocomplete="new-password" data-demo-field>
+                    </label>
+                </div>
+            </div>
+            <div class="payment-details" data-payment-details="TARJETA_CREDITO_DEBITO" hidden>
+                <div class="payment-fields">
+                    <label for="card-number">Número de tarjeta ficticio
+                        <input id="card-number" type="text" inputmode="numeric" maxlength="19"
+                               placeholder="1234 5678 9012 3456" autocomplete="off" disabled data-demo-field>
+                    </label>
+                    <div class="payment-fields two-columns">
+                        <label for="card-expiry">Vencimiento (MM/AA)
+                            <input id="card-expiry" type="text" inputmode="numeric" maxlength="5"
+                                   placeholder="MM/AA" autocomplete="off" disabled data-demo-field>
+                        </label>
+                        <label for="card-cvv">CVV ficticio
+                            <input id="card-cvv" type="password" inputmode="numeric" maxlength="4"
+                                   placeholder="123" autocomplete="off" disabled data-demo-field>
+                        </label>
+                    </div>
+                </div>
+            </div>
             <button type="submit">Simular carga de saldo</button>
         </form>
     </section>
 
-    <section class="panel">
-        <h2>Movimientos recientes</h2>
-        <p th:if="${#lists.isEmpty(movimientos)}" class="muted">Todavía no hay movimientos.</p>
-        <table th:unless="${#lists.isEmpty(movimientos)}">
-            <thead><tr><th>Fecha</th><th>Detalle</th><th>Tipo</th><th>Monto</th></tr></thead>
-            <tbody>
-            <tr th:each="movimiento : ${movimientos}">
-                <td th:text="${movimiento.fecha != null ? #temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
-                <td th:text="${movimiento.descripcion}"></td>
-                <td th:text="${movimiento.tipo}"></td>
-                <td th:text="${'$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')}"></td>
-            </tr>
-            </tbody>
-        </table>
+    <section th:if="${walletExists}" class="panel history-panel">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">ACTIVIDAD</p>
+                <h2>Movimientos de tu tarjeta</h2>
+                <p class="muted" th:text="${#lists.size(movimientos) + ' movimientos registrados'}"></p>
+            </div>
+            <span class="section-icon history-icon" aria-hidden="true">↕</span>
+        </div>
+        <p th:if="${#lists.isEmpty(movimientos)}" class="empty-state">
+            Todavía no hay movimientos. Cuando uses tu tarjeta, aparecerán aquí.
+        </p>
+        <div th:unless="${#lists.isEmpty(movimientos)}">
+            <button class="button-secondary history-toggle" type="button" aria-expanded="false"
+                    data-history-toggle>
+                Ver movimientos
+            </button>
+            <div class="history-content" hidden data-history-content>
+            <div class="history-filters" hidden data-history-filters>
+                <label for="service-filter">Servicio
+                    <select id="service-filter" data-service-filter>
+                        <option value="">Todos los servicios</option>
+                        <option value="Billetera">Billetera</option>
+                        <option value="Paquetes y recargas">Paquetes y recargas</option>
+                        <option value="Transcaribe">Transcaribe</option>
+                        <option value="TransMilenio">TransMilenio</option>
+                        <option value="Transmetro">Transmetro</option>
+                        <option value="Transporte">Otro transporte</option>
+                        <option value="Otros">Otros</option>
+                    </select>
+                </label>
+                <label for="type-filter">Tipo de movimiento
+                    <select id="type-filter" data-type-filter>
+                        <option value="">Todos los tipos</option>
+                        <option value="RECARGA">Recargas</option>
+                        <option value="PAGO">Pagos</option>
+                    </select>
+                </label>
+            </div>
+            <div class="table-wrap">
+                <table class="movement-table">
+                    <thead><tr><th>Movimiento</th><th>Servicio</th><th>Fecha</th><th class="amount-heading">Valor</th></tr></thead>
+                    <tbody data-movement-list>
+                    <tr th:each="movimiento : ${movimientos}"
+                        th:attr="data-service=${movimiento.servicio},data-type=${movimiento.categoria}">
+                        <td>
+                            <span class="movement-kind"
+                                  th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : ' is-debit'"
+                                  th:text="${movimiento.categoria == 'RECARGA' ? 'Recarga' : 'Pago'}"></span>
+                            <span class="movement-description" th:text="${movimiento.descripcion}"></span>
+                        </td>
+                        <td><span class="service-pill" th:text="${movimiento.servicio}"></span></td>
+                        <td class="movement-date"
+                            th:text="${movimiento.fecha != null ? #temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                        <td class="movement-amount"
+                            th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : ' is-debit'"
+                            th:text="${(movimiento.categoria == 'RECARGA' ? '+' : '−') + '$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')}"></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="empty-filtered" hidden data-empty-filtered>No hay movimientos que coincidan con esos filtros.</p>
+            <button class="button-secondary expand-movements" type="button" hidden data-expand-movements>
+                Mostrar todos los movimientos
+            </button>
+            </div>
+        </div>
     </section>
-    <p><a th:href="${accesoUrl + '/servicios'}">Volver a servicios</a></p>
+    <footer class="page-footer">DIGITRANS · Tu movilidad, en un solo lugar</footer>
 </main>
+<script>
+    const paymentMethods = document.querySelectorAll("[data-payment-method]");
+    const paymentDetails = document.querySelectorAll("[data-payment-details]");
+    const activationFirst = document.querySelector("[data-activation-first]");
+    const activationFinal = document.querySelector("[data-activation-final]");
+
+    function updatePaymentDetails() {
+        const selectedMethod = document.querySelector("[data-payment-method]:checked")?.value;
+        paymentDetails.forEach((section) => {
+            const isSelected = section.dataset.paymentDetails === selectedMethod;
+            section.hidden = !isSelected;
+            section.querySelectorAll("[data-demo-field]").forEach((field) => {
+                field.disabled = !isSelected;
+                field.required = isSelected;
+                if (!isSelected) field.value = "";
+            });
+        });
+    }
+
+    paymentMethods.forEach((method) => method.addEventListener("change", updatePaymentDetails));
+    updatePaymentDetails();
+
+    activationFirst?.addEventListener("click", () => {
+        activationFirst.disabled = true;
+        activationFirst.textContent = "Primera confirmación registrada";
+        activationFinal.hidden = false;
+        activationFinal.querySelector("button").focus();
+    });
+
+    const historyToggle = document.querySelector("[data-history-toggle]");
+    const historyContent = document.querySelector("[data-history-content]");
+    const historyFilters = document.querySelector("[data-history-filters]");
+    const movementRows = [...document.querySelectorAll("[data-movement-list] tr")];
+    const serviceFilter = document.querySelector("[data-service-filter]");
+    const typeFilter = document.querySelector("[data-type-filter]");
+    const emptyFiltered = document.querySelector("[data-empty-filtered]");
+    const expandMovements = document.querySelector("[data-expand-movements]");
+    let showAllMovements = false;
+    let historyIsOpen = false;
+
+    function filterMovements() {
+        if (!expandMovements || !emptyFiltered) return;
+        const service = serviceFilter?.value ?? "";
+        const type = typeFilter?.value ?? "";
+        const matchingRows = movementRows.filter((row) =>
+            (!service || row.dataset.service === service)
+            && (!type || row.dataset.type === type));
+        movementRows.forEach((row) => {
+            const matches = matchingRows.includes(row);
+            row.hidden = !matches || (!showAllMovements && matchingRows.indexOf(row) >= 5);
+        });
+        emptyFiltered.hidden = matchingRows.length > 0;
+        expandMovements.textContent = showAllMovements
+            ? "Mostrar solo los últimos 5"
+            : "Mostrar todos los movimientos";
+        expandMovements.hidden = matchingRows.length <= 5;
+        expandMovements.setAttribute("aria-expanded", String(showAllMovements));
+    }
+
+    historyToggle?.addEventListener("click", () => {
+        historyIsOpen = !historyIsOpen;
+        historyContent.hidden = !historyIsOpen;
+        historyFilters.hidden = !historyIsOpen;
+        historyToggle.textContent = historyIsOpen ? "Ocultar movimientos" : "Ver movimientos";
+        historyToggle.setAttribute("aria-expanded", String(historyIsOpen));
+        filterMovements();
+    });
+    expandMovements?.addEventListener("click", () => {
+        showAllMovements = !showAllMovements;
+        filterMovements();
+    });
+    serviceFilter?.addEventListener("change", filterMovements);
+    typeFilter?.addEventListener("change", filterMovements);
+    filterMovements();
+</script>
 </body>
 </html>

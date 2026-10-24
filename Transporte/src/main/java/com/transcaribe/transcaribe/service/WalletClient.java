@@ -2,6 +2,7 @@ package com.transcaribe.transcaribe.service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -55,16 +56,26 @@ public class WalletClient {
     }
 
     public Wallet getWallet(String usuarioId) {
+        return findWallet(usuarioId)
+                .orElseThrow(() -> new WalletNotFoundException());
+    }
+
+    public Optional<Wallet> findWallet(String usuarioId) {
         String token = tokenForUser(usuarioId);
-        Wallet wallet = restClient.get()
-                .uri(billeteraUrl + "/api/wallet/me")
-                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
-                .retrieve()
-                .body(Wallet.class);
+        Wallet wallet;
+        try {
+            wallet = restClient.get()
+                    .uri(billeteraUrl + "/api/wallet/me")
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                    .retrieve()
+                    .body(Wallet.class);
+        } catch (HttpClientErrorException.NotFound exception) {
+            return Optional.empty();
+        }
         if (wallet == null) {
             throw new IllegalStateException("Billetera no devolvió la tarjeta universal.");
         }
-        return wallet;
+        return Optional.of(wallet);
     }
 
     private String tokenForUser(String usuarioId) {
@@ -96,6 +107,12 @@ public class WalletClient {
     public static class InsufficientWalletBalanceException extends RuntimeException {
         public InsufficientWalletBalanceException() {
             super("Saldo insuficiente en la tarjeta universal.");
+        }
+    }
+
+    public static class WalletNotFoundException extends RuntimeException {
+        public WalletNotFoundException() {
+            super("Este usuario todavía no tiene una tarjeta Digitrans.");
         }
     }
 }

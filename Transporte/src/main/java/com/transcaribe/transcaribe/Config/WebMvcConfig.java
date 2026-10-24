@@ -16,6 +16,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(adminSistemaInterceptor).addPathPatterns("/admin/**")
-                .excludePathPatterns("/admin/seleccionar-entidad", "/admin/contexto");
+                .excludePathPatterns("/admin/seleccionar-entidad", "/admin/contexto", "/admin/contexto/confirmar");
     }
 }

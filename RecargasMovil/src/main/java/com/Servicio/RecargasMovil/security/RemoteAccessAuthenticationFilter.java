@@ -1,6 +1,7 @@
 package com.Servicio.RecargasMovil.security;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -59,9 +60,14 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                         && identity.role() != null && identity.active()) {
                     AuthenticatedIdentity principal = new AuthenticatedIdentity(
                             identity.id(), identity.email(), identity.name(), identity.role());
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                    authorities.add(new SimpleGrantedAuthority(identity.role()));
+                    if ("ROLE_MODERATOR".equals(identity.role())
+                            && "RECARGAS_MOVIL".equals(identity.serviceAssignment())) {
+                        authorities.add(new SimpleGrantedAuthority("MODERATOR_RECARGAS_MOVIL"));
+                    }
                     var authentication = new UsernamePasswordAuthenticationToken(
-                            principal, null,
-                            List.of(new SimpleGrantedAuthority(identity.role())));
+                            principal, null, authorities);
                     request.setAttribute(TOKEN_ATTRIBUTE, token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
@@ -105,6 +111,7 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                 "JWT_TOKEN=; Path=/; Max-Age=0; HttpOnly; SameSite=Lax" + secure);
     }
 
-    private record Identity(String id, String email, String name, String role, boolean active) {
+    private record Identity(
+            String id, String email, String name, String role, boolean active, String serviceAssignment) {
     }
 }

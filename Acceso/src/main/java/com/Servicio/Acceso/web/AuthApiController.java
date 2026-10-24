@@ -108,7 +108,8 @@ public class AuthApiController {
     private AuthenticatedUserResponse toAuthenticatedUser(Usuario usuario) {
         return new AuthenticatedUserResponse(
                 usuario.getId(), usuario.getCorreo(), usuario.getNombre(), normalizeRole(usuario.getRole()),
-                usuario.isActivo(), usuario.isVerificado(), usuario.getFechaRegistro(), usuario.getTelefono());
+                usuario.isActivo(), usuario.isVerificado(), usuario.getFechaRegistro(), usuario.getTelefono(),
+                usuario.getServicioAsignado());
     }
 
     private UserDetails validPrincipal(String authorization) {
@@ -152,7 +153,8 @@ public class AuthApiController {
             boolean active,
             boolean verified,
             java.time.LocalDateTime registeredAt,
-            String phone) {
+            String phone,
+            String serviceAssignment) {
     }
 
     public record AdministrativeContact(String id, String email, String role) {

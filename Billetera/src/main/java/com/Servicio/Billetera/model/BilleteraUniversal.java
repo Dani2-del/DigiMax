@@ -22,6 +22,9 @@ public class BilleteraUniversal {
     @Field("saldo")
     private BigDecimal saldo = BigDecimal.ZERO;
 
+    @Field("activada_por_usuario")
+    private boolean activadaPorUsuario;
+
     @Field("movimientos")
     private List<MovimientoBilletera> movimientos = new ArrayList<>();
 
@@ -33,6 +36,11 @@ public class BilleteraUniversal {
 
     public BigDecimal getSaldo() { return saldo == null ? BigDecimal.ZERO : saldo; }
     public void setSaldo(BigDecimal saldo) { this.saldo = saldo; }
+
+    public boolean isActivadaPorUsuario() { return activadaPorUsuario; }
+    public void setActivadaPorUsuario(boolean activadaPorUsuario) {
+        this.activadaPorUsuario = activadaPorUsuario;
+    }
 
     public List<MovimientoBilletera> getMovimientos() {
         return movimientos == null ? List.of() : movimientos;

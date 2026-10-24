@@ -66,7 +66,7 @@ class AuthApiControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AuthApiController.AuthenticatedUserResponse(
                 "123", "persona@example.com", "Persona", Usuario.ROLE_USER,
-                true, false, usuario.getFechaRegistro(), null));
+                true, false, usuario.getFechaRegistro(), null, null));
     }
 
     @Test
@@ -87,7 +87,7 @@ class AuthApiControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsExactly(new AuthApiController.AuthenticatedUserResponse(
                 "user-2", "pasajero@example.com", "Pasajero", Usuario.ROLE_USER,
-                true, false, target.getFechaRegistro(), null));
+                true, false, target.getFechaRegistro(), null, null));
     }
 
     @Test

@@ -40,9 +40,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/error/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()
+                        .requestMatchers("/admin/**").hasAnyAuthority("MODERATOR_BILLETERA", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(
                         (request, response, authException) -> response.sendRedirect(accesoUrl + "/login")))
                 .logout(logout -> logout

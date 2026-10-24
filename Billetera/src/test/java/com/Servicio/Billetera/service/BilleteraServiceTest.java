@@ -53,7 +53,75 @@ class BilleteraServiceTest {
     }
 
     @Test
-    void concurrentProvisioningReturnsExistingWalletInsteadOfCreatingAnother() {
+    void movementClassifiesWalletTopUpsAsRecharge() {
+        MovimientoBilletera movement = new MovimientoBilletera(
+                "operation-1", "ABONO", "Carga simulada con PSE",
+                new BigDecimal("20000"), null);
+
+        assertThat(movement.getServicio()).isEqualTo("Billetera");
+        assertThat(movement.getCategoria()).isEqualTo("RECARGA");
+    }
+
+    @Test
+    void movementInfersServiceForExistingTransportAndRechargeRecords() {
+        MovimientoBilletera transport = new MovimientoBilletera(
+                "operation-1", "CONSUMO", "Pasaje TransMilenio: ruta M86",
+                new BigDecimal("3000"), null);
+        MovimientoBilletera recharge = new MovimientoBilletera(
+                "operation-2", "CONSUMO", "Paquete Claro para 3001234567",
+                new BigDecimal("5000"), null);
+
+        assertThat(transport.getServicio()).isEqualTo("TransMilenio");
+        assertThat(transport.getCategoria()).isEqualTo("PAGO");
+        assertThat(recharge.getServicio()).isEqualTo("Paquetes y recargas");
+    }
+
+    @Test
+    void checkingForWalletDoesNotCreateOne() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.empty());
+
+        assertThat(service.buscar("user-1")).isEmpty();
+        verify(billeteras, times(0)).insert(any(BilleteraUniversal.class));
+    }
+
+    @Test
+    void existingWalletIsHiddenUntilUserAcceptsAndThenKeepsItsBalance() {
+        BilleteraUniversal existing = wallet("user-1", "2500");
+        existing.setActivadaPorUsuario(false);
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(existing));
+        when(billeteras.save(existing)).thenReturn(existing);
+
+        assertThat(service.buscar("user-1")).isEmpty();
+        assertThat(service.crear("user-1")).isSameAs(existing);
+
+        assertThat(existing.isActivadaPorUsuario()).isTrue();
+        assertThat(existing.getSaldo()).isEqualByComparingTo("2500");
+        verify(billeteras, times(0)).insert(any(BilleteraUniversal.class));
+    }
+
+    @Test
+    void explicitCreationMarksNewWalletAsAccepted() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.empty());
+        when(billeteras.insert(any(BilleteraUniversal.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        BilleteraUniversal created = service.crear("user-1");
+
+        assertThat(created.isActivadaPorUsuario()).isTrue();
+        assertThat(created.getNumeroTarjeta()).startsWith("UNI-");
+    }
+
+    @Test
+    void readingMissingWalletDoesNotProvisionIt() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.obtener("user-1"))
+                .isInstanceOf(BilleteraService.WalletNotFoundException.class);
+        verify(billeteras, times(0)).insert(any(BilleteraUniversal.class));
+    }
+
+    @Test
+    void concurrentExplicitCreationReturnsExistingWalletInsteadOfCreatingAnother() {
         BilleteraUniversal existing = wallet("user-1", "0");
         AtomicInteger lookupCount = new AtomicInteger();
         when(billeteras.findById("user-1")).thenAnswer(invocation ->
@@ -61,7 +129,7 @@ class BilleteraServiceTest {
         when(billeteras.insert(any(BilleteraUniversal.class)))
                 .thenThrow(new DuplicateKeyException("duplicate user wallet"));
 
-        assertThat(service.obtener("user-1")).isSameAs(existing);
+        assertThat(service.crear("user-1")).isSameAs(existing);
 
         verify(billeteras, times(1)).insert(any(BilleteraUniversal.class));
     }
@@ -93,11 +161,24 @@ class BilleteraServiceTest {
     }
 
     @Test
+    void simulatedTopUpAcceptsCreditOrDebitCard() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "2500")));
+        BilleteraUniversal updated = wallet("user-1", "22500");
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(updated);
+
+        BilleteraUniversal result = service.abonarSimulado(
+                "user-1", new BigDecimal("20000"), "operation-1", "TARJETA_CREDITO_DEBITO");
+
+        assertThat(result.getSaldo()).isEqualByComparingTo("22500");
+    }
+
+    @Test
     void rejectsUnsupportedSimulatedTopUpMethod() {
         assertThatThrownBy(() -> service.abonarSimulado(
                 "user-1", new BigDecimal("20000"), "operation-1", "TRANSFERENCIA"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Selecciona PSE o tarjeta débito.");
+                .hasMessage("Selecciona PSE o tarjeta crédito/débito.");
     }
 
     @Test
@@ -146,6 +227,7 @@ class BilleteraServiceTest {
         wallet.setUsuarioId(userId);
         wallet.setNumeroTarjeta("UNI-TEST000000");
         wallet.setSaldo(new BigDecimal(balance));
+        wallet.setActivadaPorUsuario(true);
         return wallet;
     }
 }

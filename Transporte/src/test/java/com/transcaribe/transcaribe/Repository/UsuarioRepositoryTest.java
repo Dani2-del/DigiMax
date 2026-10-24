@@ -70,7 +70,7 @@ class UsuarioRepositoryTest {
                 .append("correo", "persona@example.com");
         AccessUser identity = new AccessUser(
                 "central-user-id", "Persona", "persona@example.com", Usuario.ROLE_USER,
-                true, true, null, null);
+                true, true, null, null, null);
         when(perfiles.findByNumeroTarjetaEnLista("card-1")).thenReturn(Optional.empty());
         when(mongoTemplate.findOne(any(Query.class), eq(Document.class), eq("usuarios")))
                 .thenReturn(legacyUser)
@@ -82,6 +82,40 @@ class UsuarioRepositoryTest {
 
         assertThat(result).isPresent();
         assertThat(result.orElseThrow().getId()).isEqualTo("central-user-id");
+    }
+
+    @Test
+    void usesCentralModeratorServiceAssignmentOverTransportProfile() {
+        AccessUser identity = new AccessUser(
+                "central-user-id", "Persona", "persona@example.com", Usuario.ROLE_MODERATOR,
+                true, true, null, null, "TRANSMETRO");
+        PerfilTransporte profile = new PerfilTransporte();
+        profile.setId("central-user-id");
+        profile.setUsuarioId("central-user-id");
+        profile.setSistemaAsignado(SistemaTransporte.TRANSCARIBE);
+        acceso.identity = identity;
+        when(perfiles.findByUsuarioId("central-user-id")).thenReturn(Optional.of(profile));
+
+        Usuario result = repository.findByCorreoIgnoreCase("persona@example.com").orElseThrow();
+
+        assertThat(result.getSistemaAsignado()).isEqualTo(SistemaTransporte.TRANSMETRO);
+    }
+
+    @Test
+    void doesNotTreatAnotherServiceModeratorAsTransportModerator() {
+        AccessUser identity = new AccessUser(
+                "central-user-id", "Persona", "persona@example.com", Usuario.ROLE_MODERATOR,
+                true, true, null, null, "RECARGAS_MOVIL");
+        PerfilTransporte profile = new PerfilTransporte();
+        profile.setId("central-user-id");
+        profile.setUsuarioId("central-user-id");
+        profile.setSistemaAsignado(SistemaTransporte.TRANSCARIBE);
+        acceso.identity = identity;
+        when(perfiles.findByUsuarioId("central-user-id")).thenReturn(Optional.of(profile));
+
+        Usuario result = repository.findByCorreoIgnoreCase("persona@example.com").orElseThrow();
+
+        assertThat(result.getSistemaAsignado()).isNull();
     }
 
     @Test
@@ -111,7 +145,8 @@ class UsuarioRepositoryTest {
         }
 
         @Override
-        public AccessUser updateUser(String id, String name, String email, String role, boolean active) {
+        public AccessUser updateUser(
+                String id, String name, String email, String role, boolean active, String serviceAssignment) {
             updatedId = id;
             updatedActive = active;
             return null;

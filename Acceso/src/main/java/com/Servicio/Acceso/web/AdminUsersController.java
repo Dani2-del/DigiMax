@@ -41,6 +41,8 @@ public class AdminUsersController {
     private static final int MAX_PAGE_SIZE = 100;
     private static final Set<String> ALLOWED_ROLES = Set.of(
             Usuario.ROLE_USER, Usuario.ROLE_ADMIN, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
+    private static final Set<String> MODERATOR_SERVICES = Set.of(
+            "TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO", "RECARGAS_MOVIL", "BILLETERA");
 
     private final MongoTemplate mongoTemplate;
     private final UsuarioRepository usuarios;
@@ -141,10 +143,17 @@ public class AdminUsersController {
         if (!ALLOWED_ROLES.contains(request.role())) {
             return ResponseEntity.badRequest().body(new ErrorResponse("El rol seleccionado no es válido."));
         }
-
         Usuario usuario = usuarios.findById(id).orElse(null);
         if (usuario == null) {
             return ResponseEntity.notFound().build();
+        }
+        String serviceAssignment = StringUtils.hasText(request.serviceAssignment())
+                ? request.serviceAssignment().trim().toUpperCase(Locale.ROOT)
+                : usuario.getServicioAsignado();
+        if (Usuario.ROLE_MODERATOR.equals(request.role())
+                && (!StringUtils.hasText(serviceAssignment) || !MODERATOR_SERVICES.contains(serviceAssignment))) {
+            return ResponseEntity.badRequest()
+                    .body(new ErrorResponse("Selecciona un servicio válido para el moderador."));
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
@@ -163,6 +172,8 @@ public class AdminUsersController {
         usuario.setCorreo(normalizedEmail);
         usuario.setRole(request.role());
         usuario.setActivo(request.active());
+        usuario.setServicioAsignado(Usuario.ROLE_MODERATOR.equals(request.role())
+                ? serviceAssignment : null);
         try {
             return ResponseEntity.ok()
                     .cacheControl(CacheControl.noStore())
@@ -179,7 +190,8 @@ public class AdminUsersController {
             role = "ROLE_" + role;
         }
         return new UserSummary(usuario.getId(), usuario.getNombre(), usuario.getCorreo(), role,
-                usuario.isActivo(), usuario.isVerificado(), usuario.getFechaRegistro(), usuario.getTelefono());
+                usuario.isActivo(), usuario.isVerificado(), usuario.getFechaRegistro(), usuario.getTelefono(),
+                usuario.getServicioAsignado());
     }
 
     public record UserSummary(
@@ -190,7 +202,8 @@ public class AdminUsersController {
             boolean active,
             boolean verified,
             LocalDateTime registeredAt,
-            String phone) {
+            String phone,
+            String serviceAssignment) {
     }
 
     public record UserPage(List<UserSummary> content, long totalElements, int totalPages, int page, int size) {
@@ -200,7 +213,8 @@ public class AdminUsersController {
             @NotBlank String name,
             @NotBlank @Email String email,
             @NotBlank String role,
-            @NotNull Boolean active) {
+            @NotNull Boolean active,
+            String serviceAssignment) {
     }
 
     public record ErrorResponse(String message) {

@@ -60,8 +60,11 @@ public class ServiceLandingController {
         model.addAttribute("accesoUrl", accesoUrl);
         model.addAttribute("billeteraUrl", billeteraUrl);
         model.addAttribute("walletError", false);
+        model.addAttribute("walletMissing", false);
         try {
             model.addAttribute("wallet", walletClient.getWallet(token(request)));
+        } catch (WalletClient.WalletNotFoundException exception) {
+            model.addAttribute("walletMissing", true);
         } catch (ResourceAccessException exception) {
             model.addAttribute("walletError", true);
             model.addAttribute("error",
@@ -100,6 +103,32 @@ public class ServiceLandingController {
         return "redirect:/";
     }
 
+    @PostMapping("/tarjeta/crear")
+    public String createWallet(
+            HttpServletRequest request,
+            @RequestParam(defaultValue = "false") boolean confirmacionFinal,
+            RedirectAttributes redirectAttributes) {
+        if (!confirmacionFinal) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Confirma que quieres crear tu tarjeta Digitrans antes de continuar.");
+            return "redirect:/";
+        }
+        try {
+            walletClient.createWallet(token(request));
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Tu tarjeta Digitrans fue creada. Ya puedes comprar paquetes desde Recargas.");
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo conectar con Billetera. No podemos confirmar si la tarjeta se creó; actualiza la página antes de volver a intentarlo.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+                    + exception.getStatusCode().value() + ").");
+        } catch (IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/";
+    }
+
     @PostMapping("/recargar")
     public String recharge(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
@@ -116,6 +145,8 @@ public class ServiceLandingController {
                             ? "Recarga simulada completada. El costo se descontó de tu tarjeta universal."
                             : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
         } catch (InsufficientWalletBalanceException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletNotFoundException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
@@ -140,6 +171,8 @@ public class ServiceLandingController {
             var recharge = recargasService.reintentarRecarga(identity.id(), operationId, token(request));
             redirectAttributes.addFlashAttribute("mensaje", "Estado de recarga: " + recharge.getEstado());
         } catch (InsufficientWalletBalanceException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletNotFoundException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());

@@ -1,6 +1,8 @@
 package com.Servicio.Billetera.web;
 
 import java.math.BigDecimal;
+import java.util.Comparator;
+import java.util.Optional;
 import java.util.List;
 import java.util.UUID;
 
@@ -48,12 +50,28 @@ public class BilleteraController {
 
     @GetMapping("/")
     public String index(@AuthenticationPrincipal AuthenticatedIdentity identity, Model model) {
-        BilleteraUniversal wallet = billeteraService.obtener(identity.id());
+        Optional<BilleteraUniversal> wallet = billeteraService.buscar(identity.id());
         model.addAttribute("identity", identity);
-        model.addAttribute("wallet", wallet);
-        model.addAttribute("movimientos", billeteraService.historial(identity.id()));
+        model.addAttribute("wallet", wallet.orElse(null));
+        model.addAttribute("walletExists", wallet.isPresent());
+        model.addAttribute("movimientos", wallet.map(BilleteraUniversal::getMovimientos)
+                .map(movimientos -> movimientos.stream()
+                        .sorted(Comparator.comparing(MovimientoBilletera::getFecha,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
+                        .toList())
+                .orElse(List.of()));
         model.addAttribute("accesoUrl", accesoUrl);
         return "billetera";
+    }
+
+    @PostMapping("/tarjeta/crear")
+    public String createWallet(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            RedirectAttributes redirectAttributes) {
+        billeteraService.crear(identity.id());
+        redirectAttributes.addFlashAttribute("mensaje",
+                "Tu tarjeta Digitrans se creó correctamente.");
+        return "redirect:/";
     }
 
     @PostMapping("/saldo/abonar")
@@ -70,12 +88,19 @@ public class BilleteraController {
                             + " completada. No se realizó ningún pago real.");
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Activa tu tarjeta Digitrans antes de cargar saldo.");
         }
         return "redirect:/";
     }
 
     private static String metodoPagoLegible(String metodoPago) {
-        return "TARJETA_DEBITO".equals(metodoPago) ? "tarjeta débito" : "PSE";
+        return switch (metodoPago) {
+            case "TARJETA_DEBITO" -> "tarjeta débito";
+            case "TARJETA_CREDITO_DEBITO" -> "tarjeta crédito/débito";
+            default -> "PSE";
+        };
     }
 
     @RestController
@@ -89,15 +114,24 @@ public class BilleteraController {
         }
 
         @GetMapping
-        public WalletResponse wallet(@AuthenticationPrincipal AuthenticatedIdentity identity) {
-            return WalletResponse.from(billeteraService.obtener(identity.id()));
+        public ResponseEntity<?> wallet(@AuthenticationPrincipal AuthenticatedIdentity identity) {
+            return billeteraService.buscar(identity.id())
+                    .<ResponseEntity<?>>map(wallet -> ResponseEntity.ok(WalletResponse.from(wallet)))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
+        }
+
+        @PostMapping
+        public WalletResponse createWallet(@AuthenticationPrincipal AuthenticatedIdentity identity) {
+            return WalletResponse.from(billeteraService.crear(identity.id()));
         }
 
         @GetMapping("/movements")
-        public List<MovementResponse> movements(@AuthenticationPrincipal AuthenticatedIdentity identity) {
-            return billeteraService.historial(identity.id()).stream()
-                    .map(MovementResponse::from)
-                    .toList();
+        public ResponseEntity<?> movements(@AuthenticationPrincipal AuthenticatedIdentity identity) {
+            return billeteraService.buscar(identity.id())
+                    .<ResponseEntity<?>>map(wallet -> ResponseEntity.ok(wallet.getMovimientos().stream()
+                            .map(MovementResponse::from)
+                            .toList()))
+                    .orElseGet(() -> ResponseEntity.notFound().build());
         }
 
         @PostMapping("/debits")
@@ -111,6 +145,8 @@ public class BilleteraController {
             } catch (SaldoInsuficienteException exception) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(new ApiError(exception.getMessage()));
+            } catch (BilleteraService.WalletNotFoundException exception) {
+                return ResponseEntity.notFound().build();
             } catch (IllegalArgumentException exception) {
                 return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
             }

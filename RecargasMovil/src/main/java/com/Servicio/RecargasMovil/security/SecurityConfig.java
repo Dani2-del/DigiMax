@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/logout"))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/error/**").permitAll()
-                        .requestMatchers("/admin/**").hasAnyRole("MODERATOR", "ADMIN")
+                        .requestMatchers("/admin/**").hasAnyAuthority("MODERATOR_RECARGAS_MOVIL", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

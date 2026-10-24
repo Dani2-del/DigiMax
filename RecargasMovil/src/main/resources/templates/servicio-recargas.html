@@ -20,6 +20,13 @@
     .secondary { color: #17324d; background: #e8eef5; }
     .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
     .error { background: #fff0ed; }
+    .wallet-missing { border: 1px solid #f3d8a6; background: #fff8e8; }
+    .wallet-missing h2 { margin-top: 0; color: #76521c; }
+    .confirmation-step { margin-top: 14px; }
+    .confirmation-step button, .wallet-link { display: inline-block; width: auto; padding: 10px 16px; text-decoration: none; border-radius: 8px; }
+    .wallet-link { color: #fff; background: #087c86; font-weight: 650; }
+    .wallet-link:hover { background: #066b75; }
+    [hidden] { display: none !important; }
     .muted { color: #64748b; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .row form { max-width: 135px; }
@@ -37,8 +44,8 @@
       <p th:text="${'Hola, ' + (identity.name != null ? identity.name : identity.email) + '.'}"></p>
     </div>
     <nav>
-      <a th:href="${billeteraUrl}">Tarjeta universal</a>
-      <span> · </span>
+      <a th:if="${!walletMissing}" th:href="${billeteraUrl}">Tarjeta universal</a>
+      <span th:if="${!walletMissing}"> · </span>
       <a th:href="${accesoUrl + '/servicios'}">Servicios</a>
       <span th:if="${identity.role == 'ROLE_MODERATOR' or identity.role == 'ROLE_ADMIN'}">
         · <a th:href="@{/admin/catalogo}">Administrar catálogo</a>
@@ -48,6 +55,24 @@
 
   <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
   <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
+
+  <section th:if="${walletMissing}" class="wallet-missing" aria-labelledby="wallet-missing-title">
+    <h2 id="wallet-missing-title">Aún no tienes una tarjeta Digitrans</h2>
+    <p>Para comprar paquetes necesitas una tarjeta universal. Puedes crearla aquí, sin salir de Recargas.</p>
+    <div class="confirmation-step" data-wallet-first-step>
+      <button class="secondary" type="button" data-wallet-first-confirm>
+        Sí, quiero crearla
+      </button>
+    </div>
+    <div class="confirmation-step" data-wallet-second-step hidden>
+      <p><strong>Confirma una vez más:</strong> al continuar se creará tu tarjeta Digitrans y conservarás esta página.</p>
+      <form th:action="@{/tarjeta/crear}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input type="hidden" name="confirmacionFinal" value="true">
+        <button class="wallet-link" type="submit">Confirmar y crear mi tarjeta</button>
+      </form>
+    </div>
+  </section>
 
   <section class="wallet" th:if="${wallet}">
     <div class="row">
@@ -115,7 +140,8 @@
                       th:text="${linea.alias + ' · ' + linea.telefono}"></option>
             </select>
           </label>
-          <button type="submit" th:disabled="${walletError or #lists.isEmpty(lineas)}">Comprar paquete (simulado)</button>
+          <button type="submit"
+                  th:disabled="${walletError or walletMissing or #lists.isEmpty(lineas)}">Comprar paquete (simulado)</button>
         </form>
       </article>
     </div>
@@ -144,5 +170,16 @@
     </table>
   </section>
 </main>
+<script>
+  const firstWalletConfirmation = document.querySelector("[data-wallet-first-confirm]");
+  const secondWalletConfirmation = document.querySelector("[data-wallet-second-step]");
+
+  firstWalletConfirmation?.addEventListener("click", () => {
+    firstWalletConfirmation.disabled = true;
+    firstWalletConfirmation.textContent = "Primera confirmación registrada";
+    secondWalletConfirmation.hidden = false;
+    secondWalletConfirmation.querySelector("button").focus();
+  });
+</script>
 </body>
 </html>

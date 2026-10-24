@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#101f35">
+  <title>Administración global — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261024-1)}">
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="global-admin-page">
+  <div class="global-admin-shell">
+    <aside class="global-sidebar">
+      <a class="global-brand" th:href="@{/admin/global}">
+        <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+        <span><strong>Digitrans</strong><small>Administración global</small></span>
+      </a>
+      <p class="sidebar-caption">PLATAFORMA</p>
+      <nav class="global-nav" aria-label="Navegación administrativa">
+        <a class="active" th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+        <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+        <a class="nav-disabled" aria-disabled="true"><span>⇄</span> Transacciones <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>◷</span> Analítica global <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>⌁</span> Chats operativos <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>▤</span> Reportes Excel <small>En integración</small></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="admin-identity"><i></i><span><strong>ADMIN</strong><small th:text="${administrador}">admin@digitrans.co</small></span></span>
+        <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+        <form th:action="@{/logout}" method="post">
+          <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+        </form>
+      </div>
+    </aside>
+
+    <main class="global-main">
+      <header class="global-topbar">
+        <div><p class="global-eyebrow">CENTRO DE CONTROL · DIGITRANS</p><h1>Resumen de la plataforma</h1></div>
+        <span class="global-date" th:text="${#temporals.format(#temporals.createNow(), 'dd MMM yyyy')}">24 oct 2026</span>
+      </header>
+
+      <section class="global-welcome">
+        <div>
+          <span class="welcome-label">CONSOLA DE ADMINISTRACIÓN</span>
+          <h2>Una vista para todo Digitrans.</h2>
+          <p>Gestiona el acceso a la plataforma y consulta el estado de las integraciones globales.</p>
+        </div>
+        <div class="welcome-mark" aria-hidden="true"><span>D</span><i></i></div>
+      </section>
+
+      <section class="metric-grid" aria-label="Indicadores de usuarios">
+        <article class="metric-card metric-primary">
+          <span class="metric-label">Usuarios en la plataforma</span>
+          <strong th:text="${totalUsuarios}">0</strong>
+          <small>Identidades administradas centralmente</small>
+          <span class="metric-icon" aria-hidden="true">♙</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Cuentas activas</span>
+          <strong th:text="${usuariosActivos}">0</strong>
+          <small>Con acceso habilitado</small>
+          <span class="metric-icon green" aria-hidden="true">✓</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Administradores</span>
+          <strong th:text="${totalAdministradores}">0</strong>
+          <small>Acceso global a la consola</small>
+          <span class="metric-icon violet" aria-hidden="true">◆</span>
+        </article>
+        <article class="metric-card">
+          <span class="metric-label">Moderadores</span>
+          <strong th:text="${totalModeradores}">0</strong>
+          <small>Acceso limitado a su servicio</small>
+          <span class="metric-icon blue" aria-hidden="true">◈</span>
+        </article>
+      </section>
+
+      <section class="global-section">
+        <div class="section-heading">
+          <div><p class="global-eyebrow">MÓDULOS GLOBALES</p><h2>Centro de operaciones</h2></div>
+          <span class="integration-note"><i></i> Integración por etapas</span>
+        </div>
+        <div class="module-grid">
+          <a class="module-card users-module" th:href="@{/admin/global/usuarios}">
+            <span class="module-icon">♙</span><span class="module-status ready">DISPONIBLE</span>
+            <strong>Usuarios</strong><span>Consulta y administra roles, estado y datos básicos con registro de auditoría.</span>
+            <b>Abrir gestión <span>→</span></b>
+          </a>
+          <article class="module-card">
+            <span class="module-icon orange">⇄</span><span class="module-status">SIGUIENTE FASE</span>
+            <strong>Transacciones y gráficas</strong><span>Consolidación de actividad, ingresos y tendencias de todos los servicios.</span>
+            <b class="module-pending">Conectando datos de servicios</b>
+          </article>
+          <article class="module-card">
+            <span class="module-icon violet">⌁</span><span class="module-status">SIGUIENTE FASE</span>
+            <strong>Chats operativos</strong><span>Salas por servicio y un canal privado para administradores globales.</span>
+            <b class="module-pending">Preparando integración</b>
+          </article>
+          <article class="module-card">
+            <span class="module-icon green">▤</span><span class="module-status">SIGUIENTE FASE</span>
+            <strong>Reportes y predicción</strong><span>Exportación del sistema completo y visualización de analítica predictiva.</span>
+            <b class="module-pending">Preparando integración</b>
+          </article>
+        </div>
+      </section>
+
+      <section class="audit-panel">
+        <div class="section-heading">
+          <div><p class="global-eyebrow">TRAZABILIDAD</p><h2>Actividad administrativa reciente</h2></div>
+          <a th:href="@{/admin/global/usuarios}">Administrar usuarios →</a>
+        </div>
+        <div th:if="${#lists.isEmpty(auditoriaReciente)}" class="audit-empty">
+          Todavía no hay acciones administrativas registradas.
+        </div>
+        <ul th:unless="${#lists.isEmpty(auditoriaReciente)}" class="audit-list">
+          <li th:each="event : ${auditoriaReciente}">
+            <span class="audit-dot"></span>
+            <span class="audit-description">
+              <strong th:text="${event.action}">ACTUALIZAR_USUARIO</strong>
+              <small th:text="${event.details}">Detalle auditado</small>
+            </span>
+            <time th:text="${#temporals.format(event.createdAt, 'dd/MM/yyyy HH:mm')}">24/10/2026 10:30</time>
+          </li>
+        </ul>
+      </section>
+
+      <footer class="global-footer">Digitrans · Consola exclusiva para administradores</footer>
+    </main>
+  </div>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

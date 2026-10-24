@@ -240,6 +240,8 @@ public class BusService {
             wallet = walletClient.debit(usuario.getId(), monto, operacionId, descripcion);
         } catch (WalletClient.InsufficientWalletBalanceException exception) {
             return exception.getMessage();
+        } catch (WalletClient.WalletNotFoundException exception) {
+            return exception.getMessage();
         }
         Transaccion transaccion = new Transaccion(
                 monto.doubleValue(), LocalDateTime.now(),

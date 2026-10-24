@@ -37,6 +37,9 @@ public class Usuario {
     @Field("role")
     private String role = ROLE_USER;
 
+    @Field("servicio_asignado")
+    private String servicioAsignado;
+
     @Field("activo")
     private boolean activo = true;
 
@@ -91,6 +94,9 @@ public class Usuario {
 
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getServicioAsignado() { return servicioAsignado; }
+    public void setServicioAsignado(String servicioAsignado) { this.servicioAsignado = servicioAsignado; }
 
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }

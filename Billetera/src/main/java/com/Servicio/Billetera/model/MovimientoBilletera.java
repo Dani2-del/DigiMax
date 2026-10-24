@@ -8,6 +8,7 @@ public class MovimientoBilletera {
     private String operacionId;
     private String tipo;
     private String descripcion;
+    private String servicio;
     private BigDecimal monto;
     private LocalDateTime fecha;
 
@@ -31,6 +32,27 @@ public class MovimientoBilletera {
 
     public String getDescripcion() { return descripcion; }
     public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
+
+    public String getServicio() {
+        if (servicio != null && !servicio.isBlank()) {
+            return servicio;
+        }
+        String detalle = descripcion == null ? "" : descripcion.toLowerCase(java.util.Locale.ROOT);
+        if (detalle.contains("transcaribe")) return "Transcaribe";
+        if (detalle.contains("transmilenio")) return "TransMilenio";
+        if (detalle.contains("transmetro")) return "Transmetro";
+        if (detalle.contains("paquete")) return "Paquetes y recargas";
+        if (detalle.contains("pasaje")) return "Transporte";
+        if ("ABONO".equalsIgnoreCase(tipo)) return "Billetera";
+        return "Otros";
+    }
+    public void setServicio(String servicio) { this.servicio = servicio; }
+
+    public String getCategoria() {
+        if ("ABONO".equalsIgnoreCase(tipo)) return "RECARGA";
+        if ("CONSUMO".equalsIgnoreCase(tipo)) return "PAGO";
+        return tipo == null ? "OTRO" : tipo;
+    }
 
     public BigDecimal getMonto() { return monto; }
     public void setMonto(BigDecimal monto) { this.monto = monto; }

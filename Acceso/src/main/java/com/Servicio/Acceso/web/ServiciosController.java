@@ -3,6 +3,7 @@ package com.Servicio.Acceso.web;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 
 @Controller
@@ -22,10 +23,12 @@ public class ServiciosController {
     }
 
     @GetMapping("/servicios")
-    public String servicios(Model model) {
+    public String servicios(Model model, Authentication authentication) {
         model.addAttribute("transporteUrl", transporteUrl);
         model.addAttribute("recargasUrl", recargasUrl);
         model.addAttribute("billeteraUrl", billeteraUrl);
+        model.addAttribute("esAdministradorGlobal", authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())));
         return "servicios";
     }
 }

@@ -63,9 +63,12 @@ public class AdminController {
     }
 
     private static final int TAMANO_PAGINA = 20;
+    private static final String ENTIDAD_PENDIENTE_CONFIRMACION = "entidadPendienteConfirmacion";
 
     @GetMapping("/seleccionar-entidad")
     public String seleccionarEntidad(Model model,
+                                     @RequestParam(defaultValue = "false") boolean confirmar,
+                                     jakarta.servlet.http.HttpSession session,
                                      org.springframework.security.core.Authentication authentication) {
         Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
         if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())) {
@@ -73,21 +76,49 @@ public class AdminController {
         }
         model.addAttribute("entidades", SistemaTransporte.disponibles());
         model.addAttribute("nombre", administrador.getNombre());
+        Object pending = session.getAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
+        if (confirmar && pending instanceof SistemaTransporte sistema) {
+            model.addAttribute("requiereSegundaConfirmacion", true);
+            model.addAttribute("entidadPendiente", sistema);
+        } else {
+            session.removeAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
+            model.addAttribute("requiereSegundaConfirmacion", false);
+        }
         return "admin/seleccionar-entidad";
     }
 
     @PostMapping("/contexto")
     public String cambiarEntidadAdministrativa(@RequestParam SistemaTransporte sistema,
                                                jakarta.servlet.http.HttpSession session,
+                                               @RequestParam(defaultValue = "false") boolean primeraConfirmacion,
                                                org.springframework.security.core.Authentication authentication) {
         Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
         if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())
-                || sistema == null || !sistema.estaDisponible()) {
+                || sistema == null || !sistema.estaDisponible() || !primeraConfirmacion) {
             return "redirect:/admin/seleccionar-entidad?error=true";
         }
+        session.setAttribute(ENTIDAD_PENDIENTE_CONFIRMACION, sistema);
+        return "redirect:/admin/seleccionar-entidad?confirmar=true";
+    }
+
+    @PostMapping("/contexto/confirmar")
+    public String confirmarCambioEntidad(@RequestParam SistemaTransporte sistema,
+                                         @RequestParam(defaultValue = "false") boolean segundaConfirmacion,
+                                         jakarta.servlet.http.HttpSession session,
+                                         org.springframework.security.core.Authentication authentication) {
+        Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
+        Object pending = session.getAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
+        if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())
+                || !segundaConfirmacion || !(pending instanceof SistemaTransporte entidadPendiente)
+                || entidadPendiente != sistema || !sistema.estaDisponible()) {
+            session.removeAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
+            return "redirect:/admin/seleccionar-entidad?error=true";
+        }
+        session.removeAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
         session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, sistema);
         return "redirect:/admin/dashboard";
     }
+
 
     @GetMapping("/mapa-rutas/editar")
     public String editarGeometriasRuta() {
@@ -501,7 +532,8 @@ public class AdminController {
                     return ResponseEntity.status(403).body(response);
                 }
                 if (administradorGlobal) {
-                    accessIdentityClient.updateUser(userId, nombre, correo, role, u.isActivo());
+                    accessIdentityClient.updateUser(userId, nombre, correo, role, u.isActivo(),
+                            Usuario.ROLE_MODERATOR.equals(role) ? sistemaAsignado.name() : null);
                 }
                 u.setNombre(nombre);
                 u.setCorreo(correo);

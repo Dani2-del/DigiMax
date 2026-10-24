@@ -38,6 +38,8 @@ import org.springframework.web.client.RestClientResponseException;
 
 @Controller
 public class UsuarioController {
+    private static final String SITM_PENDIENTE_CONFIRMACION = "sitmPendienteConfirmacion";
+
     @Autowired
     private PlataformaService service;
 
@@ -84,6 +86,7 @@ public class UsuarioController {
     @GetMapping("/menu")
     public String menu(
             Model model,
+            @RequestParam(defaultValue = "false") boolean confirmarSITM,
             HttpSession session) {
         Usuario usuario = obtenerUsuarioLogueado();
         
@@ -113,6 +116,14 @@ public class UsuarioController {
             } else {
                 model.addAttribute("sistemasTransporte", SistemaTransporte.disponibles());
                 model.addAttribute("usuario", usuario);
+                Object pendiente = session.getAttribute(SITM_PENDIENTE_CONFIRMACION);
+                if (confirmarSITM && pendiente instanceof SistemaTransporte sistemaPendiente) {
+                    model.addAttribute("requiereSegundaConfirmacion", true);
+                    model.addAttribute("sistemaPendiente", sistemaPendiente);
+                } else {
+                    session.removeAttribute(SITM_PENDIENTE_CONFIRMACION);
+                    model.addAttribute("requiereSegundaConfirmacion", false);
+                }
                 return "usuarios/cuenta/seleccionar-sistema";
             }
         }
@@ -143,8 +154,9 @@ public class UsuarioController {
         model.addAttribute("accesoUrl", accesoUrl);
         model.addAttribute("billeteraUrl", billeteraUrl);
         try {
-            model.addAttribute("tarjetaUniversal", walletClient.getWallet(usuario.getId()));
-            model.addAttribute("billeteraDisponible", true);
+            java.util.Optional<WalletClient.Wallet> tarjetaUniversal = walletClient.findWallet(usuario.getId());
+            model.addAttribute("billeteraDisponible", tarjetaUniversal.isPresent());
+            tarjetaUniversal.ifPresent(wallet -> model.addAttribute("tarjetaUniversal", wallet));
         } catch (ResourceAccessException exception) {
             model.addAttribute("billeteraDisponible", false);
             model.addAttribute("errorTarjetaUniversal",
@@ -161,7 +173,9 @@ public class UsuarioController {
     }
 
     @PostMapping("/menu/sistema")
-    public String seleccionarSistema(@RequestParam SistemaTransporte sistema, HttpSession session) {
+    public String seleccionarSistema(@RequestParam SistemaTransporte sistema,
+                                     @RequestParam(defaultValue = "false") boolean primeraConfirmacion,
+                                     HttpSession session) {
         Usuario usuario = obtenerUsuarioLogueado();
         if (usuario == null) {
             return "redirect:/login";
@@ -172,9 +186,32 @@ public class UsuarioController {
         if (!administrador && !primeraSeleccionUsuario) {
             return "redirect:/menu";
         }
-        if (sistema == null || !sistema.estaDisponible()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Sistema de transporte no disponible.");
+        if (sistema == null || !sistema.estaDisponible() || !primeraConfirmacion) {
+            return "redirect:/menu?error=true";
         }
+        session.setAttribute(SITM_PENDIENTE_CONFIRMACION, sistema);
+        return "redirect:/menu?confirmarSITM=true";
+    }
+
+    @PostMapping("/menu/sistema/confirmar")
+    public String confirmarSeleccionSistema(@RequestParam SistemaTransporte sistema,
+                                            @RequestParam(defaultValue = "false") boolean segundaConfirmacion,
+                                            HttpSession session) {
+        Usuario usuario = obtenerUsuarioLogueado();
+        if (usuario == null) {
+            return "redirect:/login";
+        }
+        boolean administrador = Usuario.ROLE_ADMIN.equals(usuario.getRole());
+        boolean primeraSeleccionUsuario = Usuario.ROLE_USER.equals(usuario.getRole())
+                && (usuario.getSitm() == null || !usuario.getSitm().estaDisponible());
+        Object pendiente = session.getAttribute(SITM_PENDIENTE_CONFIRMACION);
+        if ((!administrador && !primeraSeleccionUsuario) || !segundaConfirmacion
+                || !(pendiente instanceof SistemaTransporte sistemaPendiente)
+                || sistemaPendiente != sistema || !sistema.estaDisponible()) {
+            session.removeAttribute(SITM_PENDIENTE_CONFIRMACION);
+            return "redirect:/menu?error=true";
+        }
+        session.removeAttribute(SITM_PENDIENTE_CONFIRMACION);
         if (primeraSeleccionUsuario) {
             usuario.setSitm(sistema);
             usuarioRepository.save(usuario);

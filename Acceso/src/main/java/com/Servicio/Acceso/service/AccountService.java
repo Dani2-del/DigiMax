@@ -22,17 +22,14 @@ public class AccountService {
     private final UsuarioRepository usuarios;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
-    private final UniversalWalletProvisioningClient walletProvisioningClient;
 
     public AccountService(
             UsuarioRepository usuarios,
             PasswordEncoder passwordEncoder,
-            EmailService emailService,
-            UniversalWalletProvisioningClient walletProvisioningClient) {
+            EmailService emailService) {
         this.usuarios = usuarios;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
-        this.walletProvisioningClient = walletProvisioningClient;
     }
 
     public RegistrationResult register(String name, String email, String password) {
@@ -63,9 +60,6 @@ public class AccountService {
             return VerificationResult.INVALID_CODE;
         }
 
-        if (!walletProvisioningClient.provision(usuario.getId())) {
-            return VerificationResult.WALLET_PROVISIONING_FAILED;
-        }
         usuario.setVerificado(true);
         usuario.setCodigoVerificacion(null);
         usuario.setCodigoVerificacionExpira(null);
@@ -240,7 +234,6 @@ public class AccountService {
 
     public enum VerificationResult {
         VERIFIED,
-        WALLET_PROVISIONING_FAILED,
         INVALID_CODE
     }
 

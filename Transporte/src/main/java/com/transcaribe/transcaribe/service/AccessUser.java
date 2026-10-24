@@ -10,5 +10,6 @@ public record AccessUser(
         boolean active,
         boolean verified,
         LocalDateTime registeredAt,
-        String phone) {
+        String phone,
+        String serviceAssignment) {
 }

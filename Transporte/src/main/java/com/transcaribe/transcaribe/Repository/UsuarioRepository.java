@@ -149,7 +149,7 @@ public class UsuarioRepository {
         if (usuario == null) {
             return;
         }
-        acceso.updateUser(usuario.getId(), usuario.getNombre(), usuario.getCorreo(), usuario.getRole(), false);
+        acceso.updateUser(usuario.getId(), usuario.getNombre(), usuario.getCorreo(), usuario.getRole(), false, null);
     }
 
     private Usuario toUsuario(AccessUser identity) {
@@ -186,13 +186,27 @@ public class UsuarioRepository {
         usuario.setVerificado(identity.verified());
         usuario.setFechaRegistro(identity.registeredAt());
         usuario.setTelefono(identity.phone());
-        usuario.setSistemaAsignado(profile.getSistemaAsignado());
+        usuario.setSistemaAsignado(sistemaAsignado(identity, profile));
         usuario.setSitm(profile.getSitm());
         usuario.setTarjetas(profile.getTarjetas());
         usuario.setRutasFavoritas(profile.getRutasFavoritas());
         usuario.setPreferenciasNotificacionRutas(profile.getPreferenciasNotificacionRutas());
         usuario.setBusAsignado(profile.getBusAsignado());
         return usuario;
+    }
+
+    private SistemaTransporte sistemaAsignado(AccessUser identity, PerfilTransporte profile) {
+        if (!Usuario.ROLE_MODERATOR.equals(identity.role())) {
+            return profile.getSistemaAsignado();
+        }
+        if (identity.serviceAssignment() == null || identity.serviceAssignment().isBlank()) {
+            return profile.getSistemaAsignado();
+        }
+        try {
+            return SistemaTransporte.valueOf(identity.serviceAssignment());
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private Optional<PerfilTransporte> profileFromLegacy(Usuario identity) {

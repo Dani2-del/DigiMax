@@ -73,6 +73,8 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
                         .hasAnyRole("ADMIN", "MODERATOR")
+                        .requestMatchers("/admin/**")
+                        .hasRole("ADMIN")
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated())
                 .formLogin(form -> form

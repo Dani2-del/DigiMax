@@ -27,6 +27,12 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
 
     List<Usuario> findByRoleAndActivoTrue(String role);
 
+    long countByActivoTrue();
+
+    long countByVerificadoFalse();
+
+    long countByRole(String role);
+
     Optional<Usuario> findByIdAndActivoTrue(String id);
 
     @Query("{}")

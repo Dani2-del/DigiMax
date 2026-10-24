@@ -1,0 +1,276 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+  color-scheme: light;
+  --ink: #172a42;
+  --muted: #718096;
+  --line: #e2e9f1;
+  --paper: #ffffff;
+  --page: #f3f6fa;
+  --accent: #ed7926;
+  --accent-dark: #cf6419;
+}
+
+* { box-sizing: border-box; }
+
+body.service-choice-page {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255, 255, 255, 0.95), transparent 50%),
+    var(--page);
+  color: var(--ink);
+  font-family: "DM Sans", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.choice-header {
+  display: flex;
+  min-height: 78px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(22px, 6vw, 88px);
+  border-bottom: 1px solid rgba(218, 226, 236, 0.8);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.choice-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 11px;
+  color: var(--ink);
+  font: 800 1rem Manrope, sans-serif;
+  text-decoration: none;
+}
+
+.choice-brand img { border-radius: 12px; }
+.choice-brand span { display: grid; gap: 2px; }
+.choice-brand small { color: var(--muted); font: 500 0.68rem "DM Sans", sans-serif; }
+
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border: 1px solid #dce8e4;
+  border-radius: 999px;
+  background: #f7fbf9;
+  color: #507364;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.admin-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #39ad7c;
+}
+
+.choice-main {
+  width: min(1060px, calc(100% - 36px));
+  margin: auto;
+  padding: 54px 0 64px;
+}
+
+.choice-intro { max-width: 700px; margin: 0 auto 30px; text-align: center; }
+.choice-eyebrow {
+  margin: 0 0 10px;
+  color: var(--accent-dark);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+}
+
+.choice-intro h1,
+.final-confirmation h2 {
+  margin: 0;
+  color: var(--ink);
+  font: 800 clamp(1.7rem, 4vw, 2.4rem)/1.15 Manrope, sans-serif;
+  letter-spacing: -0.055em;
+}
+
+.choice-intro > p:last-child,
+.final-confirmation > p:not(.choice-eyebrow) {
+  max-width: 610px;
+  margin: 12px auto 0;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.65;
+}
+
+.choice-alert {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto 18px;
+  padding: 11px 15px;
+  border: 1px solid #f3d5cf;
+  border-radius: 10px;
+  background: #fff7f5;
+  color: #a54636;
+  font-size: 0.83rem;
+}
+
+.service-picker,
+.final-confirmation {
+  padding: clamp(20px, 4vw, 38px);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 18px 55px rgba(23, 42, 66, 0.07);
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 17px;
+}
+
+.service-card {
+  min-width: 0;
+  min-height: 268px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease, background 160ms ease;
+}
+
+.service-card:hover {
+  transform: translateY(-3px);
+  border-color: #f1bd96;
+  box-shadow: 0 12px 25px rgba(23, 42, 66, 0.08);
+}
+
+.service-card:focus-visible,
+.primary-action:focus-visible,
+.secondary-action:focus-visible {
+  outline: 3px solid rgba(237, 121, 38, 0.32);
+  outline-offset: 3px;
+}
+
+.service-card.is-selected {
+  border: 2px solid var(--accent);
+  background: #fffaf6;
+  box-shadow: 0 0 0 4px rgba(237, 121, 38, 0.1);
+}
+
+.service-logo {
+  width: 100%;
+  height: 142px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+
+.service-logo img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.service-card[data-service="TRANSCARIBE"] .service-logo img { max-width: 91%; }
+.service-card[data-service="TRANSMILENIO"] .service-logo img { max-width: 80%; }
+.service-card[data-service="TRANSMETRO"] .service-logo img { max-width: 96%; }
+
+.service-name { font: 700 0.95rem Manrope, sans-serif; }
+.service-hint { color: var(--muted); font-size: 0.75rem; }
+.service-selected { margin-top: 7px; color: var(--accent-dark); font-size: 0.72rem; font-weight: 700; }
+
+.choice-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.selection-prompt { margin: 0; color: var(--muted); font-size: 0.82rem; }
+.primary-action,
+.secondary-action {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 19px;
+  border: 0;
+  border-radius: 11px;
+  font: 700 0.83rem "DM Sans", sans-serif;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 150ms ease, transform 150ms ease;
+}
+
+.primary-action { background: var(--ink); color: #fff; }
+.primary-action:hover:not(:disabled) { transform: translateY(-1px); background: #203b5b; }
+.primary-action:disabled { cursor: not-allowed; opacity: 0.45; }
+.secondary-action { border: 1px solid var(--line); background: #fff; color: var(--ink); }
+.secondary-action:hover { background: #f7f9fc; }
+
+.final-confirmation { max-width: 700px; margin: 0 auto; text-align: center; }
+.confirmation-mark {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 17px;
+  border-radius: 15px;
+  background: #fff1e5;
+  color: var(--accent-dark);
+  font: 800 1.35rem Manrope, sans-serif;
+}
+
+.final-confirmation .choice-eyebrow { margin-bottom: 9px; }
+.final-confirmation h2 { font-size: clamp(1.35rem, 3vw, 1.8rem); }
+.chosen-service {
+  width: min(330px, 100%);
+  min-height: 112px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  margin: 24px auto 0;
+  padding: 12px 18px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fbfcfe;
+  font: 700 0.9rem Manrope, sans-serif;
+}
+
+.chosen-service img { width: 94px; height: 76px; object-fit: contain; }
+.confirmation-actions { justify-content: center; flex-wrap: wrap; }
+.confirmation-actions form { margin: 0; }
+.choice-footer { padding: 0 20px 24px; color: #8491a1; font-size: 0.72rem; text-align: center; }
+
+@media (max-width: 700px) {
+  .choice-header { min-height: 68px; padding-inline: 18px; }
+  .choice-main { padding: 38px 0 48px; }
+  .service-grid { grid-template-columns: 1fr; gap: 12px; }
+  .service-card { min-height: 180px; display: grid; grid-template-columns: 112px 1fr; grid-template-rows: auto auto auto; justify-items: start; column-gap: 14px; padding: 14px; text-align: left; }
+  .service-logo { width: 108px; height: 108px; grid-row: 1 / 4; margin: 0; }
+  .service-card[data-service="TRANSCARIBE"] .service-logo img,
+  .service-card[data-service="TRANSMILENIO"] .service-logo img,
+  .service-card[data-service="TRANSMETRO"] .service-logo img { max-width: 100%; }
+  .choice-actions { align-items: stretch; flex-direction: column; }
+  .primary-action { width: 100%; }
+  .confirmation-actions form { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: 0.01ms !important; }
+}

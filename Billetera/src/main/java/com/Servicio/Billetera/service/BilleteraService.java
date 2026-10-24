@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.dao.DuplicateKeyException;
@@ -39,7 +40,29 @@ public class BilleteraService {
         if (usuarioId == null || usuarioId.isBlank()) {
             throw new IllegalArgumentException("Se requiere una identidad válida para obtener la billetera.");
         }
-        return billeteras.findById(usuarioId).orElseGet(() -> crearBilletera(usuarioId));
+        return buscar(usuarioId).orElseThrow(WalletNotFoundException::new);
+    }
+
+    public Optional<BilleteraUniversal> buscar(String usuarioId) {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new IllegalArgumentException("Se requiere una identidad válida para obtener la billetera.");
+        }
+        return billeteras.findById(usuarioId).filter(BilleteraUniversal::isActivadaPorUsuario);
+    }
+
+    public BilleteraUniversal crear(String usuarioId) {
+        if (usuarioId == null || usuarioId.isBlank()) {
+            throw new IllegalArgumentException("Se requiere una identidad válida para emitir la billetera.");
+        }
+        BilleteraUniversal existing = billeteras.findById(usuarioId).orElse(null);
+        if (existing != null) {
+            if (!existing.isActivadaPorUsuario()) {
+                existing.setActivadaPorUsuario(true);
+                return billeteras.save(existing);
+            }
+            return existing;
+        }
+        return crearBilletera(usuarioId);
     }
 
     public BilleteraUniversal abonarSimulado(
@@ -48,15 +71,17 @@ public class BilleteraService {
         String descripcion = switch (metodoPago == null ? "" : metodoPago) {
             case "PSE" -> "Carga simulada con PSE";
             case "TARJETA_DEBITO" -> "Carga simulada con tarjeta débito";
-            default -> throw new IllegalArgumentException("Selecciona PSE o tarjeta débito.");
+            case "TARJETA_CREDITO_DEBITO" -> "Carga simulada con tarjeta crédito/débito";
+            default -> throw new IllegalArgumentException("Selecciona PSE o tarjeta crédito/débito.");
         };
-        return aplicarMovimiento(usuarioId, monto, operacionId, "ABONO", descripcion, false);
+        return aplicarMovimiento(usuarioId, monto, operacionId, "ABONO", descripcion, "Billetera", false);
     }
 
     public BilleteraUniversal debitar(
             String usuarioId, BigDecimal monto, String operacionId, String descripcion) {
         validarMovimiento(monto, operacionId);
-        return aplicarMovimiento(usuarioId, monto, operacionId, "CONSUMO", descripcion, true);
+        String servicio = new MovimientoBilletera(null, "CONSUMO", descripcion, monto, null).getServicio();
+        return aplicarMovimiento(usuarioId, monto, operacionId, "CONSUMO", descripcion, servicio, true);
     }
 
     public List<MovimientoBilletera> historial(String usuarioId) {
@@ -70,6 +95,7 @@ public class BilleteraService {
         for (int attempt = 0; attempt < MAX_INTENTOS_NUMERO_TARJETA; attempt++) {
             BilleteraUniversal wallet = new BilleteraUniversal();
             wallet.setUsuarioId(usuarioId);
+            wallet.setActivadaPorUsuario(true);
             wallet.setNumeroTarjeta("UNI-" + UUID.randomUUID().toString()
                     .replace("-", "").substring(0, 12).toUpperCase());
             try {
@@ -77,7 +103,12 @@ public class BilleteraService {
             } catch (DuplicateKeyException exception) {
                 var existing = billeteras.findById(usuarioId);
                 if (existing.isPresent()) {
-                    return existing.get();
+                    BilleteraUniversal walletExists = existing.get();
+                    if (!walletExists.isActivadaPorUsuario()) {
+                        walletExists.setActivadaPorUsuario(true);
+                        return billeteras.save(walletExists);
+                    }
+                    return walletExists;
                 }
                 if (attempt + 1 == MAX_INTENTOS_NUMERO_TARJETA) {
                     throw exception;
@@ -89,13 +120,14 @@ public class BilleteraService {
 
     private BilleteraUniversal aplicarMovimiento(
             String usuarioId, BigDecimal monto, String operacionId,
-            String tipo, String descripcion, boolean debito) {
+            String tipo, String descripcion, String servicio, boolean debito) {
         BilleteraUniversal wallet = obtener(usuarioId);
         String safeDescription = descripcion == null || descripcion.isBlank()
                 ? (debito ? "Consumo simulado" : "Abono simulado")
                 : descripcion.trim();
         MovimientoBilletera movement = new MovimientoBilletera(
                 operacionId.trim(), tipo, safeDescription, monto, LocalDateTime.now());
+        movement.setServicio(servicio);
 
         Criteria criteria = Criteria.where("_id").is(usuarioId)
                 .and("movimientos.operacionId").ne(movement.getOperacionId());
@@ -141,6 +173,12 @@ public class BilleteraService {
         }
         if (operacionId == null || operacionId.isBlank() || operacionId.length() > 100) {
             throw new IllegalArgumentException("Se requiere un identificador de operación válido.");
+        }
+    }
+
+    public static class WalletNotFoundException extends RuntimeException {
+        public WalletNotFoundException() {
+            super("No existe una tarjeta universal para la cuenta solicitada.");
         }
     }
 }

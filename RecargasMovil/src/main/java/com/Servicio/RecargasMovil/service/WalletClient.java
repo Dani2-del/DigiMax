@@ -25,13 +25,30 @@ public class WalletClient {
     }
 
     public Wallet getWallet(String token) {
-        Wallet wallet = restClient.get()
+        Wallet wallet;
+        try {
+            wallet = restClient.get()
+                    .uri(billeteraUrl + "/api/wallet/me")
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                    .retrieve()
+                    .body(Wallet.class);
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new WalletNotFoundException();
+        }
+        if (wallet == null) {
+            throw new IllegalStateException("Billetera no devolvió la tarjeta universal.");
+        }
+        return wallet;
+    }
+
+    public Wallet createWallet(String token) {
+        Wallet wallet = restClient.post()
                 .uri(billeteraUrl + "/api/wallet/me")
                 .header(HttpHeaders.AUTHORIZATION, bearer(token))
                 .retrieve()
                 .body(Wallet.class);
         if (wallet == null) {
-            throw new IllegalStateException("Billetera no devolvió la tarjeta universal.");
+            throw new IllegalStateException("Billetera no devolvió la tarjeta Digitrans creada.");
         }
         return wallet;
     }
@@ -50,6 +67,8 @@ public class WalletClient {
             return wallet;
         } catch (HttpClientErrorException.Conflict exception) {
             throw new InsufficientWalletBalanceException();
+        } catch (HttpClientErrorException.NotFound exception) {
+            throw new WalletNotFoundException();
         }
     }
 
@@ -64,5 +83,11 @@ public class WalletClient {
     }
 
     private record DebitRequest(String operationId, BigDecimal amount, String description) {
+    }
+
+    public static class WalletNotFoundException extends RuntimeException {
+        public WalletNotFoundException() {
+            super("No tienes una tarjeta Digitrans creada.");
+        }
     }
 }

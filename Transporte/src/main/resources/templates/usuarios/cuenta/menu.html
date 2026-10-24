@@ -212,7 +212,9 @@
             </option>
           </select>
           <p th:if="${errorTarjetaUniversal}" class="muted" th:text="${errorTarjetaUniversal}" role="status"></p>
-          <a th:href="${billeteraUrl}" target="_blank" rel="noopener">Consultar o cargar saldo universal</a>
+          <a th:if="${billeteraDisponible}" th:href="${billeteraUrl}" target="_blank" rel="noopener">
+            Consultar o cargar saldo de tu tarjeta Digitrans
+          </a>
           <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}"
                   onclick="return confirm('¿Confirmas la simulación del viaje por $' + new Intl.NumberFormat('es-CO').format(Number(this.dataset.fare)) + '?')">
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">

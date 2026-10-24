@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Usuarios globales — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261024-1)}">
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="global-admin-page">
+  <div class="global-admin-shell">
+    <aside class="global-sidebar">
+      <a class="global-brand" th:href="@{/admin/global}">
+        <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+        <span><strong>Digitrans</strong><small>Administración global</small></span>
+      </a>
+      <p class="sidebar-caption">PLATAFORMA</p>
+      <nav class="global-nav" aria-label="Navegación administrativa">
+        <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+        <a class="active" th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+        <a class="nav-disabled" aria-disabled="true"><span>⇄</span> Transacciones <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>◷</span> Analítica global <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>⌁</span> Chats operativos <small>En integración</small></a>
+        <a class="nav-disabled" aria-disabled="true"><span>▤</span> Reportes Excel <small>En integración</small></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+        <form th:action="@{/logout}" method="post">
+          <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+        </form>
+      </div>
+    </aside>
+    <main class="global-main">
+      <header class="global-topbar">
+        <div><p class="global-eyebrow">ADMINISTRACIÓN GLOBAL</p><h1>Usuarios de Digitrans</h1></div>
+        <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+      </header>
+      <div th:if="${mensaje}" class="global-alert success" role="status" th:text="${mensaje}"></div>
+      <div th:if="${error}" class="global-alert error" role="alert" th:text="${error}"></div>
+
+      <section class="users-panel">
+        <div class="users-panel-heading">
+          <div><h2>Directorio central</h2><p>Los cambios requieren dos confirmaciones y quedan registrados.</p></div>
+          <span class="user-count" th:text="${totalElements} + ' cuentas'">0 cuentas</span>
+        </div>
+        <form class="user-search" method="get" th:action="@{/admin/global/usuarios}">
+          <label for="userSearch">Buscar por nombre o correo</label>
+          <div><input id="userSearch" type="search" name="search" th:value="${search}" placeholder="Ej. nombre@correo.com">
+            <button type="submit">Buscar</button></div>
+        </form>
+        <div class="table-scroll">
+          <table class="global-users-table">
+            <thead><tr><th>Usuario</th><th>Rol / servicio</th><th>Estado</th><th>Verificación</th><th>Administrar</th></tr></thead>
+            <tbody>
+              <tr th:each="usuario : ${usuarios}">
+                <td><strong th:text="${usuario.nombre}">Nombre</strong><small th:text="${usuario.correo}">correo@ejemplo.com</small></td>
+                <td><span class="role-pill" th:text="${usuario.role}">ROLE_USER</span>
+                  <small th:if="${usuario.servicioAsignadoNombre != null}"
+                         th:text="${usuario.servicioAsignadoNombre}">Transcaribe</small>
+                </td>
+                <td><span class="state-pill" th:classappend="${usuario.activo ? ' is-active' : ' is-inactive'}"
+                          th:text="${usuario.activo ? 'Activa' : 'Suspendida'}">Activa</span></td>
+                <td th:text="${usuario.verificado ? 'Verificada' : 'Pendiente'}">Verificada</td>
+                <td>
+                  <details class="user-edit">
+                    <summary>Editar cuenta</summary>
+                    <form method="post" th:action="@{/admin/global/usuarios/{id}(id=${usuario.id})}">
+                      <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                      <label>Nombre<input name="nombre" required maxlength="120" th:value="${usuario.nombre}"></label>
+                      <label>Correo<input name="correo" type="email" required maxlength="254" th:value="${usuario.correo}"></label>
+                      <label>Rol
+                        <select name="role" required class="user-role-select">
+                          <option th:each="role : ${roles}" th:value="${role}" th:text="${role}"
+                                  th:selected="${role == usuario.role}"></option>
+                        </select>
+                      </label>
+                      <label class="moderator-service-field">Servicio moderado
+                        <select name="servicioAsignado" class="moderator-service-select">
+                          <option value="">Selecciona un servicio</option>
+                          <option th:each="service : ${moderatorServices}" th:value="${service.code}"
+                                  th:text="${service.name}"
+                                  th:selected="${service.code == usuario.servicioAsignado}"></option>
+                        </select>
+                      </label>
+                      <label>Estado
+                        <select name="activo" required>
+                          <option value="true" th:selected="${usuario.activo}">Activa</option>
+                          <option value="false" th:selected="${!usuario.activo}">Suspendida</option>
+                        </select>
+                      </label>
+                      <label>Motivo del cambio<textarea name="motivo" maxlength="500" required
+                              placeholder="Describe por qué haces este cambio"></textarea></label>
+                      <label class="confirm-check"><input type="checkbox" name="primeraConfirmacion" value="true" required>
+                        Confirmo que revisé los datos del cambio.
+                      </label>
+                      <label class="confirm-check"><input type="checkbox" name="segundaConfirmacion" value="true" required>
+                        Confirmo nuevamente que autorizo aplicar y auditar el cambio.
+                      </label>
+                      <button class="save-user" type="submit">Aplicar cambio</button>
+                    </form>
+                  </details>
+                </td>
+              </tr>
+              <tr th:if="${#lists.isEmpty(usuarios)}"><td colspan="5" class="empty-users">No se encontraron cuentas.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <nav class="pagination" th:if="${totalPages > 1}" aria-label="Paginación de usuarios">
+          <a th:if="${currentPage > 0}" th:href="@{/admin/global/usuarios(page=${currentPage - 1},search=${search})}">← Anterior</a>
+          <span th:text="|Página ${currentPage + 1} de ${totalPages}|">Página 1 de 1</span>
+          <a th:if="${currentPage + 1 < totalPages}" th:href="@{/admin/global/usuarios(page=${currentPage + 1},search=${search})}">Siguiente →</a>
+        </nav>
+      </section>
+      <footer class="global-footer">Digitrans · Cambios administrativos registrados en auditoría</footer>
+    </main>
+  </div>
+  <script>
+    document.querySelectorAll(".user-edit").forEach((editor) => {
+      const role = editor.querySelector(".user-role-select");
+      const serviceField = editor.querySelector(".moderator-service-field");
+      const service = editor.querySelector(".moderator-service-select");
+      const updateServiceField = () => {
+        const moderator = role.value === "ROLE_MODERATOR";
+        serviceField.hidden = !moderator;
+        service.required = moderator;
+        if (!moderator) service.value = "";
+      };
+      role.addEventListener("change", updateServiceField);
+      updateServiceField();
+    });
+  </script>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

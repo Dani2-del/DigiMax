@@ -104,7 +104,7 @@ public class AccessIdentityClient {
         }
         return contacts.stream()
                 .map(contact -> new AccessUser(
-                        contact.id(), null, contact.email(), contact.role(), true, true, null, null))
+                        contact.id(), null, contact.email(), contact.role(), true, true, null, null, null))
                 .toList();
     }
 
@@ -129,10 +129,11 @@ public class AccessIdentityClient {
         return users;
     }
 
-    public AccessUser updateUser(String id, String name, String email, String role, boolean active) {
+    public AccessUser updateUser(
+            String id, String name, String email, String role, boolean active, String serviceAssignment) {
         return authorizedPatch()
                 .uri(accesoUrl + "/api/admin/users/{id}", id)
-                .body(new UpdateUserRequest(name, email, role, active))
+                .body(new UpdateUserRequest(name, email, role, active, serviceAssignment))
                 .retrieve()
                 .body(AccessUser.class);
     }
@@ -206,6 +207,7 @@ public class AccessIdentityClient {
         return attributes.getRequest();
     }
 
-    private record UpdateUserRequest(String name, String email, String role, boolean active) {
+    private record UpdateUserRequest(
+            String name, String email, String role, boolean active, String serviceAssignment) {
     }
 }

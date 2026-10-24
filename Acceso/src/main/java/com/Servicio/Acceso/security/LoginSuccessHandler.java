@@ -9,7 +9,6 @@ import org.springframework.stereotype.Component;
 
 import com.Servicio.Acceso.repository.UsuarioRepository;
 import com.Servicio.Acceso.service.LoginNotificationService;
-import com.Servicio.Acceso.service.UniversalWalletProvisioningClient;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -22,17 +21,14 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
     private final JwtCookieService jwtCookieService;
     private final LoginNotificationService loginNotificationService;
     private final UsuarioRepository usuarios;
-    private final UniversalWalletProvisioningClient walletProvisioningClient;
 
     public LoginSuccessHandler(JwtService jwtService, JwtCookieService jwtCookieService,
             LoginNotificationService loginNotificationService,
-            UsuarioRepository usuarios,
-            UniversalWalletProvisioningClient walletProvisioningClient) {
+            UsuarioRepository usuarios) {
         this.jwtService = jwtService;
         this.jwtCookieService = jwtCookieService;
         this.loginNotificationService = loginNotificationService;
         this.usuarios = usuarios;
-        this.walletProvisioningClient = walletProvisioningClient;
     }
 
     @Override
@@ -41,7 +37,6 @@ public class LoginSuccessHandler implements AuthenticationSuccessHandler {
         UserDetails userDetails = (UserDetails) authentication.getPrincipal();
         var usuario = usuarios.findByCorreoIgnoreCase(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalStateException("No se encontró la cuenta autenticada."));
-        walletProvisioningClient.provision(usuario.getId());
         loginNotificationService.notifyLogin(userDetails.getUsername());
         jwtCookieService.addJwtCookie(response, jwtService.generateToken(userDetails));
         response.sendRedirect("/servicios");

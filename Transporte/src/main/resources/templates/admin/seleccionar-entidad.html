@@ -1,31 +1,127 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Seleccionar entidad - Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/usuario.css}">
-    <style>
-        .entity-options { display: grid; gap: 1rem; margin-top: 1.5rem; }
-        .entity-options button { width: 100%; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f3f6fa">
+  <title>Elegir servicio — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-servicio.css(v=20261024-1)}">
 </head>
-<body>
-<main class="page">
-    <section class="center-card">
-        <h1>Hola, <span th:text="${nombre}">administrador</span></h1>
-        <p>Elige la entidad cuyo panel administrativo deseas abrir.</p>
-        <p th:if="${param.error}" role="alert">Selecciona una entidad válida.</p>
-        <div class="entity-options">
-            <form th:each="entidad : ${entidades}" th:action="@{/admin/contexto}" method="post">
-                <input type="hidden" name="sistema" th:value="${entidad.name()}">
-                <button class="choice-card" type="submit">
-                    <h2 th:text="${entidad.nombre}">Entidad</h2>
-                    <span>Entrar al panel</span>
-                </button>
-            </form>
+<body class="service-choice-page">
+  <header class="choice-header">
+    <a class="choice-brand" th:href="@{/}">
+      <img th:src="@{/images/digitrans-mark.svg}" alt="" width="38" height="38">
+      <span>Digitrans<small>Administración global</small></span>
+    </a>
+    <span class="admin-badge"><i></i> ADMINISTRADOR</span>
+  </header>
+
+  <main class="choice-main">
+    <div class="choice-intro">
+      <p class="choice-eyebrow">TRANSPORTE · ACCESO ADMINISTRATIVO</p>
+      <h1>¿Qué sistema vas a administrar?</h1>
+      <p>Selecciona uno de los sistemas de transporte para abrir su panel. La selección requiere dos confirmaciones.</p>
+    </div>
+
+    <div th:if="${param.error}" class="choice-alert" role="alert">
+      No se pudo confirmar el servicio. Vuelve a elegirlo e inténtalo de nuevo.
+    </div>
+
+    <section th:if="${!requiereSegundaConfirmacion}" class="service-picker" aria-label="Sistemas de transporte">
+      <form id="serviceChoiceForm" th:action="@{/admin/contexto}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <input id="selectedService" type="hidden" name="sistema">
+        <input type="hidden" name="primeraConfirmacion" value="true">
+        <div class="service-grid">
+          <button class="service-card" type="button" data-service="TRANSCARIBE" aria-pressed="false">
+            <span class="service-logo"><img th:src="@{/images/sitm/transcaribe.png}" alt="Logo de Transcaribe"></span>
+            <span class="service-name">Transcaribe</span>
+            <span class="service-hint">Cartagena de Indias</span>
+            <span class="service-selected">Seleccionar</span>
+          </button>
+          <button class="service-card" type="button" data-service="TRANSMILENIO" aria-pressed="false">
+            <span class="service-logo"><img th:src="@{/images/sitm/transmilenio.png}" alt="Logo de TransMilenio"></span>
+            <span class="service-name">TransMilenio</span>
+            <span class="service-hint">Bogotá D. C.</span>
+            <span class="service-selected">Seleccionar</span>
+          </button>
+          <button class="service-card" type="button" data-service="TRANSMETRO" aria-pressed="false">
+            <span class="service-logo"><img th:src="@{/images/sitm/transmetro.png}" alt="Logo de Transmetro"></span>
+            <span class="service-name">Transmetro</span>
+            <span class="service-hint">Barranquilla</span>
+            <span class="service-selected">Seleccionar</span>
+          </button>
         </div>
+        <div class="choice-actions">
+          <p id="selectionPrompt" class="selection-prompt">Primero elige un sistema para continuar.</p>
+          <button id="firstConfirm" class="primary-action" type="submit" disabled>
+            Confirmar sistema
+            <span aria-hidden="true">→</span>
+          </button>
+        </div>
+      </form>
     </section>
-</main>
+
+    <section th:if="${requiereSegundaConfirmacion}" class="final-confirmation" aria-live="polite">
+      <div class="confirmation-mark" aria-hidden="true">?</div>
+      <p class="choice-eyebrow">PRIMERA CONFIRMACIÓN REGISTRADA</p>
+      <h2>¿Confirmas que quieres entrar a este servicio?</h2>
+      <p>Vas a abrir el panel administrativo de <strong th:text="${entidadPendiente.nombre}">Transcaribe</strong>.</p>
+      <div class="chosen-service">
+        <img th:if="${entidadPendiente.name() == 'TRANSCARIBE'}"
+             th:src="@{/images/sitm/transcaribe.png}" alt="Logo de Transcaribe">
+        <img th:if="${entidadPendiente.name() == 'TRANSMILENIO'}"
+             th:src="@{/images/sitm/transmilenio.png}" alt="Logo de TransMilenio">
+        <img th:if="${entidadPendiente.name() == 'TRANSMETRO'}"
+             th:src="@{/images/sitm/transmetro.png}" alt="Logo de Transmetro">
+        <span th:text="${entidadPendiente.nombre}">Transcaribe</span>
+      </div>
+      <div class="choice-actions confirmation-actions">
+        <a class="secondary-action" th:href="@{/admin/seleccionar-entidad}">Volver a elegir</a>
+        <form th:action="@{/admin/contexto/confirmar}" method="post">
+          <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <input type="hidden" name="sistema" th:value="${entidadPendiente.name()}">
+          <input type="hidden" name="segundaConfirmacion" value="true">
+          <button class="primary-action" type="submit">
+            Sí, confirmar y entrar
+            <span aria-hidden="true">→</span>
+          </button>
+        </form>
+      </div>
+    </section>
+  </main>
+
+  <footer class="choice-footer">Digitrans · Una plataforma, varios servicios</footer>
+
+  <script>
+    const form = document.getElementById("serviceChoiceForm");
+    if (form) {
+      const selectedService = document.getElementById("selectedService");
+      const firstConfirm = document.getElementById("firstConfirm");
+      const selectionPrompt = document.getElementById("selectionPrompt");
+      const cards = [...form.querySelectorAll(".service-card")];
+
+      cards.forEach((card) => {
+        card.addEventListener("click", () => {
+          selectedService.value = card.dataset.service;
+          cards.forEach((item) => {
+            const selected = item === card;
+            item.classList.toggle("is-selected", selected);
+            item.setAttribute("aria-pressed", String(selected));
+            item.querySelector(".service-selected").textContent = selected ? "Elegido" : "Seleccionar";
+          });
+          selectionPrompt.textContent = `Elegiste ${card.querySelector(".service-name").textContent}. Confirma para continuar.`;
+          firstConfirm.disabled = false;
+        });
+      });
+
+      form.addEventListener("submit", (event) => {
+        if (!selectedService.value) {
+          event.preventDefault();
+          selectionPrompt.textContent = "Selecciona uno de los tres sistemas antes de continuar.";
+        }
+      });
+    }
+  </script>
 </body>
 </html>

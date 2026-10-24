@@ -2,6 +2,7 @@ package com.Servicio.Billetera.security;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -65,8 +66,14 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                         && identity.role() != null && identity.active()) {
                     AuthenticatedIdentity principal = new AuthenticatedIdentity(
                             identity.id(), identity.email(), identity.name(), identity.role());
+                    List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+                    authorities.add(new SimpleGrantedAuthority(identity.role()));
+                    if ("ROLE_MODERATOR".equals(identity.role())
+                            && "BILLETERA".equals(identity.serviceAssignment())) {
+                        authorities.add(new SimpleGrantedAuthority("MODERATOR_BILLETERA"));
+                    }
                     var authentication = new UsernamePasswordAuthenticationToken(
-                            principal, null, List.of(new SimpleGrantedAuthority(identity.role())));
+                            principal, null, authorities);
                     request.setAttribute(TOKEN_ATTRIBUTE, token);
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 } else {
@@ -112,6 +119,6 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private record Identity(
-            String id, String email, String name, String role, boolean active) {
+            String id, String email, String name, String role, boolean active, String serviceAssignment) {
     }
 }
