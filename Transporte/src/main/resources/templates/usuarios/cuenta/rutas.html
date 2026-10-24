@@ -12,6 +12,7 @@
 
     <main class="center-card">
       <div class="card" style="max-width: 600px;">
+        <a class="back-arrow" th:href="@{/menu}" aria-label="Volver al menú de Transporte" title="Volver al menú">←</a>
         <h2 style="margin-bottom: 20px;">Rutas Favoritas</h2>
         <form method="get" th:action="@{/rutas}" style="display:flex; gap:8px; margin-bottom:16px;">
             <input type="search" name="buscar" th:value="${buscar}" placeholder="Buscar ruta..."

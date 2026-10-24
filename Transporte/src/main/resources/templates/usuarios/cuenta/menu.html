@@ -6,7 +6,7 @@
   <meta name="theme-color"
         th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#0F3948')}" />
   <title>Mi espacio - Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261015-5)}" />
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261023-1)}" />
   <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}" />
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
@@ -157,19 +157,6 @@
             </svg>
           </a>
 
-          <a class="dashboard-action action-profile" th:href="@{/perfil}">
-            <span class="action-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none">
-                <circle cx="12" cy="8" r="4" stroke="currentColor" stroke-width="1.8"/>
-                <path d="M4.5 20a7.5 7.5 0 0 1 15 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-              </svg>
-            </span>
-            <span class="action-copy"><strong>Mi perfil</strong><small>Actualiza tus datos personales</small></span>
-            <svg class="action-arrow" viewBox="0 0 20 20" fill="none" aria-hidden="true">
-              <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-          </a>
-
           <a class="dashboard-action action-alerts" th:href="@{/limite-saldo}">
             <span class="action-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none">
@@ -241,15 +228,12 @@
         <p class="error" th:if="${error}" th:text="${error}"></p>
       </div>
 
-      <form th:action="@{/logout}" method="post" class="dashboard-logout">
-        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
-        <button type="submit">
+      <a th:href="@{/salir}" class="dashboard-logout">
           <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
             <path d="M8 3H4.5A1.5 1.5 0 0 0 3 4.5v11A1.5 1.5 0 0 0 4.5 17H8m4-3 4-4-4-4m4 4H7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          Cerrar sesión
-        </button>
-      </form>
+          Salir
+      </a>
     </main>
 
     <a th:if="${usuario.role == 'ROLE_ADMIN'}"

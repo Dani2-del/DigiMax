@@ -689,10 +689,15 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  text-decoration: none;
   cursor: pointer;
   transition: background 0.2s;
 }
 .btn-cerrar-sesion:hover { background: var(--tinta-2); }
+.admin-home-actions .btn-cerrar-sesion:focus-visible {
+  outline: 3px solid var(--caribe);
+  outline-offset: 3px;
+}
 
 .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
 .search-input {

@@ -3,35 +3,118 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Elige un servicio — Digitrans</title>
+  <meta name="theme-color" content="#f4f7fb">
+  <title>Servicios — Digitrans</title>
   <link rel="stylesheet" th:href="@{/css/usuario.css}">
-  <link rel="stylesheet" th:href="@{/css/servicios.css}">
+  <link rel="stylesheet" th:href="@{/css/servicios.css(v=20261023-2)}">
   <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body class="login-page">
-  <div class="page">
-    <main class="center-card">
-      <section class="card">
-        <h1 class="title">¿Qué servicio quieres usar?</h1>
-        <p class="info-text">Tu cuenta Digitrans funciona para todos los servicios. Elige a dónde quieres ir.</p>
-        <div class="service-choices">
-          <a class="primary service-choice" th:href="${transporteUrl}">
-            <strong>Transporte</strong>
-            <span>TransCaribe, TransMilenio y Transmetro</span>
+<body class="login-page services-page">
+  <div class="page services-page-shell">
+    <main class="center-card services-center">
+      <section class="card services-panel" aria-labelledby="services-title">
+        <div class="services-brand">
+          <img th:src="@{/images/digitrans-mark.svg}" alt="" width="42" height="42">
+          <span class="services-brand-copy">
+            <strong>Digitrans</strong>
+            <small>Movilidad conectada</small>
+          </span>
+          <span class="services-account-badge"><span aria-hidden="true"></span> Cuenta unificada</span>
+        </div>
+
+        <header class="services-heading">
+          <div>
+            <p class="services-eyebrow">UN SOLO ACCESO, MUCHAS POSIBILIDADES</p>
+            <h1 id="services-title">¿A dónde vamos hoy?</h1>
+            <p>Tu cuenta Digitrans te conecta con todos tus servicios. Elige por dónde empezar.</p>
+          </div>
+          <div class="services-heading-art" aria-hidden="true">
+            <span class="services-art-orbit services-art-orbit-one"></span>
+            <span class="services-art-orbit services-art-orbit-two"></span>
+            <span class="services-art-core"></span>
+            <span class="services-art-dot"></span>
+          </div>
+        </header>
+
+        <div class="service-choices" aria-label="Servicios disponibles">
+          <a class="service-choice service-choice-transport" th:href="${transporteUrl}">
+            <span class="service-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 16V6.5C5 4.57 6.57 3 8.5 3h7C17.43 3 19 4.57 19 6.5V16H5Z" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M5 11h14M8 16l-1.5 3M16 16l1.5 3M8 19h8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <circle cx="8.5" cy="13.5" r="1" fill="currentColor"/>
+                <circle cx="15.5" cy="13.5" r="1" fill="currentColor"/>
+              </svg>
+            </span>
+            <span class="service-card-copy">
+              <span class="service-card-kicker">MUÉVETE POR LA CIUDAD</span>
+              <strong>Transporte</strong>
+              <span>TransCaribe, TransMilenio y Transmetro</span>
+            </span>
+            <span class="service-card-arrow" aria-hidden="true">↗</span>
           </a>
-          <a class="primary service-choice" th:href="${recargasUrl}">
-            <strong>Recargas móviles</strong>
-            <span>Saldo y paquetes para tu línea</span>
+
+          <a class="service-choice service-choice-recharge" th:href="${recargasUrl}">
+            <span class="service-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="5" y="2.75" width="14" height="18.5" rx="3" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M9 6h6M10 18h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="m13.2 8.5-3.1 4h2.5l-.8 3 3.1-4h-2.5l.8-3Z" fill="currentColor"/>
+              </svg>
+            </span>
+            <span class="service-card-copy">
+              <span class="service-card-kicker">SIEMPRE CONECTADO</span>
+              <strong>Recargas móviles</strong>
+              <span>Saldo y paquetes para tu línea</span>
+            </span>
+            <span class="service-card-arrow" aria-hidden="true">↗</span>
           </a>
-          <a class="primary service-choice" th:href="${billeteraUrl}">
-            <strong>Tarjeta universal</strong>
-            <span>Consulta y administra el saldo compartido entre servicios</span>
+
+          <a class="service-choice service-choice-wallet" th:href="${billeteraUrl}">
+            <span class="service-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <rect x="3" y="5" width="18" height="15" rx="3" stroke="currentColor" stroke-width="1.7"/>
+                <path d="M3.5 9h17M15 14h.01" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M6 5V4a1 1 0 0 1 1-1h11" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <circle cx="15" cy="14" r="1.5" stroke="currentColor" stroke-width="1.4"/>
+              </svg>
+            </span>
+            <span class="service-card-copy">
+              <span class="service-card-kicker">UN SALDO PARA TODO</span>
+              <strong>Tarjeta universal</strong>
+              <span>Administra el saldo compartido entre servicios</span>
+            </span>
+            <span class="service-card-arrow" aria-hidden="true">↗</span>
           </a>
         </div>
-        <a th:href="@{/cuenta/seguridad}" class="back-to-login">Seguridad de la cuenta</a>
-        <form th:action="@{/logout}" method="post">
-          <button type="submit" class="link-button">Cerrar sesión</button>
-        </form>
+
+        <div class="services-bottom">
+          <div class="services-account-links" aria-label="Opciones de cuenta">
+            <a th:href="@{/cuenta/perfil}">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <circle cx="10" cy="6.5" r="3" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M3.5 17a6.5 6.5 0 0 1 13 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              Mi perfil
+            </a>
+            <a th:href="@{/cuenta/seguridad}">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <rect x="4" y="8" width="12" height="9" rx="2" stroke="currentColor" stroke-width="1.5"/>
+                <path d="M6.5 8V5.5a3.5 3.5 0 0 1 7 0V8M10 11.5v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+              </svg>
+              Seguridad de la cuenta
+            </a>
+          </div>
+          <form th:action="@{/logout}" method="post" class="services-logout">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
+            <button type="submit">
+              <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+                <path d="M8 3H5a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h3m4-3 4-4-4-4m4 4H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       </section>
     </main>
     <div th:replace="~{fragments/footer :: footer}"></div>

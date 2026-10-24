@@ -6,7 +6,7 @@
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel administrador - Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261015-2)}">
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261023-1)}">
     <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}">
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
@@ -34,12 +34,10 @@
                         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>
                         Vista Usuario
                     </a>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="btn-cerrar-sesion">
-                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
-                            Cerrar sesión
-                        </button>
-                    </form>
+                    <a th:href="@{/salir}" class="btn-cerrar-sesion">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
+                        Salir
+                    </a>
                 </div>
             </header>
 

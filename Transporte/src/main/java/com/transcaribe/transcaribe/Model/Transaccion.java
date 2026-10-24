@@ -34,6 +34,9 @@ public class Transaccion {
     @Field("tarjeta_transcaribe")
     private String tarjetaTranscaribe;
 
+    @Field("operacion_id")
+    private String operationId;
+
     @Field("sistema_transporte")
     private SistemaTransporte sistemaTransporte = SistemaTransporte.TRANSCARIBE;
 
@@ -85,6 +88,9 @@ public class Transaccion {
 
     public String getTarjetaTranscaribe() { return tarjetaTranscaribe; }
     public void setTarjetaTranscaribe(String tarjetaTranscaribe) { this.tarjetaTranscaribe = tarjetaTranscaribe; }
+
+    public String getOperationId() { return operationId; }
+    public void setOperationId(String operationId) { this.operationId = operationId; }
 
     public SistemaTransporte getSistemaTransporte() {
         return sistemaTransporte == null ? SistemaTransporte.TRANSCARIBE : sistemaTransporte;

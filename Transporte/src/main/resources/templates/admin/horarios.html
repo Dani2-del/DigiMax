@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Gestión de rutas - Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/admin.css}">
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261023-1)}">
     <style>
         .admin-schedule-home .admin-home-actions { flex-shrink:0; }
         .admin-schedule-home .admin-home-actions .btn-pagina,
@@ -24,9 +24,7 @@
                 </div>
                 <div class="admin-home-actions">
                     <a href="/admin/dashboard" class="btn-pagina">← Panel principal</a>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="btn-cerrar-sesion">🚪 Cerrar sesión</button>
-                    </form>
+                    <a th:href="@{/salir}" class="btn-cerrar-sesion">🚪 Salir</a>
                 </div>
             </header>
 

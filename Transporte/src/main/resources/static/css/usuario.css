@@ -1549,13 +1549,13 @@ body[data-sistema="TRANSMILENIO"] .menu-page section[data-sistema] form button:h
   box-shadow: 0 8px 18px rgba(212, 155, 0, 0.28);
 }
 
-body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout button {
+body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout {
   border-color: var(--linea);
   background: var(--mango-soft);
   color: var(--tinta);
 }
 
-body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout button:hover {
+body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout:hover {
   border-color: var(--mango);
   background: #ffedaa;
   color: var(--tinta-2);
@@ -1897,12 +1897,8 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
 }
 
 .dashboard-logout {
-  display: flex;
-  justify-content: center;
-}
-
-.dashboard-logout button {
   display: inline-flex;
+  justify-content: center;
   align-items: center;
   gap: 8px;
   padding: 9px 14px;
@@ -1913,11 +1909,11 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
-  cursor: pointer;
+  text-decoration: none;
   transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 }
 
-.dashboard-logout button:hover {
+.dashboard-logout:hover {
   border-color: rgba(232, 85, 57, 0.28);
   background: #fff0ec;
   color: var(--coral-2);

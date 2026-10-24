@@ -46,6 +46,11 @@ public class AuthController {
         return "redirect:" + accesoUrl + "/login";
     }
 
+    @GetMapping("/salir")
+    public String salirDelServicio() {
+        return "redirect:" + accesoUrl + "/servicios";
+    }
+
     @RequestMapping(value = "/registro", method = {RequestMethod.GET, RequestMethod.POST})
     public String registro() {
         return "redirect:" + accesoUrl + "/registro";

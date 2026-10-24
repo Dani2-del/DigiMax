@@ -193,6 +193,8 @@ public class BusController {
                     System.err.println("Error correo simulación: " + ex.getMessage());
                 }
                 redirectAttributes.addFlashAttribute("mensaje", resultado + " ✅");
+            } else if (resultado.startsWith("Pago ya procesado")) {
+                redirectAttributes.addFlashAttribute("mensaje", resultado);
             } else {
                 redirectAttributes.addFlashAttribute("error", resultado + " ❌");
             }

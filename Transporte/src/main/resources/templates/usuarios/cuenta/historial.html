@@ -12,10 +12,9 @@
 
     <main class="center-card wide">
       <div class="card">
-        <button class="back-arrow"
-                th:onclick="|window.location.href='@{/menu}'|">
-          🡨
-        </button>
+        <a class="back-arrow" th:href="@{/menu}" aria-label="Volver al menú de Transporte" title="Volver al menú">
+          ← Volver
+        </a>
 
         <h2>Historial de transacciones</h2>
         <p>Usuario: <strong th:text="${usuario.correo}"></strong></p>

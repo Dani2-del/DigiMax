@@ -2,6 +2,7 @@ package com.transcaribe.transcaribe.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -16,6 +17,8 @@ import com.transcaribe.transcaribe.Model.Usuario;
 public interface TransaccionRepository extends MongoRepository<Transaccion, String> {
     @Query("{ 'usuario_id': ?0 }")
     List<Transaccion> findByUsuarioId(String usuarioId);
+
+    Optional<Transaccion> findByUsuarioIdAndOperationId(String usuarioId, String operationId);
 
     @Query("{}")
     Stream<Transaccion> streamAll();

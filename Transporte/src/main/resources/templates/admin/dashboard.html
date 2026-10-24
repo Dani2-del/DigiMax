@@ -5,7 +5,7 @@
     <title>Gestión de usuarios - Digitrans</title>
     <meta name="_csrf" th:content="${_csrf?.token}"/>
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
-    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261015-2)}" />
+    <link rel="stylesheet" th:href="@{/css/admin.css(v=20261023-1)}" />
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 
@@ -25,9 +25,7 @@
 
                 <div class="admin-home-actions">
                     <a href="/admin/dashboard" class="btn-pagina">← Panel principal</a>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="btn-cerrar-sesion">🚪 Cerrar sesión</button>
-                    </form>
+                    <a th:href="@{/salir}" class="btn-cerrar-sesion">🚪 Salir</a>
                 </div>
             </header>
 

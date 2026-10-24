@@ -11,13 +11,16 @@ import com.transcaribe.transcaribe.Repository.UsuarioRepository;
 import com.transcaribe.transcaribe.Util.TarifaTranscaribe;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 import java.math.BigDecimal; 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 import java.util.UUID;
+import java.util.Optional;
 import com.transcaribe.transcaribe.Model.RutaTransmilenio;
 import com.transcaribe.transcaribe.Model.RutaTransmetro;
 
@@ -78,10 +81,15 @@ public class BusService {
         return "Este bus no tiene rutas asignadas.";
     }
 
+    BigDecimal costo = BigDecimal.valueOf(TarifaTranscaribe.paraSistema(sistemaTransporte));
+    String pagoRepetido = resultadoPagoRepetido(usuarioId, operacionId, numeroTarjeta,
+            sistemaTransporte, costo);
+    if (pagoRepetido != null) {
+        return pagoRepetido;
+    }
+
     Random rand = new Random();
     String rutaSeleccionada = bus.getRutas().get(rand.nextInt(bus.getRutas().size()));
-
-    BigDecimal costo = BigDecimal.valueOf(TarifaTranscaribe.paraSistema(sistemaTransporte));
 
     if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
         return cobrarConTarjetaUniversal(usuario, costo, sistemaTransporte, operacionId,
@@ -112,6 +120,8 @@ public class BusService {
             usuario
         );
         t.setSistemaTransporte(sistemaTransporte);
+        t.setTarjetaTranscaribe(numeroTarjeta);
+        asociarOperacion(t, usuarioId, operacionId);
         transaccionRepository.save(t);
 
         return "Cobro exitoso. Ruta: " + rutaSeleccionada + 
@@ -135,6 +145,11 @@ public class BusService {
 
         BigDecimal costo = BigDecimal.valueOf(
                 TarifaTranscaribe.paraSistema(SistemaTransporte.TRANSMILENIO));
+        String pagoRepetido = resultadoPagoRepetido(usuarioId, operacionId, numeroTarjeta,
+                SistemaTransporte.TRANSMILENIO, costo);
+        if (pagoRepetido != null) {
+            return pagoRepetido;
+        }
         if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
             return cobrarConTarjetaUniversal(usuario, costo, SistemaTransporte.TRANSMILENIO, operacionId,
                     "Pasaje TransMilenio: ruta " + ruta.getCodigoLinea());
@@ -158,6 +173,7 @@ public class BusService {
                         + " (" + ruta.getOrigen() + " → " + ruta.getDestino() + ")", usuario);
         transaccion.setSistemaTransporte(SistemaTransporte.TRANSMILENIO);
         transaccion.setTarjetaTranscaribe(numeroTarjeta);
+        asociarOperacion(transaccion, usuarioId, operacionId);
         transaccionRepository.save(transaccion);
 
         return "Cobro exitoso. Ruta " + ruta.getCodigoLinea() + ": " + ruta.getOrigen()
@@ -177,6 +193,11 @@ public class BusService {
 
         BigDecimal costo = BigDecimal.valueOf(
                 TarifaTranscaribe.paraSistema(SistemaTransporte.TRANSMETRO));
+        String pagoRepetido = resultadoPagoRepetido(usuarioId, operacionId, numeroTarjeta,
+                SistemaTransporte.TRANSMETRO, costo);
+        if (pagoRepetido != null) {
+            return pagoRepetido;
+        }
         if (WalletClient.UNIVERSAL_CARD_OPTION.equals(numeroTarjeta)) {
             return cobrarConTarjetaUniversal(usuario, costo, SistemaTransporte.TRANSMETRO, operacionId,
                     "Pasaje Transmetro: ruta " + ruta.codigo());
@@ -201,6 +222,7 @@ public class BusService {
                         + ruta.paradas().get(ruta.paradas().size() - 1) + ")", usuario);
         transaccion.setSistemaTransporte(SistemaTransporte.TRANSMETRO);
         transaccion.setTarjetaTranscaribe(numeroTarjeta);
+        asociarOperacion(transaccion, usuarioId, operacionId);
         transaccionRepository.save(transaccion);
 
         return "Cobro exitoso. Ruta " + ruta.codigo() + ": " + ruta.paradas().get(0)
@@ -224,8 +246,38 @@ public class BusService {
                 "PASAJE [TARJETA UNIVERSAL] - " + descripcion, usuario);
         transaccion.setSistemaTransporte(sistema);
         transaccion.setTarjetaTranscaribe(WalletClient.UNIVERSAL_CARD_OPTION);
+        asociarOperacion(transaccion, usuario.getId(), operacionId);
         transaccionRepository.save(transaccion);
         return "Cobro exitoso con tarjeta universal. Saldo restante: $" + wallet.balance();
+    }
+
+    private void asociarOperacion(Transaccion transaccion, String usuarioId, String operacionId) {
+        if (operacionId == null || operacionId.isBlank()) {
+            return;
+        }
+        transaccion.setOperationId(operacionId);
+        transaccion.setId(UUID.nameUUIDFromBytes(
+                (usuarioId + ":" + operacionId).getBytes(StandardCharsets.UTF_8)).toString());
+    }
+
+    private String resultadoPagoRepetido(
+            String usuarioId, String operacionId, String numeroTarjeta,
+            SistemaTransporte sistema, BigDecimal monto) {
+        if (operacionId == null || operacionId.isBlank()) {
+            return null;
+        }
+        Optional<Transaccion> transaccion = transaccionRepository
+                .findByUsuarioIdAndOperationId(usuarioId, operacionId);
+        if (transaccion.isEmpty()) {
+            return null;
+        }
+        Transaccion anterior = transaccion.get();
+        boolean mismoPago = anterior.getSistemaTransporte() == sistema
+                && BigDecimal.valueOf(anterior.getMonto()).compareTo(monto) == 0
+                && Objects.equals(numeroTarjeta, anterior.getTarjetaTranscaribe());
+        return mismoPago
+                ? "Pago ya procesado; no se realizó un nuevo cobro."
+                : "El identificador de operación ya se utilizó para otro pago.";
     }
 
     public List<String> obtenerTodasLasRutas() {
