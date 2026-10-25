@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reportes Excel — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-1)}">
+</head>
+<body class="global-admin-page">
+<div class="global-admin-shell">
+  <aside class="global-sidebar">
+    <a class="global-brand" th:href="@{/admin/global}">
+      <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+      <span><strong>Digitrans</strong><small>Administración global</small></span>
+    </a>
+    <p class="sidebar-caption">PLATAFORMA</p>
+    <nav class="global-nav" aria-label="Navegación administrativa">
+      <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+      <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+      <a th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
+      <a th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
+      <a th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
+      <a class="active" th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+      <form th:action="@{/logout}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+      </form>
+    </div>
+  </aside>
+  <main class="global-main">
+    <header class="global-topbar">
+      <div><p class="global-eyebrow">EXPORTACIÓN DE DATOS</p><h1>Reportes Excel globales</h1></div>
+      <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+    </header>
+    <section class="users-panel report-builder">
+      <div class="users-panel-heading">
+        <div><h2>Configura tu reporte</h2><p>El archivo se genera con los datos actuales de las bases conectadas.</p></div>
+      </div>
+      <form method="post" th:action="@{/admin/global/reportes/excel}" class="global-report-form">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <fieldset class="service-checkboxes">
+          <legend>¿Qué información incluir?</legend>
+          <label><input type="checkbox" name="conjuntos" value="USUARIOS" checked><span>Directorio central de usuarios</span></label>
+          <label><input type="checkbox" name="conjuntos" value="TRANSACCIONES" checked><span>Transacciones de los servicios</span></label>
+        </fieldset>
+        <fieldset class="service-checkboxes">
+          <legend>Servicios para transacciones</legend>
+          <label th:each="service : ${services}">
+            <input type="checkbox" name="servicios" th:value="${service.code}" checked>
+            <span th:text="${service.name}">Servicio</span>
+          </label>
+        </fieldset>
+        <div class="report-date-fields">
+          <label>Fecha desde <span>(opcional)</span><input type="date" name="desde"></label>
+          <label>Fecha hasta <span>(opcional)</span><input type="date" name="hasta"></label>
+        </div>
+        <div class="report-privacy-note">
+          <strong>Privacidad y consolidación</strong>
+          <p>El libro no incluye contraseñas ni hashes. Las transacciones con el mismo ID entre módulos se exportan una sola vez. Si dejas las fechas vacías, se incluirá todo el historial disponible.</p>
+        </div>
+        <div class="report-actions">
+          <button class="save-user" type="submit">Generar y descargar Excel</button>
+        </div>
+      </form>
+    </section>
+    <footer class="global-footer">Digitrans · Exportación exclusiva para administradores globales</footer>
+  </main>
+</div>
+</body>
+</html>

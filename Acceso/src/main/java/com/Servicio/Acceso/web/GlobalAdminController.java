@@ -22,6 +22,7 @@ import com.Servicio.Acceso.model.AdminAuditEvent;
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.AdminAuditEventRepository;
 import com.Servicio.Acceso.repository.UsuarioRepository;
+import com.Servicio.Acceso.service.GlobalOperationsService;
 
 import org.springframework.security.core.Authentication;
 
@@ -37,10 +38,15 @@ public class GlobalAdminController {
 
     private final UsuarioRepository usuarios;
     private final AdminAuditEventRepository auditEvents;
+    private final GlobalOperationsService globalOperations;
 
-    public GlobalAdminController(UsuarioRepository usuarios, AdminAuditEventRepository auditEvents) {
+    public GlobalAdminController(
+            UsuarioRepository usuarios,
+            AdminAuditEventRepository auditEvents,
+            GlobalOperationsService globalOperations) {
         this.usuarios = usuarios;
         this.auditEvents = auditEvents;
+        this.globalOperations = globalOperations;
     }
 
     @GetMapping
@@ -50,6 +56,11 @@ public class GlobalAdminController {
         model.addAttribute("usuariosNoVerificados", usuarios.countByVerificadoFalse());
         model.addAttribute("totalAdministradores", usuarios.countByRole(Usuario.ROLE_ADMIN));
         model.addAttribute("totalModeradores", usuarios.countByRole(Usuario.ROLE_MODERATOR));
+        var transactions = globalOperations.transactions(
+                Set.of("TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO", "BILLETERA", "RECARGAS_MOVIL"),
+                null, null);
+        model.addAttribute("totalTransaccionesGlobales", transactions.total());
+        model.addAttribute("erroresTransaccionesGlobales", transactions.unavailableServices());
         model.addAttribute("administrador", authentication.getName());
         model.addAttribute("auditoriaReciente", auditEvents.findTop8ByOrderByCreatedAtDesc());
         return "admin/global-dashboard";

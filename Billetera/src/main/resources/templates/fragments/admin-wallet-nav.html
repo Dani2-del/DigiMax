@@ -1,0 +1,14 @@
+<nav xmlns:th="http://www.thymeleaf.org"
+     th:fragment="sectionNav"
+     class="wallet-section-nav"
+     aria-label="Secciones del panel">
+    <a class="wallet-section-brand" th:href="@{/admin/dashboard}" aria-label="Digitrans, panel de Billetera">
+        <span class="wallet-section-mark" aria-hidden="true">D</span>
+        <strong>Digitrans</strong>
+    </a>
+    <a th:href="@{/admin/dashboard#resumen}">Resumen</a>
+    <a th:href="@{/admin#cuentas}">Cuentas</a>
+    <a th:href="@{/admin/dashboard#herramientas}">Herramientas</a>
+    <a th:href="@{/admin/movimientos}">Movimientos</a>
+    <a th:href="@{/admin/tarjetas-desactivadas#tarjetas-desactivadas}">Tarjetas desactivadas</a>
+</nav>

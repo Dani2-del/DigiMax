@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel moderador | Billetera Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
 </head>
 <body>
-<main class="wallet-page admin-page wallet-moderator-page">
+<main class="wallet-page admin-page wallet-moderator-page wallet-admin-nav-page">
     <header class="page-header admin-header" id="inicio">
         <div>
             <p class="eyebrow">CENTRO DE OPERACIONES · DIGITRANS</p>
@@ -20,12 +20,7 @@
         </nav>
     </header>
 
-    <nav class="wallet-section-nav" aria-label="Secciones del panel">
-        <a href="#resumen">Resumen</a>
-        <a href="#cuentas">Cuentas</a>
-        <a href="#herramientas">Herramientas</a>
-        <a th:href="@{/admin/tarjetas-desactivadas}">Tarjetas desactivadas</a>
-    </nav>
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
 
     <section id="resumen" class="admin-overview" aria-label="Resumen de billeteras">
         <article class="admin-stat">
@@ -104,32 +99,6 @@
         </div>
     </section>
 
-    <section id="herramientas" class="wallet-moderator-tools">
-        <div class="wallet-tools-heading">
-            <div>
-                <p class="eyebrow">AL SELECCIONAR UNA CUENTA</p>
-                <h2>Herramientas del moderador</h2>
-                <p class="welcome">Las operaciones se habilitan dentro de la cuenta seleccionada para evitar acciones sobre el usuario equivocado.</p>
-            </div>
-        </div>
-        <div class="wallet-tools-grid">
-            <article class="wallet-tool-card">
-                <span class="wallet-tool-icon is-credit">↕</span>
-                <h3>Ajustar saldo</h3>
-                <p>Abonar o descontar un monto con motivo de soporte y movimiento auditado.</p>
-            </article>
-            <article class="wallet-tool-card">
-                <span class="wallet-tool-icon is-security">⌑</span>
-                <h3>Congelar o desbloquear</h3>
-                <p>Restringir o restaurar el uso de una tarjeta por un caso documentado.</p>
-            </article>
-            <article class="wallet-tool-card">
-                <span class="wallet-tool-icon is-history">◷</span>
-                <h3>Consultar movimientos</h3>
-                <p>Revisar los movimientos recientes y el historial de tarjetas anteriores.</p>
-            </article>
-        </div>
-    </section>
     <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · OPERACIONES CON TRAZABILIDAD</footer>
 </main>
 </body>

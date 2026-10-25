@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Analítica global — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-1)}">
+</head>
+<body class="global-admin-page">
+<div class="global-admin-shell">
+  <aside class="global-sidebar">
+    <a class="global-brand" th:href="@{/admin/global}">
+      <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+      <span><strong>Digitrans</strong><small>Administración global</small></span>
+    </a>
+    <p class="sidebar-caption">PLATAFORMA</p>
+    <nav class="global-nav" aria-label="Navegación administrativa">
+      <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+      <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+      <a th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
+      <a class="active" th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
+      <a th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
+      <a th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+      <form th:action="@{/logout}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+      </form>
+    </div>
+  </aside>
+  <main class="global-main">
+    <header class="global-topbar">
+      <div><p class="global-eyebrow">DATOS DE LOS SERVICIOS</p><h1>Analítica global</h1></div>
+      <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+    </header>
+    <div th:if="${!#maps.isEmpty(erroresFuentes)}" class="global-alert error" role="alert">
+      <strong>Algunas fuentes no respondieron; las gráficas pueden estar incompletas.</strong>
+      <p th:each="source : ${erroresFuentes.values()}" th:text="${source}"></p>
+    </div>
+    <section class="metric-grid analytics-kpis">
+      <article class="metric-card metric-primary"><span class="metric-label">Operaciones únicas · 12 meses</span>
+        <strong th:text="${totalTransacciones}">0</strong><small>Consolidación por ID de operación</small></article>
+      <article class="metric-card"><span class="metric-label">Monto registrado</span>
+        <strong th:text="|$ ${#numbers.formatDecimal(montoTotal, 0, 'COMMA', 2, 'POINT')}|">$ 0</strong><small>Según los registros disponibles</small></article>
+      <article class="metric-card"><span class="metric-label">Periodo</span>
+        <strong>12 meses</strong><small>Actualizado <span th:text="${fechaActualizacion}">fecha</span></small></article>
+    </section>
+    <section class="analytics-global-grid">
+      <article class="users-panel global-chart-card global-chart-wide">
+        <header><p class="global-eyebrow">TENDENCIA</p><h2>Operaciones por mes</h2>
+          <p>Actividad registrada en los cinco servicios conectados.</p></header>
+        <div class="global-month-chart" role="img" aria-label="Gráfica de operaciones mensuales">
+          <div class="global-month-column" th:each="point : ${monthly}">
+            <strong th:text="${point.count}">0</strong>
+            <div class="global-bar-track"><span class="global-bar" th:style="|height:${point.barPercent}%|"></span></div>
+            <small th:text="${point.label}">2026-01</small>
+          </div>
+        </div>
+      </article>
+      <article class="users-panel global-chart-card">
+        <header><p class="global-eyebrow">DISTRIBUCIÓN</p><h2>Actividad por servicio</h2>
+          <p>Operaciones únicas y montos registrados.</p></header>
+        <div class="global-horizontal-chart">
+          <div class="global-horizontal-row" th:each="service : ${services}">
+            <div><strong th:text="${service.name}">Servicio</strong><span th:text="${service.count}">0</span></div>
+            <div class="global-horizontal-track"><span th:style="|width:${service.barPercent}%|"></span></div>
+            <small th:text="|$ ${#numbers.formatDecimal(service.amount, 0, 'COMMA', 2, 'POINT')} COP|"></small>
+          </div>
+        </div>
+      </article>
+      <article class="users-panel global-chart-card">
+        <header><p class="global-eyebrow">CUENTAS</p><h2>Usuarios por rol</h2>
+          <p>Distribución de identidades centrales.</p></header>
+        <div class="global-role-list">
+          <div th:each="role : ${roles}"><strong th:text="${role.role}">ROLE_USER</strong><span th:text="${role.count}">0</span></div>
+        </div>
+      </article>
+    </section>
+    <p class="report-disclaimer">Los totales consolidan operaciones con el mismo ID entre los módulos; se excluyen los chats, que no son transacciones.</p>
+    <footer class="global-footer">Digitrans · Analítica operativa global</footer>
+  </main>
+</div>
+</body>
+</html>

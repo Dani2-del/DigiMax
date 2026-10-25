@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Movimientos de Billetera | Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
+</head>
+<body>
+<main class="wallet-page admin-page wallet-admin-nav-page">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
+    <header class="page-header admin-header">
+        <div>
+            <p class="eyebrow">SUPERVISIÓN DE BILLETERA</p>
+            <h1>Movimientos</h1>
+            <p class="welcome">Busca, filtra y recorre los movimientos registrados en todas las billeteras.</p>
+        </div>
+        <nav class="header-links" aria-label="Navegación de administración">
+            <a class="back-link" th:href="@{/admin/dashboard}">← Panel principal</a>
+        </nav>
+    </header>
+
+    <p th:if="${errorFiltroFecha}" class="notice error" role="alert">
+        La fecha inicial no puede ser posterior a la fecha final.
+    </p>
+    <section class="admin-directory wallet-movement-directory">
+        <div class="admin-directory-heading">
+            <div>
+                <p class="eyebrow">HISTORIAL GLOBAL</p>
+                <h2>Filtrar movimientos</h2>
+                <p class="muted">Mostrando <strong th:text="${totalMovimientos}">0</strong> resultados para los filtros seleccionados.</p>
+            </div>
+        </div>
+        <form class="wallet-movement-filters" method="get" th:action="@{/admin/movimientos}">
+            <label class="wallet-movement-query">Buscar usuario, ID de operación o detalle
+                <input type="search" name="buscar" maxlength="120"
+                       placeholder="Nombre, correo, operación..." th:value="${buscar}">
+            </label>
+            <label>Tipo
+                <select name="tipo">
+                    <option value="">Todos</option>
+                    <option th:each="option : ${tipos}" th:value="${option}" th:text="${option}"
+                            th:selected="${tipoSeleccionado == option}">ABONO</option>
+                </select>
+            </label>
+            <label>Servicio
+                <select name="servicio">
+                    <option value="">Todos</option>
+                    <option th:each="option : ${servicios}" th:value="${option}" th:text="${option}"
+                            th:selected="${servicioSeleccionado == option}">Billetera</option>
+                </select>
+            </label>
+            <label>Desde
+                <input type="date" name="desde" th:value="${desde}">
+            </label>
+            <label>Hasta
+                <input type="date" name="hasta" th:value="${hasta}">
+            </label>
+            <div class="wallet-filter-actions">
+                <button type="submit">Aplicar filtros</button>
+                <a class="button-secondary admin-clear" th:href="@{/admin/movimientos}">Limpiar</a>
+            </div>
+        </form>
+
+        <p th:if="${#lists.isEmpty(movimientos)}" class="empty-state">
+            No encontramos movimientos que coincidan con esos filtros.
+        </p>
+        <div class="table-wrap" th:unless="${#lists.isEmpty(movimientos)}">
+            <table class="movement-table">
+                <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Tipo</th>
+                    <th>Detalle</th>
+                    <th>Servicio</th>
+                    <th>Fecha</th>
+                    <th class="amount-heading">Monto</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="entry : ${movimientos}">
+                    <td>
+                        <a class="wallet-movement-user"
+                           th:href="@{/admin/cuentas/{id}(id=${entry.userId})}"
+                           th:text="${entry.userName}">Usuario</a>
+                        <small class="wallet-movement-email" th:if="${!#strings.isEmpty(entry.userEmail)}"
+                               th:text="${entry.userEmail}">correo@ejemplo.com</small>
+                    </td>
+                    <td th:text="${entry.movement.tipo}">ABONO</td>
+                    <td>
+                        <span th:text="${entry.movement.descripcion}">Detalle</span>
+                        <small class="wallet-movement-id" th:if="${!#strings.isEmpty(entry.movement.operacionId)}"
+                               th:text="|ID: ${entry.movement.operacionId}|">ID: operación</small>
+                    </td>
+                    <td th:text="${entry.movement.servicio}">Billetera</td>
+                    <td th:text="${entry.movement.fecha != null ? #temporals.format(entry.movement.fecha, 'dd/MM/yyyy HH:mm') : '-'}">-</td>
+                    <td class="movement-amount"
+                        th:text="${entry.movement.monto != null ? '$ ' + #numbers.formatDecimal(entry.movement.monto, 0, 'COMMA', 2, 'POINT') : '-'}">$ 0</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+        <nav class="wallet-movement-pagination" th:if="${totalMovimientos > 0}"
+             aria-label="Paginación de movimientos">
+            <a th:if="${hasPreviousPage}"
+               th:href="@{/admin/movimientos(page=${pageIndex - 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, servicio=${servicioSeleccionado}, desde=${desde}, hasta=${hasta})}">
+                ← Más recientes
+            </a>
+            <span>
+                Mostrando <strong th:text="${firstMovement}">1</strong>–<strong th:text="${lastMovement}">5</strong>
+                de <strong th:text="${totalMovimientos}">0</strong>
+                · Página <strong th:text="${pageIndex + 1}">1</strong> de <strong th:text="${totalPages}">1</strong>
+            </span>
+            <a th:if="${hasNextPage}"
+               th:href="@{/admin/movimientos(page=${pageIndex + 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, servicio=${servicioSeleccionado}, desde=${desde}, hasta=${hasta})}">
+                Más antiguos →
+            </a>
+        </nav>
+    </section>
+    <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · HISTORIAL DE MOVIMIENTOS</footer>
+</main>
+</body>
+</html>

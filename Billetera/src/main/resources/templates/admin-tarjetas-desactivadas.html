@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjetas desactivadas | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
 </head>
 <body>
-<main class="wallet-page">
+<main class="wallet-page wallet-admin-nav-page">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
     <header class="page-header">
         <div>
             <p class="eyebrow">SUPERVISIÓN DE BILLETERA</p>
@@ -19,7 +20,7 @@
             <a class="back-link" th:href="@{/}">Volver a Billetera</a>
         </nav>
     </header>
-    <section class="panel">
+    <section id="tarjetas-desactivadas" class="panel">
         <p class="muted">
             El saldo registrado es una captura histórica; no representa fondos adicionales. El dinero permanece
             en la billetera del usuario y se conserva al emitir una tarjeta nueva.

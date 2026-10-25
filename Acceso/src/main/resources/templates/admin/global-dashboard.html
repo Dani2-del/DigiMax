@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101f35">
   <title>Administración global — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261024-1)}">
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-1)}">
   <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="global-admin-page">
@@ -19,10 +19,10 @@
       <nav class="global-nav" aria-label="Navegación administrativa">
         <a class="active" th:href="@{/admin/global}"><span>▦</span> Resumen</a>
         <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
-        <a class="nav-disabled" aria-disabled="true"><span>⇄</span> Transacciones <small>En integración</small></a>
-        <a class="nav-disabled" aria-disabled="true"><span>◷</span> Analítica global <small>En integración</small></a>
-        <a class="nav-disabled" aria-disabled="true"><span>⌁</span> Chats operativos <small>En integración</small></a>
-        <a class="nav-disabled" aria-disabled="true"><span>▤</span> Reportes Excel <small>En integración</small></a>
+        <a th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
+        <a th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
+        <a th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
+        <a th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
       </nav>
       <div class="sidebar-bottom">
         <span class="admin-identity"><i></i><span><strong>ADMIN</strong><small th:text="${administrador}">admin@digitrans.co</small></span></span>
@@ -49,7 +49,7 @@
         <div class="welcome-mark" aria-hidden="true"><span>D</span><i></i></div>
       </section>
 
-      <section class="metric-grid" aria-label="Indicadores de usuarios">
+      <section class="metric-grid" aria-label="Indicadores globales">
         <article class="metric-card metric-primary">
           <span class="metric-label">Usuarios en la plataforma</span>
           <strong th:text="${totalUsuarios}">0</strong>
@@ -74,12 +74,24 @@
           <small>Acceso limitado a su servicio</small>
           <span class="metric-icon blue" aria-hidden="true">◈</span>
         </article>
+        <a class="metric-card metric-link" th:href="@{/admin/global/transacciones}">
+          <span class="metric-label">Transacciones globales</span>
+          <strong th:text="${totalTransaccionesGlobales}">0</strong>
+          <small th:if="${#maps.isEmpty(erroresTransaccionesGlobales)}">Operaciones únicas en los servicios</small>
+          <small th:unless="${#maps.isEmpty(erroresTransaccionesGlobales)}">Algunas bases no están disponibles</small>
+          <span class="metric-icon orange" aria-hidden="true">⇄</span>
+        </a>
       </section>
+      <div th:if="${!#maps.isEmpty(erroresTransaccionesGlobales)}"
+           class="global-alert error" role="alert">
+        <span th:each="source : ${erroresTransaccionesGlobales.values()}"
+              th:text="${source} + ' '"></span>
+      </div>
 
       <section class="global-section">
         <div class="section-heading">
           <div><p class="global-eyebrow">MÓDULOS GLOBALES</p><h2>Centro de operaciones</h2></div>
-          <span class="integration-note"><i></i> Integración por etapas</span>
+          <span class="integration-note"><i></i> Servicios conectados</span>
         </div>
         <div class="module-grid">
           <a class="module-card users-module" th:href="@{/admin/global/usuarios}">
@@ -87,21 +99,26 @@
             <strong>Usuarios</strong><span>Consulta y administra roles, estado y datos básicos con registro de auditoría.</span>
             <b>Abrir gestión <span>→</span></b>
           </a>
-          <article class="module-card">
-            <span class="module-icon orange">⇄</span><span class="module-status">SIGUIENTE FASE</span>
-            <strong>Transacciones y gráficas</strong><span>Consolidación de actividad, ingresos y tendencias de todos los servicios.</span>
-            <b class="module-pending">Conectando datos de servicios</b>
-          </article>
-          <article class="module-card">
+          <a class="module-card" th:href="@{/admin/global/transacciones}">
+            <span class="module-icon orange">⇄</span><span class="module-status ready">DISPONIBLE</span>
+            <strong>Transacciones globales</strong><span>Consulta operaciones y totales consolidados de los servicios conectados.</span>
+            <b>Abrir transacciones <span>→</span></b>
+          </a>
+          <a class="module-card" th:href="@{/admin/global/chats}">
             <span class="module-icon violet">⌁</span><span class="module-status">SIGUIENTE FASE</span>
-            <strong>Chats operativos</strong><span>Salas por servicio y un canal privado para administradores globales.</span>
-            <b class="module-pending">Preparando integración</b>
-          </article>
-          <article class="module-card">
-            <span class="module-icon green">▤</span><span class="module-status">SIGUIENTE FASE</span>
-            <strong>Reportes y predicción</strong><span>Exportación del sistema completo y visualización de analítica predictiva.</span>
-            <b class="module-pending">Preparando integración</b>
-          </article>
+            <strong>Chats operativos</strong><span>Accesos a las salas de transporte y próximos canales de Billetera y Recargas.</span>
+            <b>Abrir chats <span>→</span></b>
+          </a>
+          <a class="module-card" th:href="@{/admin/global/reportes}">
+            <span class="module-icon green">▤</span><span class="module-status ready">DISPONIBLE</span>
+            <strong>Reportes Excel</strong><span>Genera libros globales seleccionando servicios, datos y fechas.</span>
+            <b>Configurar reporte <span>→</span></b>
+          </a>
+          <a class="module-card" th:href="@{/admin/global/analitica}">
+            <span class="module-icon violet">◷</span><span class="module-status ready">DISPONIBLE</span>
+            <strong>Analítica global</strong><span>Gráficas de transacciones, actividad mensual y distribución por servicio.</span>
+            <b>Abrir analítica <span>→</span></b>
+          </a>
         </div>
       </section>
 

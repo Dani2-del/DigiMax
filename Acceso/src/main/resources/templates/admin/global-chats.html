@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chats operativos — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-1)}">
+</head>
+<body class="global-admin-page">
+<div class="global-admin-shell">
+  <aside class="global-sidebar">
+    <a class="global-brand" th:href="@{/admin/global}">
+      <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+      <span><strong>Digitrans</strong><small>Administración global</small></span>
+    </a>
+    <p class="sidebar-caption">PLATAFORMA</p>
+    <nav class="global-nav" aria-label="Navegación administrativa">
+      <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+      <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+      <a th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
+      <a th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
+      <a class="active" th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
+      <a th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+      <form th:action="@{/logout}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+      </form>
+    </div>
+  </aside>
+  <main class="global-main">
+    <header class="global-topbar">
+      <div><p class="global-eyebrow">COMUNICACIÓN DE OPERACIONES</p><h1>Chats operativos</h1></div>
+      <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+    </header>
+    <section class="global-section">
+      <div class="section-heading"><div><p class="global-eyebrow">TRANSPORTE</p><h2>Salas disponibles</h2></div></div>
+      <div class="module-grid chat-module-grid">
+        <a class="module-card" th:each="chat : ${transportChats}" th:href="${chat.url}">
+          <span class="module-icon violet">⌁</span><span class="module-status ready">DISPONIBLE</span>
+          <strong th:text="|Chat ${chat.name}|">Chat transporte</strong>
+          <span>Abre la sala operativa del sistema seleccionado.</span>
+          <b>Abrir chat <span>→</span></b>
+        </a>
+      </div>
+    </section>
+    <section class="global-section">
+      <div class="section-heading"><div><p class="global-eyebrow">PRÓXIMAS INTEGRACIONES</p><h2>Más servicios</h2></div></div>
+      <div class="module-grid chat-module-grid">
+        <article class="module-card chat-module-pending" th:each="chat : ${plannedChats}">
+          <span class="module-icon orange">⌁</span><span class="module-status">PRÓXIMAMENTE</span>
+          <strong th:text="|Chat ${chat}|">Chat</strong>
+          <span>Este servicio todavía no tiene un chat operativo integrado.</span>
+          <b class="module-pending">En preparación</b>
+        </article>
+      </div>
+    </section>
+    <footer class="global-footer">Digitrans · Las salas disponibles pertenecen a Transporte</footer>
+  </main>
+</div>
+</body>
+</html>

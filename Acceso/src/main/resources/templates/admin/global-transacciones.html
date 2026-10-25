@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transacciones globales — Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-1)}">
+</head>
+<body class="global-admin-page">
+<div class="global-admin-shell">
+  <aside class="global-sidebar">
+    <a class="global-brand" th:href="@{/admin/global}">
+      <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
+      <span><strong>Digitrans</strong><small>Administración global</small></span>
+    </a>
+    <p class="sidebar-caption">PLATAFORMA</p>
+    <nav class="global-nav" aria-label="Navegación administrativa">
+      <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
+      <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
+      <a class="active" th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
+      <a th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
+      <a th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
+      <a th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
+    </nav>
+    <div class="sidebar-bottom">
+      <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+      <form th:action="@{/logout}" method="post">
+        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+      </form>
+    </div>
+  </aside>
+  <main class="global-main">
+    <header class="global-topbar">
+      <div><p class="global-eyebrow">CONTROL FINANCIERO</p><h1>Transacciones globales</h1></div>
+      <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+    </header>
+    <div th:if="${errorFiltro}" class="global-alert error" role="alert" th:text="${errorFiltro}"></div>
+    <div th:if="${!#maps.isEmpty(sourceErrors)}" class="global-alert error" role="alert">
+      <p th:each="source : ${sourceErrors.values()}" th:text="${source}"></p>
+    </div>
+    <section class="metric-grid transaction-summary">
+      <article class="metric-card metric-primary">
+        <span class="metric-label">Operaciones únicas</span>
+        <strong th:text="${totalTransacciones}">0</strong>
+        <small>Identificadas por ID de operación</small>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">Monto registrado</span>
+        <strong th:text="|$ ${#numbers.formatDecimal(montoTotal, 0, 'COMMA', 2, 'POINT')}|">$ 0</strong>
+        <small>Suma de los registros visibles</small>
+      </article>
+    </section>
+    <section class="users-panel global-data-panel">
+      <div class="users-panel-heading">
+        <div><h2>Filtrar actividad</h2><p>Los movimientos de Billetera con un ID compartido se consolidan con la operación del servicio.</p></div>
+        <a class="report-link" th:href="@{/admin/global/reportes}">Generar Excel →</a>
+      </div>
+      <form class="global-report-form" method="get" th:action="@{/admin/global/transacciones}">
+        <div class="report-date-fields">
+          <label>Desde<input type="date" name="desde" th:value="${desde}"></label>
+          <label>Hasta<input type="date" name="hasta" th:value="${hasta}"></label>
+        </div>
+        <fieldset class="service-checkboxes">
+          <legend>Servicios</legend>
+          <label th:each="service : ${serviceOptions}">
+            <input type="checkbox" name="servicios" th:value="${service.code}"
+                   th:checked="${selectedServices.contains(service.code)}">
+            <span th:text="${service.name}">Servicio</span>
+          </label>
+        </fieldset>
+        <div class="report-actions">
+          <button type="submit" class="save-user">Aplicar filtros</button>
+          <a class="back-dashboard" th:href="@{/admin/global/transacciones}">Limpiar</a>
+        </div>
+      </form>
+      <div class="table-scroll">
+        <table class="global-users-table">
+          <thead><tr><th>Fecha</th><th>Servicio</th><th>Operación</th><th>Usuario</th><th>Tipo / detalle</th><th>Monto</th><th>Estado</th></tr></thead>
+          <tbody>
+          <tr th:each="transaction : ${transactions}">
+            <td th:text="${transaction.occurredAt == null ? 'Sin fecha' : #temporals.format(transaction.occurredAt, 'dd/MM/yyyy HH:mm')}"></td>
+            <td th:text="${serviceNames[transaction.service] == null ? transaction.service : serviceNames[transaction.service]}"></td>
+            <td th:text="${transaction.operationId == null ? 'Sin ID' : transaction.operationId}"></td>
+            <td><strong th:text="${transaction.userName == null or transaction.userName.isBlank() ? transaction.userId : transaction.userName}">Usuario</strong>
+              <small th:if="${transaction.userEmail != null and !transaction.userEmail.isBlank()}" th:text="${transaction.userEmail}"></small></td>
+            <td><strong th:text="${transaction.type}">Tipo</strong><small th:text="${transaction.description}"></small></td>
+            <td th:text="|$ ${#numbers.formatDecimal(transaction.amount, 0, 'COMMA', 2, 'POINT')}|"></td>
+            <td th:text="${transaction.status}">Estado</td>
+          </tr>
+          <tr th:if="${#lists.isEmpty(transactions)}"><td colspan="7" class="empty-users">No se encontraron operaciones en el periodo seleccionado.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <nav class="pagination transaction-pagination" th:if="${totalPages > 1}" aria-label="Paginación de transacciones">
+        <a th:if="${hasPreviousPage}"
+           th:href="@{/admin/global/transacciones(page=${pageIndex - 1}, desde=${desde}, hasta=${hasta}, servicios=${selectedServices})}"
+           aria-label="Ver transacciones más recientes">← Anterior</a>
+        <span>
+          Mostrando <strong th:text="${firstTransaction}">1</strong>–<strong th:text="${lastTransaction}">10</strong>
+          de <strong th:text="${totalTransacciones}">0</strong>
+          · Página <strong th:text="${pageIndex + 1}">1</strong> de <strong th:text="${totalPages}">1</strong>
+        </span>
+        <a th:if="${hasNextPage}"
+           th:href="@{/admin/global/transacciones(page=${pageIndex + 1}, desde=${desde}, hasta=${hasta}, servicios=${selectedServices})}"
+           aria-label="Ver transacciones más antiguas">Siguiente →</a>
+      </nav>
+    </section>
+    <footer class="global-footer">Digitrans · Operaciones globales consolidadas</footer>
+  </main>
+</div>
+</body>
+</html>

@@ -1,13 +1,16 @@
 package com.Servicio.Billetera.web;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
+import java.util.Comparator;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -22,6 +25,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
 import com.Servicio.Billetera.model.EstadoTarjeta;
+import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.service.BilleteraService;
 import com.Servicio.Billetera.service.SaldoInsuficienteException;
@@ -35,6 +39,8 @@ public class AdminTarjetasController {
     private final BilleteraService billeteraService;
     private final WalletUserDirectoryClient userDirectory;
 
+    private static final int MOVEMENT_PAGE_SIZE = 5;
+
     public AdminTarjetasController(
             BilleteraService billeteraService, WalletUserDirectoryClient userDirectory) {
         this.billeteraService = billeteraService;
@@ -42,7 +48,9 @@ public class AdminTarjetasController {
     }
 
     @GetMapping("/dashboard")
-    public String dashboard(@AuthenticationPrincipal AuthenticatedIdentity identity, Model model) {
+    public String dashboard(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            Model model) {
         List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
         long activeCount = wallets.stream()
                 .filter(BilleteraUniversal::isActivadaPorUsuario)
@@ -120,6 +128,128 @@ public class AdminTarjetasController {
         model.addAttribute("resultadosCuentas", accountRows.size());
         model.addAttribute("errorFiltroSaldo", invalidBalanceRange);
         return "admin-moderador-billetera";
+    }
+
+    @GetMapping("/movimientos")
+    public String movements(
+            @RequestParam(defaultValue = "") String buscar,
+            @RequestParam(defaultValue = "") String tipo,
+            @RequestParam(defaultValue = "") String servicio,
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta,
+            @RequestParam(defaultValue = "0") int page,
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
+            Model model) {
+        List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
+        List<WalletMovementRow> allMovements = wallets.stream()
+                .flatMap(wallet -> wallet.getMovimientos().stream()
+                        .map(movement -> new WalletMovementRow(
+                                wallet.getUsuarioId(), wallet.getUsuarioId(), "", movement)))
+                .toList();
+
+        boolean invalidDateRange = desde != null && hasta != null && desde.isAfter(hasta);
+        if (invalidDateRange) {
+            desde = null;
+            hasta = null;
+        }
+        LocalDate fromDate = desde;
+        LocalDate throughDate = hasta;
+        String token = accessToken(request);
+        String query = buscar == null ? "" : buscar.trim();
+        Map<String, UserSummary> matchedUsers = query.isBlank()
+                ? Map.of() : searchUsers(query, token);
+        Set<String> matchedUserIds = matchedUsers.keySet();
+
+        List<WalletMovementRow> filtered = allMovements.stream()
+                .filter(row -> tipo.isBlank() || tipo.equalsIgnoreCase(row.movement().getTipo()))
+                .filter(row -> servicio.isBlank()
+                        || servicio.equalsIgnoreCase(row.movement().getServicio()))
+                .filter(row -> inDateRange(row.movement().getFecha(), fromDate, throughDate))
+                .filter(row -> query.isBlank()
+                        || matchedUserIds.contains(row.userId())
+                        || matchesMovement(row, query))
+                .sorted(Comparator.comparing(
+                        (WalletMovementRow row) -> row.movement().getFecha(),
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+
+        int totalPages = (int) Math.ceil((double) filtered.size() / MOVEMENT_PAGE_SIZE);
+        int pageIndex = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
+        int fromIndex = pageIndex * MOVEMENT_PAGE_SIZE;
+        int toIndex = Math.min(fromIndex + MOVEMENT_PAGE_SIZE, filtered.size());
+        List<WalletMovementRow> visible = filtered.subList(fromIndex, toIndex).stream()
+                .map(row -> enrichMovement(row, matchedUsers, token))
+                .toList();
+
+        model.addAttribute("identity", identity);
+        model.addAttribute("movimientos", visible);
+        model.addAttribute("buscar", buscar);
+        model.addAttribute("tipoSeleccionado", tipo);
+        model.addAttribute("servicioSeleccionado", servicio);
+        model.addAttribute("desde", desde);
+        model.addAttribute("hasta", hasta);
+        model.addAttribute("tipos", allMovements.stream()
+                .map(row -> row.movement().getTipo())
+                .filter(value -> value != null && !value.isBlank())
+                .distinct().sorted().toList());
+        model.addAttribute("servicios", allMovements.stream()
+                .map(row -> row.movement().getServicio())
+                .filter(value -> value != null && !value.isBlank())
+                .distinct().sorted().toList());
+        model.addAttribute("totalMovimientos", filtered.size());
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageIndex", pageIndex);
+        model.addAttribute("hasPreviousPage", pageIndex > 0);
+        model.addAttribute("hasNextPage", pageIndex + 1 < totalPages);
+        model.addAttribute("firstMovement", filtered.isEmpty() ? 0 : fromIndex + 1);
+        model.addAttribute("lastMovement", toIndex);
+        model.addAttribute("errorFiltroFecha", invalidDateRange);
+        return "admin-movimientos-billetera";
+    }
+
+    private Map<String, UserSummary> searchUsers(String query, String token) {
+        Map<String, UserSummary> matches = new LinkedHashMap<>();
+        int page = 0;
+        WalletUserDirectoryClient.UserPage result;
+        do {
+            result = userDirectory.search(query, page, token);
+            result.content().forEach(user -> matches.put(user.id(), user));
+            page++;
+        } while (page < result.totalPages());
+        return matches;
+    }
+
+    private WalletMovementRow enrichMovement(
+            WalletMovementRow row, Map<String, UserSummary> matchedUsers, String token) {
+        UserSummary user = matchedUsers.get(row.userId());
+        if (user == null) {
+            user = userDirectory.findById(row.userId(), token);
+        }
+        String name = user == null || user.name() == null || user.name().isBlank()
+                ? row.userId() : user.name();
+        String email = user == null || user.email() == null ? "" : user.email();
+        return new WalletMovementRow(row.userId(), name, email, row.movement());
+    }
+
+    private static boolean matchesMovement(WalletMovementRow row, String query) {
+        String normalized = query.toLowerCase(Locale.ROOT);
+        MovimientoBilletera movement = row.movement();
+        return contains(row.userId(), normalized)
+                || contains(movement.getOperacionId(), normalized)
+                || contains(movement.getTipo(), normalized)
+                || contains(movement.getDescripcion(), normalized)
+                || contains(movement.getServicio(), normalized);
+    }
+
+    private static boolean inDateRange(
+            java.time.LocalDateTime date, LocalDate from, LocalDate through) {
+        if (from == null && through == null) {
+            return true;
+        }
+        return date != null
+                && (from == null || !date.toLocalDate().isBefore(from))
+                && (through == null || !date.toLocalDate().isAfter(through));
     }
 
     @GetMapping("/cuentas/{usuarioId}")
@@ -233,5 +363,12 @@ public class AdminTarjetasController {
             String numeroTarjeta,
             BigDecimal saldo,
             String estado) {
+    }
+
+    public record WalletMovementRow(
+            String userId,
+            String userName,
+            String userEmail,
+            MovimientoBilletera movement) {
     }
 }

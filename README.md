@@ -16,7 +16,7 @@ Desarrollado en la **Fundación Universitaria Tecnológico Comfenalco** por:
 
 | Módulo | Puerto local | Responsabilidad |
 | --- | ---: | --- |
-| `Acceso` | 8080 | Registro, inicio de sesión, identidad central, JWT, inicio de sesión con Google y administración global de usuarios. |
+| `Acceso` | 8080 | Registro, inicio de sesión, identidad central, JWT, inicio de sesión con Google y consola global con usuarios, transacciones, analítica, chats y reportes Excel. |
 | `Transporte` | 8081 | Experiencia de transporte público, perfiles SITM, tarjetas de transporte, rutas y funciones administrativas. |
 | `Billetera` | 8082 | Tarjeta universal, saldo compartido, movimientos, personalización y herramientas de moderación. |
 | `RecargasMovil` | 8083 | Catálogos, líneas y compras simuladas de paquetes y recargas móviles. |
@@ -72,6 +72,8 @@ Cada módulo persistente usa una base MongoDB independiente:
 MongoDB crea cada base cuando el módulo realiza su primera escritura. `Correo` no necesita base de datos. La base antigua `Digitrans_Max` no se modifica ni migra automáticamente.
 
 Las direcciones de los servicios pueden personalizarse con `ACCESO_BASE_URL`, `BILLETERA_BASE_URL`, `TRANSPORTE_URL`, `RECARGAS_URL` y `MAIL_SERVICE_URL`; sus valores locales predeterminados apuntan a los puertos indicados arriba.
+
+La consola global de Acceso consulta las bases de Transporte, Billetera y Recargas para consolidar transacciones. Usa las URI de MongoDB de cada módulo indicadas en la tabla; si personalizas una base, configura la misma URI en la variable correspondiente para que la consola pueda leer sus datos. El total global consolida operaciones por ID cuando los módulos comparten la misma referencia. Los reportes Excel permiten escoger conjuntos de datos, servicios y fechas.
 
 ## Iniciar todos los módulos en Windows
 

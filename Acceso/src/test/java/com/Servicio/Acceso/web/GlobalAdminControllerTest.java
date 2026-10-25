@@ -22,6 +22,7 @@ import com.Servicio.Acceso.model.AdminAuditEvent;
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.AdminAuditEventRepository;
 import com.Servicio.Acceso.repository.UsuarioRepository;
+import com.Servicio.Acceso.service.GlobalOperationsService;
 
 @ExtendWith(MockitoExtension.class)
 class GlobalAdminControllerTest {
@@ -33,13 +34,16 @@ class GlobalAdminControllerTest {
     private AdminAuditEventRepository auditEvents;
 
     @Mock
+    private GlobalOperationsService globalOperations;
+
+    @Mock
     private RedirectAttributes redirectAttributes;
 
     private GlobalAdminController controller;
 
     @BeforeEach
     void setUp() {
-        controller = new GlobalAdminController(usuarios, auditEvents);
+        controller = new GlobalAdminController(usuarios, auditEvents, globalOperations);
     }
 
     @Test

@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Administración de Billetera | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
 </head>
 <body>
-<main class="wallet-page admin-page wallet-admin-dashboard">
+<main class="wallet-page admin-page wallet-admin-dashboard wallet-admin-nav-page">
     <header class="page-header admin-header">
         <div>
             <p class="eyebrow">DIGITRANS · ADMINISTRACIÓN DE BILLETERA</p>
@@ -20,7 +20,9 @@
         </nav>
     </header>
 
-    <section class="admin-overview" aria-label="Resumen de billeteras">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
+
+    <section id="resumen" class="admin-overview" aria-label="Resumen de billeteras">
         <article class="admin-stat">
             <span class="admin-stat-icon">▤</span>
             <div><span class="admin-stat-label">Cuentas registradas</span>
@@ -44,39 +46,26 @@
         </article>
     </section>
 
-    <section class="wallet-moderator-tools">
+    <section id="herramientas" class="wallet-moderator-tools">
         <div class="wallet-tools-heading">
             <div>
-                <p class="eyebrow">OPERACIÓN Y SOPORTE</p>
-                <h2>Herramientas del moderador</h2>
-                <p class="welcome">Las acciones sensibles requieren motivo y quedan registradas en los movimientos de la cuenta.</p>
+                <p class="eyebrow">ACCESO A FUNCIONES</p>
+                <h2>Administración de Billetera</h2>
+                <p class="welcome">Selecciona una función. Las acciones sobre una cuenta se realizan desde su ficha y quedan registradas.</p>
             </div>
-            <a class="wallet-tools-primary" th:href="@{/admin}">Abrir vista moderador <span aria-hidden="true">→</span></a>
         </div>
         <div class="wallet-tools-grid">
             <a class="wallet-tool-card" th:href="@{/admin#cuentas}">
                 <span class="wallet-tool-icon">⌕</span>
                 <h3>Supervisar cuentas</h3>
-                <p>Busca billeteras por ID de usuario o número de tarjeta y consulta su estado.</p>
-                <span class="wallet-tool-action">Buscar cuenta <b aria-hidden="true">→</b></span>
+                <p>Busca por nombre, correo, ID, tarjeta o saldo y abre la cuenta para gestionarla.</p>
+                <span class="wallet-tool-action">Ir a cuentas <b aria-hidden="true">→</b></span>
             </a>
-            <a class="wallet-tool-card" th:href="@{/admin#cuentas}">
-                <span class="wallet-tool-icon is-credit">↕</span>
-                <h3>Gestionar saldo</h3>
-                <p>Abona o descuenta saldo por soporte, con monto y motivo registrados.</p>
-                <span class="wallet-tool-action">Ir a las cuentas <b aria-hidden="true">→</b></span>
-            </a>
-            <a class="wallet-tool-card" th:href="@{/admin#cuentas}">
-                <span class="wallet-tool-icon is-security">⌑</span>
-                <h3>Atender seguridad</h3>
-                <p>Congela o desbloquea tarjetas para responder a casos documentados.</p>
-                <span class="wallet-tool-action">Revisar tarjetas <b aria-hidden="true">→</b></span>
-            </a>
-            <a class="wallet-tool-card" th:href="@{/admin#cuentas}">
+            <a class="wallet-tool-card" th:href="@{/admin/movimientos}">
                 <span class="wallet-tool-icon is-history">◷</span>
-                <h3>Revisar movimientos</h3>
-                <p>Consulta los movimientos recientes y el historial de tarjetas anteriores.</p>
-                <span class="wallet-tool-action">Consultar historial <b aria-hidden="true">→</b></span>
+                <h3>Movimientos</h3>
+                <p>Busca y filtra movimientos, y recorre el historial de cinco en cinco.</p>
+                <span class="wallet-tool-action">Consultar movimientos <b aria-hidden="true">→</b></span>
             </a>
             <a class="wallet-tool-card" th:href="@{/admin/tarjetas-desactivadas}">
                 <span class="wallet-tool-icon is-archive">▣</span>

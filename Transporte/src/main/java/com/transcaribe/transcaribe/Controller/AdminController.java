@@ -87,6 +87,22 @@ public class AdminController {
         return "admin/seleccionar-entidad";
     }
 
+    @GetMapping("/chat/{sistema}")
+    public String abrirChatDesdeConsolaGlobal(
+            @PathVariable SistemaTransporte sistema,
+            org.springframework.security.core.Authentication authentication,
+            jakarta.servlet.http.HttpSession session) {
+        Usuario administrador = usuarioRepository.findByCorreo(authentication.getName())
+                .filter(Usuario::isActivo)
+                .filter(usuario -> Usuario.ROLE_ADMIN.equals(usuario.getRole()))
+                .orElse(null);
+        if (administrador == null || sistema == null || !sistema.estaDisponible()) {
+            return "redirect:/error/403";
+        }
+        session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, sistema);
+        return "redirect:/chat";
+    }
+
     @PostMapping("/contexto")
     public String cambiarEntidadAdministrativa(@RequestParam SistemaTransporte sistema,
                                                jakarta.servlet.http.HttpSession session,
