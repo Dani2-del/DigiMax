@@ -116,32 +116,6 @@ public class ServiceLandingController {
         return "redirect:/";
     }
 
-    @PostMapping("/tarjeta/crear")
-    public String createWallet(
-            HttpServletRequest request,
-            @RequestParam(defaultValue = "false") boolean confirmacionFinal,
-            RedirectAttributes redirectAttributes) {
-        if (!confirmacionFinal) {
-            redirectAttributes.addFlashAttribute("error",
-                    "Confirma que quieres crear tu tarjeta Digitrans antes de continuar.");
-            return "redirect:/";
-        }
-        try {
-            walletClient.createWallet(token(request));
-            redirectAttributes.addFlashAttribute("mensaje",
-                    "Tu tarjeta Digitrans fue creada. Ya puedes comprar paquetes desde Recargas.");
-        } catch (ResourceAccessException exception) {
-            redirectAttributes.addFlashAttribute("error",
-                    "No se pudo conectar con Billetera. No podemos confirmar si la tarjeta se creó; actualiza la página antes de volver a intentarlo.");
-        } catch (RestClientResponseException exception) {
-            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
-                    + exception.getStatusCode().value() + ").");
-        } catch (IllegalStateException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        }
-        return "redirect:/";
-    }
-
     @PostMapping("/recargar")
     public String recharge(
             @AuthenticationPrincipal AuthenticatedIdentity identity,

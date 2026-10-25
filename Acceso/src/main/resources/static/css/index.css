@@ -554,6 +554,63 @@ img { max-width: 100%; display: block; }
   gap: 6px;
 }
 
+/* ===== EQUIPO DEL PROYECTO ===== */
+.student-section {
+  background: #fff;
+  border-top: 1px solid var(--linea);
+}
+
+.student-section .section-head {
+  margin-right: auto;
+  margin-left: auto;
+  text-align: center;
+}
+
+.student-section .section-head h2::after {
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.student-section .role-kicker {
+  display: inline-block;
+  margin-bottom: 10px;
+  color: var(--coral-2);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.student-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.student-card {
+  display: flex;
+  min-height: 78px;
+  align-items: center;
+  padding: 18px 20px;
+  border: 1px solid var(--linea);
+  border-left: 4px solid var(--coral);
+  border-radius: var(--radius-sm);
+  background: var(--arena);
+  color: var(--tinta-2);
+  font-weight: 600;
+}
+
+.services-coming-soon {
+  margin: 28px 0 0;
+  color: var(--piedra);
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: center;
+}
+
 /* ===== CTA FINAL ===== */
 .final-cta {
   position: relative;
@@ -623,6 +680,7 @@ img { max-width: 100%; display: block; }
   .about-grid { grid-template-columns: 1fr; }
   .about-card { max-width: 620px; transform: none; }
   .roles-grid { grid-template-columns: 1fr; }
+  .student-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .route-line { grid-template-columns: 1fr; gap: 34px; }
   .route-line::before { display: none; }
   .landing-nav { padding: 18px 28px; }
@@ -656,6 +714,7 @@ img { max-width: 100%; display: block; }
   .about-card > p,
   .about-card .tag-row { margin-right: 8px; margin-left: 8px; }
   .route-cards { grid-template-columns: 1fr; }
+  .student-grid { grid-template-columns: 1fr; }
   .route-card-img { max-width: 420px; width: 100%; margin: 0 auto; }
   .route-line { gap: 24px; }
   .stop { padding-top: 50px; }

@@ -41,18 +41,6 @@ public class WalletClient {
         return wallet;
     }
 
-    public Wallet createWallet(String token) {
-        Wallet wallet = restClient.post()
-                .uri(billeteraUrl + "/api/wallet/me")
-                .header(HttpHeaders.AUTHORIZATION, bearer(token))
-                .retrieve()
-                .body(Wallet.class);
-        if (wallet == null) {
-            throw new IllegalStateException("Billetera no devolvió la tarjeta Digitrans creada.");
-        }
-        return wallet;
-    }
-
     public Wallet debit(String token, String operationId, BigDecimal amount, String description) {
         try {
             Wallet wallet = restClient.post()

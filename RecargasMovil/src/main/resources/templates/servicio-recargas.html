@@ -54,9 +54,7 @@
     .error { border-color: #f2c8c1; color: #8a3f36; background: #fff1ef; }
     .wallet-missing { border-color: #f4d4a1; background: #fff8e9; }
     .wallet-missing h2 { margin-top: 0; color: #805625; }
-    .confirmation-step { margin-top: 14px; }
-    .confirmation-step button, .wallet-link { display: inline-block; width: auto; padding: 11px 17px; text-decoration: none; border-radius: 11px; }
-    .wallet-link { color: #fff; background: #7250d5; font-weight: 700; }
+    .wallet-link { display: inline-block; width: auto; padding: 11px 17px; color: #fff; text-decoration: none; border-radius: 11px; background: #7250d5; font-weight: 700; }
     .wallet-link:hover { background: #5e3dbd; }
     [hidden] { display: none !important; }
     .muted { color: #77718a; }
@@ -121,21 +119,9 @@
 
   <section th:if="${walletMissing}" class="wallet-missing" aria-labelledby="wallet-missing-title">
     <h2 id="wallet-missing-title">Aún no tienes una tarjeta Digitrans</h2>
-    <p>Para comprar paquetes necesitas una tarjeta universal. Puedes crearla aquí, sin salir de Recargas.
+    <p>Para comprar paquetes necesitas una tarjeta universal. Continúa a Billetera para crearla.
       Si desactivaste una tarjeta anterior, su saldo se conservará en la nueva.</p>
-    <div class="confirmation-step" data-wallet-first-step>
-      <button class="secondary" type="button" data-wallet-first-confirm>
-        Sí, quiero crearla
-      </button>
-    </div>
-    <div class="confirmation-step" data-wallet-second-step hidden>
-      <p><strong>Confirma una vez más:</strong> al continuar se creará tu tarjeta Digitrans y conservarás esta página.</p>
-      <form th:action="@{/tarjeta/crear}" method="post">
-        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-        <input type="hidden" name="confirmacionFinal" value="true">
-        <button class="wallet-link" type="submit">Confirmar y crear mi tarjeta</button>
-      </form>
-    </div>
+    <a class="wallet-link" th:href="${billeteraUrl}">Ir a Billetera y crear mi tarjeta</a>
   </section>
 
   <section class="wallet" th:if="${wallet}">
@@ -324,8 +310,6 @@
   </section>
 </main>
 <script>
-  const firstWalletConfirmation = document.querySelector("[data-wallet-first-confirm]");
-  const secondWalletConfirmation = document.querySelector("[data-wallet-second-step]");
   const packageOperatorSelect = document.querySelector("#package-operator");
   const packageCategorySelect = document.querySelector("#package-category");
   const packageCategoryLabel = document.querySelector("#package-category-label");
@@ -337,13 +321,6 @@
   const packageSelectionPrompt = document.querySelector("#package-selection-prompt");
   const packageSelectionStatus = document.querySelector("#package-selection-status");
   let selectedPackageCard = null;
-
-  firstWalletConfirmation?.addEventListener("click", () => {
-    firstWalletConfirmation.disabled = true;
-    firstWalletConfirmation.textContent = "Primera confirmación registrada";
-    secondWalletConfirmation.hidden = false;
-    secondWalletConfirmation.querySelector("button").focus();
-  });
 
   packageOperatorSelect?.addEventListener("change", () => {
     selectedPackageCard = null;

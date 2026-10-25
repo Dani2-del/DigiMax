@@ -97,8 +97,19 @@ public class BilleteraService {
                                 .and("activadaPorUsuario").is(false)),
                         new Update().set("activadaPorUsuario", true),
                         FindAndModifyOptions.options().returnNew(true), BilleteraUniversal.class);
-                return accepted != null ? accepted
-                        : billeteras.findById(usuarioId).orElseThrow(WalletNotFoundException::new);
+                if (accepted != null) {
+                    return accepted;
+                }
+                BilleteraUniversal current = billeteras.findById(usuarioId)
+                        .orElseThrow(WalletNotFoundException::new);
+                if (current.getEstado() == EstadoTarjeta.DESACTIVADA) {
+                    return crear(usuarioId);
+                }
+                if (!current.isActivadaPorUsuario()) {
+                    current.setActivadaPorUsuario(true);
+                    return billeteras.save(current);
+                }
+                return current;
             }
             return existing;
         }

@@ -120,6 +120,22 @@ class BilleteraServiceTest {
     }
 
     @Test
+    void savesUserActivationWhenAtomicUpdateDoesNotReturnWallet() {
+        BilleteraUniversal existing = wallet("user-1", "2500");
+        existing.setActivadaPorUsuario(false);
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(existing));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(null);
+        when(billeteras.save(existing)).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BilleteraUniversal activated = service.crear("user-1");
+
+        assertThat(activated.isActivadaPorUsuario()).isTrue();
+        assertThat(activated.getSaldo()).isEqualByComparingTo("2500");
+        verify(billeteras).save(existing);
+    }
+
+    @Test
     void explicitCreationMarksNewWalletAsAccepted() {
         when(billeteras.findById("user-1")).thenReturn(Optional.empty());
         when(billeteras.insert(any(BilleteraUniversal.class)))
