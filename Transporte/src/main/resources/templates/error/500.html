@@ -1,29 +1,30 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
     <meta charset="UTF-8">
-    <title>500 - Error Interno</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Error interno</title>
+    <link rel="stylesheet" th:href="@{/css/usuario.css}">
+    <link rel="stylesheet" th:href="@{/css/error.css}">
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body>
-    <div class="page">
+<body class="transport-error-page" th:attr="data-sistema=${sistemaActual}">
+    <main class="page">
         <div class="center-card">
-            <div class="card" style="text-align: center; border-top: 5px solid #dc3545;">
-                <h1 style="font-size: 60px; color: #dc3545; margin-bottom: 10px;">500</h1>
-                <h2>¡Algo salió mal!</h2>
-                <p>Estamos teniendo problemas técnicos en nuestro servidor. Por favor, intenta de nuevo más tarde.</p>
-                
-                <!-- Opcional: Solo para depuración (quitar en producción) -->
-                <div th:if="${error}" style="margin-top: 20px; font-size: 12px; color: #999; background: #f8f9fa; padding: 10px; border-radius: 5px;">
-                    Detalle técnico: <span th:text="${error}"></span>
+            <section class="transport-error-card" role="alert">
+                <div class="transport-error-content">
+                    <span class="transport-error-system"
+                          th:text="${sistemaActual == 'TRANSMILENIO' ? 'TransMilenio' : (sistemaActual == 'TRANSMETRO' ? 'Transmetro' : 'Transcaribe')}">Transcaribe</span>
+                    <p class="transport-error-code">500</p>
+                    <h1>Estamos resolviendo un problema</h1>
+                    <p class="transport-error-message">
+                        Ocurrió un error inesperado en el servicio. Intenta nuevamente en unos minutos.
+                    </p>
+                    <a th:href="@{/}" class="primary">Volver al inicio</a>
                 </div>
-
-                <br>
-                <a href="/" class="ghost" style="text-decoration: none;">Regresar al inicio</a>
-            </div>
+            </section>
         </div>
-    </div>
+    </main>
     <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
 </body>
 </html>

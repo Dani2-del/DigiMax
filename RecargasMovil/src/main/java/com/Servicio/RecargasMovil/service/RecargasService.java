@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 
 import com.Servicio.RecargasMovil.model.LineaMovil;
 import com.Servicio.RecargasMovil.model.OperadorMovil;
+import com.Servicio.RecargasMovil.model.CategoriaPaquete;
 import com.Servicio.RecargasMovil.model.PaqueteMovil;
 import com.Servicio.RecargasMovil.model.RecargaMovil;
 import com.Servicio.RecargasMovil.repository.LineaMovilRepository;
@@ -146,7 +147,9 @@ public class RecargasService {
         PaqueteMovil mobilePackage = paquetes.findById(paqueteId)
                 .filter(PaqueteMovil::isActivo)
                 .filter(plan -> operator.getId().equals(plan.getOperadorId()))
-                .orElseThrow(() -> new IllegalArgumentException("El paquete no corresponde a esa línea."));
+                .filter(plan -> plan.getCategoria() != CategoriaPaquete.POSTPAGO)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El plan no corresponde a una oferta prepago disponible para esa línea."));
 
         RecargaMovil recharge = new RecargaMovil();
         recharge.setOperacionId(operationKey);
@@ -156,6 +159,63 @@ public class RecargasService {
         recharge.setOperador(operator.getNombre());
         recharge.setPaquete(mobilePackage.getNombre());
         recharge.setMonto(mobilePackage.getPrecio());
+        recharge.setEstado(RecargaMovil.STATUS_PROCESSING);
+        recharge.setFecha(LocalDateTime.now());
+        try {
+            recargas.insert(recharge);
+        } catch (DuplicateKeyException exception) {
+            RecargaMovil existing = recargas.findById(operationKey)
+                    .filter(item -> usuarioId.equals(item.getUsuarioId()))
+                    .orElseThrow(() -> exception);
+            return procesar(existing, token);
+        }
+        return procesar(recharge, token);
+    }
+
+    public RecargaMovil solicitarRecargaDinero(
+            String usuarioId,
+            String operadorId,
+            String lineaId,
+            BigDecimal monto,
+            String operacionId,
+            String token) {
+        String operationKey = requiredText(operacionId, "Identificador de operación inválido.", 100);
+        RecargaMovil previous = recargas.findById(operationKey).orElse(null);
+        if (previous != null) {
+            if (!usuarioId.equals(previous.getUsuarioId())) {
+                throw new IllegalArgumentException("La operación no pertenece a tu cuenta.");
+            }
+            if (!RecargaMovil.STATUS_PROCESSING.equals(previous.getEstado())) {
+                return previous;
+            }
+            return procesar(previous, token);
+        }
+
+        if (monto == null || monto.scale() > 0
+                || monto.compareTo(new BigDecimal("1000")) < 0
+                || monto.compareTo(new BigDecimal("100000")) > 0
+                || monto.remainder(new BigDecimal("1000")).compareTo(BigDecimal.ZERO) != 0) {
+            throw new IllegalArgumentException(
+                    "El monto debe estar entre $1.000 y $100.000 COP, en incrementos de $1.000.");
+        }
+
+        OperadorMovil operator = operadores.findById(operadorId)
+                .filter(OperadorMovil::isActivo)
+                .filter(item -> "Móvil Éxito".equalsIgnoreCase(item.getNombre()))
+                .orElseThrow(() -> new IllegalArgumentException("Selecciona Móvil Éxito para esta recarga."));
+        LineaMovil line = lineas.findById(lineaId)
+                .filter(storedLine -> usuarioId.equals(storedLine.getUsuarioId()))
+                .filter(storedLine -> operator.getId().equals(storedLine.getOperadorId()))
+                .orElseThrow(() -> new IllegalArgumentException("Selecciona una línea tuya de Móvil Éxito."));
+
+        RecargaMovil recharge = new RecargaMovil();
+        recharge.setOperacionId(operationKey);
+        recharge.setUsuarioId(usuarioId);
+        recharge.setLineaId(line.getId());
+        recharge.setTelefono(line.getTelefono());
+        recharge.setOperador(operator.getNombre());
+        recharge.setPaquete("Recarga de saldo $" + monto.toPlainString());
+        recharge.setMonto(monto.setScale(2, java.math.RoundingMode.UNNECESSARY));
         recharge.setEstado(RecargaMovil.STATUS_PROCESSING);
         recharge.setFecha(LocalDateTime.now());
         try {

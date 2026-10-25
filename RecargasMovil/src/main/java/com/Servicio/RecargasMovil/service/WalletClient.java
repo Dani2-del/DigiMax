@@ -69,6 +69,11 @@ public class WalletClient {
             throw new InsufficientWalletBalanceException();
         } catch (HttpClientErrorException.NotFound exception) {
             throw new WalletNotFoundException();
+        } catch (HttpClientErrorException exception) {
+            if (exception.getStatusCode().value() == 423) {
+                throw new WalletFrozenException();
+            }
+            throw exception;
         }
     }
 
@@ -79,7 +84,15 @@ public class WalletClient {
         return "Bearer " + token;
     }
 
-    public record Wallet(String userId, String cardNumber, BigDecimal balance) {
+    public record Wallet(
+            String userId, String cardNumber, BigDecimal balance, String status, String design) {
+        public Wallet(String userId, String cardNumber, BigDecimal balance) {
+            this(userId, cardNumber, balance, "ACTIVA", "OCEANO");
+        }
+
+        public boolean isFrozen() {
+            return "CONGELADA".equals(status);
+        }
     }
 
     private record DebitRequest(String operationId, BigDecimal amount, String description) {
@@ -88,6 +101,12 @@ public class WalletClient {
     public static class WalletNotFoundException extends RuntimeException {
         public WalletNotFoundException() {
             super("No tienes una tarjeta Digitrans creada.");
+        }
+    }
+
+    public static class WalletFrozenException extends RuntimeException {
+        public WalletFrozenException() {
+            super("Tu tarjeta Digitrans está congelada. Descongélala desde Billetera para poder comprar.");
         }
     }
 }

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjeta universal | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
 </head>
 <body>
 <main class="wallet-page">
@@ -14,12 +14,17 @@
             <h1>Tu tarjeta universal</h1>
             <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '.'}"></p>
         </div>
-        <a class="back-link" th:href="${accesoUrl + '/servicios'}">← Servicios</a>
+        <nav class="header-links" aria-label="Navegación de Billetera">
+            <a th:if="${puedeAdministrar}" class="back-link" th:href="${adminUrl}">Panel moderador</a>
+            <a class="back-link" th:href="${accesoUrl + '/servicios'}">← Volver a servicios</a>
+        </nav>
     </header>
     <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
     <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
 
-    <section th:if="${walletExists}" class="universal-card" aria-label="Tarjeta universal Digitrans">
+    <section th:if="${walletExists}" class="universal-card"
+             th:classappend="${'theme-' + wallet.diseno.name().toLowerCase()}"
+             aria-label="Tarjeta universal Digitrans">
         <span class="card-glow" aria-hidden="true"></span>
         <div class="card-heading">
             <p class="card-title">DIGITRANS <span>· UNIVERSAL</span></p>
@@ -27,6 +32,9 @@
         </div>
         <span class="card-chip" aria-hidden="true"></span>
         <p class="number" th:text="${wallet.numeroTarjeta}"></p>
+        <span class="card-status"
+              th:classappend="${' status-' + wallet.estado.name().toLowerCase()}"
+              th:text="${wallet.estado.name() == 'CONGELADA' ? 'CONGELADA' : 'ACTIVA'}"></span>
         <div class="card-footer">
             <div>
                 <span class="card-holder" th:text="${identity.name() != null ? identity.name() : identity.email()}"></span>
@@ -37,9 +45,55 @@
         </div>
     </section>
 
+    <section th:if="${walletExists}" class="panel card-controls">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">PERSONALIZACIÓN</p>
+                <h2>Diseño y seguridad</h2>
+            </div>
+        </div>
+        <form th:action="@{/tarjeta/diseno}" method="post" class="design-form">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <label for="diseno">Color de tarjeta</label>
+            <select id="diseno" name="diseno">
+                <option th:each="diseno : ${disenos}" th:value="${diseno}"
+                        th:selected="${diseno == wallet.diseno}" th:text="${diseno.nombre}"></option>
+            </select>
+            <button type="submit" class="button-secondary">Guardar diseño</button>
+        </form>
+        <p class="muted" th:if="${wallet.estado.name() == 'CONGELADA'}">
+            La tarjeta está congelada: puedes verla y cambiar su diseño, pero no hacer pagos ni recargas.
+        </p>
+        <div class="card-actions">
+            <form th:if="${wallet.estado.name() == 'ACTIVA'}" th:action="@{/tarjeta/congelar}" method="post">
+                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="button-secondary">Congelar tarjeta</button>
+            </form>
+            <form th:if="${wallet.estado.name() == 'CONGELADA'}" th:action="@{/tarjeta/descongelar}" method="post">
+                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="button-secondary">Descongelar tarjeta</button>
+            </form>
+            <button type="button" class="button-danger" data-deactivate-first>Desactivar tarjeta</button>
+        </div>
+        <div data-deactivate-final hidden>
+            <p class="notice demo-warning">
+                Primera confirmación registrada. Al continuar, esta tarjeta dejará de aparecer para ti.
+                El saldo no se pierde ni se duplica: quedará resguardado y pasará a tu próxima tarjeta Digitrans.
+            </p>
+            <div class="confirmation-actions">
+                <form th:action="@{/tarjeta/desactivar}" method="post">
+                    <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="confirmacionFinal" value="true">
+                    <button type="submit" class="button-danger">Confirmar y desactivar</button>
+                </form>
+                <button type="button" class="button-secondary" data-deactivate-cancel>Cancelar</button>
+            </div>
+        </div>
+    </section>
+
     <section th:unless="${walletExists}" class="panel">
         <h2>Tu tarjeta universal no está activa</h2>
-        <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si el sistema ya había generado una tarjeta, la activaremos conservando su saldo y movimientos; de lo contrario, crearemos una nueva. No se activará hasta que confirmes.</p>
+        <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si ya tenías una tarjeta generada, conservaremos su saldo y movimientos. Si la habías desactivado, emitiremos un número nuevo y mantendremos tu saldo. No se activará hasta que confirmes.</p>
         <div class="activation-step">
             <button type="button" class="button-secondary" data-activation-first>
                 Sí, quiero activar mi tarjeta
@@ -55,7 +109,13 @@
         <p><a th:href="${accesoUrl + '/servicios'}">Ahora no, volver a servicios</a></p>
     </section>
 
-    <section th:if="${walletExists}" class="panel">
+    <section th:if="${walletExists and wallet.estado.name() == 'CONGELADA'}" class="panel">
+        <p class="notice error" role="status">
+            Tu tarjeta está congelada. Las operaciones de saldo y pagos están deshabilitadas hasta que la descongeles.
+        </p>
+    </section>
+
+    <section th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" class="panel">
         <div class="section-heading">
             <div>
                 <p class="eyebrow">FONDOS</p>
@@ -194,6 +254,9 @@
     const paymentDetails = document.querySelectorAll("[data-payment-details]");
     const activationFirst = document.querySelector("[data-activation-first]");
     const activationFinal = document.querySelector("[data-activation-final]");
+    const deactivateFirst = document.querySelector("[data-deactivate-first]");
+    const deactivateFinal = document.querySelector("[data-deactivate-final]");
+    const deactivateCancel = document.querySelector("[data-deactivate-cancel]");
 
     function updatePaymentDetails() {
         const selectedMethod = document.querySelector("[data-payment-method]:checked")?.value;
@@ -216,6 +279,20 @@
         activationFirst.textContent = "Primera confirmación registrada";
         activationFinal.hidden = false;
         activationFinal.querySelector("button").focus();
+    });
+
+    deactivateFirst?.addEventListener("click", () => {
+        deactivateFirst.disabled = true;
+        deactivateFirst.textContent = "Primera confirmación registrada";
+        deactivateFinal.hidden = false;
+        deactivateFinal.querySelector("button").focus();
+    });
+
+    deactivateCancel?.addEventListener("click", () => {
+        deactivateFinal.hidden = true;
+        deactivateFirst.disabled = false;
+        deactivateFirst.textContent = "Desactivar tarjeta";
+        deactivateFirst.focus();
     });
 
     const historyToggle = document.querySelector("[data-history-toggle]");

@@ -48,6 +48,7 @@ public class SecurityConfig {
                     "/restablecer-password",
                     "/confirmar-restablecimiento",
                     "/css/**",
+                    "/error",
                     "/error/**",
                     "/images/**",
                     "/js/**"

@@ -428,6 +428,7 @@ a.module-card:hover { transform: translateY(-3px); border-color: #f0b57d; box-sh
 .user-edit summary { color: #ca6417; font-size: 0.65rem; font-weight: 700; cursor: pointer; }
 .user-edit form { display: grid; width: min(310px, 76vw); gap: 9px; margin-top: 10px; padding: 13px; border: 1px solid var(--global-line); border-radius: 10px; background: #fbfcfd; }
 .user-edit label { display: grid; gap: 5px; color: #53677d; font-size: 0.61rem; font-weight: 700; }
+.user-edit .moderator-service-field[hidden] { display: none !important; }
 .user-edit textarea { min-height: 58px; resize: vertical; }
 .user-edit .confirm-check { display: flex; align-items: flex-start; gap: 7px; color: #55677b; font-size: 0.59rem; font-weight: 500; line-height: 1.4; }
 .user-edit .confirm-check input { width: 14px; min-width: 14px; height: 14px; margin: 0; accent-color: #dc751e; }

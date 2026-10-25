@@ -5,35 +5,98 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Recargas móviles | Digitrans</title>
   <style>
-    :root { font-family: system-ui, sans-serif; color: #17324d; }
-    body { margin: 0; background: #f3f6fa; }
-    main { max-width: 1050px; margin: 32px auto; padding: 20px; }
-    header, section { background: white; border-radius: 16px; padding: 22px; margin-bottom: 16px; }
-    header { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
-    .wallet { color: white; background: linear-gradient(125deg, #14385b, #087c86); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 14px; }
-    .package { border: 1px solid #dce4ed; border-radius: 12px; padding: 16px; }
-    form { display: flex; flex-direction: column; gap: 9px; }
-    input, select, button { box-sizing: border-box; width: 100%; font: inherit; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; }
-    button { color: white; background: #087c86; border: 0; cursor: pointer; font-weight: 650; }
-    button:disabled { opacity: .55; cursor: not-allowed; }
-    .secondary { color: #17324d; background: #e8eef5; }
-    .notice { padding: 12px; border-radius: 8px; background: #e7f6ed; }
-    .error { background: #fff0ed; }
-    .wallet-missing { border: 1px solid #f3d8a6; background: #fff8e8; }
-    .wallet-missing h2 { margin-top: 0; color: #76521c; }
+    :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #28243d; background: #f7f5fb; }
+    body { margin: 0; background: radial-gradient(ellipse at 8% 0%, #eee8ff 0, transparent 34rem), #f7f5fb; }
+    main { max-width: 1160px; margin: 28px auto; padding: 20px; }
+    header, section { background: #fff; border: 1px solid #ece8f3; border-radius: 22px; padding: 26px; margin-bottom: 18px; box-shadow: 0 12px 32px #30234a0a; }
+    header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 4px solid #7957e8; }
+    main > header { animation: recargas-enter .55s cubic-bezier(.2, .75, .25, 1) both; }
+    main > section { animation: recargas-enter .55s cubic-bezier(.2, .75, .25, 1) both; }
+    main > section:nth-of-type(2) { animation-delay: .07s; }
+    main > section:nth-of-type(3) { animation-delay: .14s; }
+    main > section:nth-of-type(4) { animation-delay: .21s; }
+    header h1 { margin: 0; color: #30264f; font-size: clamp(1.65rem, 3vw, 2.2rem); letter-spacing: -.04em; }
+    header p { margin-bottom: 0; color: #77718a; }
+    nav { font-size: .94rem; font-weight: 650; }
+    .wallet { position: relative; overflow: hidden; color: white; background: linear-gradient(120deg, #38245e, #7549bd 62%, #fa796a); border: 0; box-shadow: 0 16px 34px #6645a533; }
+    .wallet::after { content: ""; position: absolute; width: 230px; height: 230px; right: -55px; top: -120px; border: 1px solid #ffffff40; border-radius: 50%; box-shadow: 0 0 0 24px #ffffff0c, 0 0 0 48px #ffffff0a; pointer-events: none; animation: wallet-orbit 8s ease-in-out infinite alternate; }
+    .wallet h2, .wallet p, .wallet strong { position: relative; z-index: 1; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
+    .package { display: flex; flex-direction: column; min-height: 300px; padding: 20px; border: 1px solid #e8e2f1; border-radius: 18px; background: linear-gradient(155deg, #fff, #fdfbff); box-shadow: 0 8px 22px #30234a0a; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+    .package:not([hidden]) { animation: package-enter .38s cubic-bezier(.2, .75, .25, 1) both; }
+    .package:not([hidden]):nth-child(3n + 2) { animation-delay: .05s; }
+    .package:not([hidden]):nth-child(3n) { animation-delay: .1s; }
+    .package:hover { transform: translateY(-3px); border-color: #cfc1f2; box-shadow: 0 14px 28px #30234a14; }
+    .package.is-selected { border: 2px solid #7957e8; box-shadow: 0 10px 28px #7957e82b; animation: package-selected .28s ease-out; }
+    .package.is-locked { opacity: .52; }
+    .package h3 { margin: 12px 0; color: #30264f; line-height: 1.35; }
+    .package-actions { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; margin-top: auto; margin-bottom: 12px; }
+    .package-actions button { width: auto; }
+    .package .cancel-package { color: #51466c; background: #eeeaf6; }
+    .package-selection-status { min-height: 1.5em; color: #6746c4; font-weight: 650; }
+    .package-operator { display: inline-flex; align-self: flex-start; margin: 0; padding: 5px 10px; color: #6542bf; background: #f0ebff; border-radius: 999px; font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    .informational-plan { padding: 12px; border-radius: 12px; color: #8a4c38; background: #fff1ec; font-size: .9rem; line-height: 1.5; }
+    .package-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; margin: 18px 0; }
+    .package-filter label { display: block; margin-bottom: 6px; color: #51466c; font-size: .9rem; font-weight: 700; }
+    .package-empty { padding: 18px; border: 1px dashed #cfc5e1; border-radius: 14px; color: #77718a; background: #fcfaff; }
+    .custom-recharge-input { margin-bottom: 10px; }
+    .simulation-warning { padding: 14px 16px; border: 1px solid #f4d4a1; border-radius: 14px; color: #805625; background: #fff8e9; line-height: 1.6; }
+    .catalog-source { margin-top: 22px; color: #77718a; font-size: .9rem; line-height: 1.6; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    input, select, button { box-sizing: border-box; width: 100%; font: inherit; padding: 11px 13px; border: 1px solid #ded8e9; border-radius: 11px; background: #fff; }
+    input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid #b9a7f5; outline-offset: 2px; }
+    button { color: white; background: #7250d5; border: 0; cursor: pointer; font-weight: 700; transition: background .15s ease, transform .15s ease; }
+    button:hover:not(:disabled) { background: #5e3dbd; transform: translateY(-1px); }
+    button:disabled { opacity: .52; cursor: not-allowed; }
+    .secondary { color: #514078; background: #eee9fb; }
+    .secondary:hover:not(:disabled) { color: #fff; background: #7250d5; }
+    .notice { padding: 13px 15px; border: 1px solid #ccebd8; border-radius: 12px; color: #286541; background: #effaf3; }
+    .error { border-color: #f2c8c1; color: #8a3f36; background: #fff1ef; }
+    .wallet-missing { border-color: #f4d4a1; background: #fff8e9; }
+    .wallet-missing h2 { margin-top: 0; color: #805625; }
     .confirmation-step { margin-top: 14px; }
-    .confirmation-step button, .wallet-link { display: inline-block; width: auto; padding: 10px 16px; text-decoration: none; border-radius: 8px; }
-    .wallet-link { color: #fff; background: #087c86; font-weight: 650; }
-    .wallet-link:hover { background: #066b75; }
+    .confirmation-step button, .wallet-link { display: inline-block; width: auto; padding: 11px 17px; text-decoration: none; border-radius: 11px; }
+    .wallet-link { color: #fff; background: #7250d5; font-weight: 700; }
+    .wallet-link:hover { background: #5e3dbd; }
     [hidden] { display: none !important; }
-    .muted { color: #64748b; }
-    .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .muted { color: #77718a; }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     .row form { max-width: 135px; }
     table { width: 100%; border-collapse: collapse; }
-    th, td { padding: 10px 6px; border-bottom: 1px solid #e5eaf0; text-align: left; }
-    a { color: #087c86; }
-    @media (max-width: 600px) { main { padding: 12px; margin: 0 auto; } header, section { padding: 16px; } }
+    th, td { padding: 11px 8px; border-bottom: 1px solid #eeeaf4; text-align: left; }
+    a { color: #6746c4; }
+    @keyframes recargas-enter {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes package-enter {
+      from { opacity: 0; transform: translateY(10px) scale(.985); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes package-selected {
+      0% { transform: scale(1); }
+      55% { transform: scale(1.015); }
+      100% { transform: scale(1); }
+    }
+    @keyframes wallet-orbit {
+      from { transform: translate(-8px, 6px) scale(.96); }
+      to { transform: translate(8px, -5px) scale(1.04); }
+    }
+    @media (max-width: 640px) {
+      main { padding: 12px; margin: 0 auto; }
+      header, section { padding: 19px; border-radius: 17px; }
+      .package-filter { grid-template-columns: 1fr; gap: 8px; }
+      .row { align-items: flex-start; flex-direction: column; }
+      .package { min-height: 0; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        scroll-behavior: auto !important;
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -58,7 +121,8 @@
 
   <section th:if="${walletMissing}" class="wallet-missing" aria-labelledby="wallet-missing-title">
     <h2 id="wallet-missing-title">Aún no tienes una tarjeta Digitrans</h2>
-    <p>Para comprar paquetes necesitas una tarjeta universal. Puedes crearla aquí, sin salir de Recargas.</p>
+    <p>Para comprar paquetes necesitas una tarjeta universal. Puedes crearla aquí, sin salir de Recargas.
+      Si desactivaste una tarjeta anterior, su saldo se conservará en la nueva.</p>
     <div class="confirmation-step" data-wallet-first-step>
       <button class="secondary" type="button" data-wallet-first-confirm>
         Sí, quiero crearla
@@ -86,6 +150,10 @@
       </div>
     </div>
     <p class="muted" style="color:#e0f2f1">El valor del paquete se descontará de esta billetera compartida.</p>
+    <p th:if="${walletFrozen}" class="notice error" role="status">
+      Tu tarjeta está congelada. Puedes consultar el saldo, pero no comprar paquetes hasta descongelarla en
+      <a th:href="${billeteraUrl}">Billetera</a>.
+    </p>
   </section>
 
   <section>
@@ -122,29 +190,114 @@
 
   <section>
     <h2>Paquetes disponibles</h2>
+    <p class="simulation-warning" role="note">
+      Importante: estos paquetes se muestran como catálogo informativo. La compra en DigiTrans es una simulación:
+      el importe sí se descuenta de tu tarjeta universal, pero no se envía al operador ni se activa el paquete.
+      Verifica los precios y condiciones vigentes con tu operador.
+    </p>
     <p th:if="${#lists.isEmpty(paquetes)}" class="muted">No hay paquetes activos por ahora.</p>
-    <div class="grid" th:unless="${#lists.isEmpty(paquetes)}">
-      <article class="package" th:each="paquete : ${paquetes}">
+    <div th:unless="${#lists.isEmpty(paquetes)}">
+      <div class="package-filter">
+        <label for="package-operator">Selecciona tu operador para ver sus paquetes</label>
+        <select id="package-operator" aria-controls="available-packages">
+          <option value="">Selecciona un operador</option>
+          <option th:each="operador : ${operadores}"
+                  th:value="${operador.id}"
+                  th:text="${operador.nombre}"></option>
+        </select>
+        <label for="package-category" id="package-category-label" hidden>Selecciona una categoría</label>
+        <select id="package-category" aria-controls="available-packages" hidden disabled>
+          <option value="">Selecciona una categoría</option>
+        </select>
+      </div>
+      <p class="package-empty" id="package-selection-prompt">
+        Elige Claro, Tigo u otro operador para consultar sus paquetes disponibles.
+      </p>
+      <div class="grid" id="available-packages">
+      <article class="package" th:each="paquete : ${paquetes}"
+               data-package-card
+               th:attr="data-operator-id=${paquete.operadorId},
+                        data-category=${paquete.categoria.name()},
+                        data-category-label=${paquete.categoria.nombreVisible}" hidden>
+        <p class="package-operator" th:text="${operadoresPorId[paquete.operadorId]}">Operador</p>
         <h3 th:text="${paquete.nombre}"></h3>
         <p th:text="${paquete.descripcion}"></p>
-        <p th:text="${'$ ' + #numbers.formatDecimal(paquete.precio, 0, 'COMMA', 0, 'POINT') + ' COP'}"></p>
-        <form th:action="@{/recargar}" method="post">
-          <input type="hidden" name="paqueteId" th:value="${paquete.id}">
-          <input type="hidden" name="operationId" th:value="${operationIds[paquete.id]}">
+        <p th:if="${paquete.categoria.name() == 'POSTPAGO'}"
+           th:text="${'$ ' + #numbers.formatDecimal(paquete.precio, 0, 'COMMA', 0, 'POINT') + ' COP / mes'}"></p>
+        <p th:unless="${paquete.categoria.name() == 'POSTPAGO'}"
+           th:text="${'$ ' + #numbers.formatDecimal(paquete.precio, 0, 'COMMA', 0, 'POINT') + ' COP'}"></p>
+        <p class="informational-plan" th:if="${paquete.categoria.name() == 'POSTPAGO'}">
+          Plan pospago informativo. La contratación se realiza directamente con Claro; no se cobra desde DigiTrans.
+        </p>
+        <div th:unless="${paquete.categoria.name() == 'POSTPAGO'}">
+          <div class="package-actions">
+            <button type="button" class="secondary" data-select-package>Elegir este paquete</button>
+            <button type="button" class="cancel-package" data-cancel-package hidden>Cancelar selección</button>
+          </div>
+          <form th:action="@{/recargar}" method="post">
+            <input type="hidden" name="paqueteId" th:value="${paquete.id}">
+            <input type="hidden" name="operationId" th:value="${operationIds[paquete.id]}">
+            <label>Enviar a
+              <select name="lineaId" required disabled>
+                <option value="" disabled selected>Selecciona tu línea SIM</option>
+                <option th:each="linea : ${lineas}"
+                        th:if="${linea.operadorId == paquete.operadorId}"
+                        th:value="${linea.id}"
+                        th:text="${linea.alias + ' · ' + linea.telefono}"></option>
+              </select>
+            </label>
+            <button type="submit"
+                    th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
+                    th:attr="data-wallet-blocked=${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
+                    disabled>Simular compra</button>
+          </form>
+        </div>
+      </article>
+      <article class="package" data-package-card
+               th:if="${movilExitoId != null}"
+               th:attr="data-operator-id=${movilExitoId},
+                        data-category='RECARGA_DINERO',
+                        data-category-label='Recargas en dinero'" hidden>
+        <p class="package-operator">Móvil Éxito</p>
+        <h3>Recarga otro valor</h3>
+        <p>Elige el monto de tu recarga entre $1.000 y $100.000 COP.</p>
+        <div class="package-actions">
+          <button type="button" class="secondary" data-select-package>Elegir este paquete</button>
+          <button type="button" class="cancel-package" data-cancel-package hidden>Cancelar selección</button>
+        </div>
+        <form th:action="@{/recargar/saldo}" method="post">
+          <input type="hidden" name="operadorId" th:value="${movilExitoId}">
+          <input type="hidden" name="operationId" th:value="${customRechargeOperationId}">
+          <label class="custom-recharge-input">Monto a recargar (COP)
+            <input name="monto" type="number" min="1000" max="100000" step="1000"
+                   placeholder="Ej. 25.000" required disabled>
+          </label>
           <label>Enviar a
-            <select name="lineaId" required>
+            <select name="lineaId" required disabled>
               <option value="" disabled selected>Selecciona tu línea SIM</option>
               <option th:each="linea : ${lineas}"
-                      th:if="${linea.operadorId == paquete.operadorId}"
+                      th:if="${linea.operadorId == movilExitoId}"
                       th:value="${linea.id}"
                       th:text="${linea.alias + ' · ' + linea.telefono}"></option>
             </select>
           </label>
           <button type="submit"
-                  th:disabled="${walletError or walletMissing or #lists.isEmpty(lineas)}">Comprar paquete (simulado)</button>
+                  th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
+                  th:attr="data-wallet-blocked=${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
+                  disabled>Simular recarga</button>
         </form>
       </article>
+      </div>
+      <p class="package-selection-status" id="package-selection-status" aria-live="polite"></p>
     </div>
+    <p class="catalog-source">
+      Los planes pospago Claro se transcribieron de las imágenes compartidas. Los paquetes prepago y demás precios
+      pueden cambiar; consulta las condiciones vigentes directamente con el operador.
+      <a href="https://www.claro.com.co/personas/servicios/servicios-moviles/planes-y-precios/?filterHead=38&amp;filterType=79"
+         target="_blank" rel="noopener noreferrer">Sitio oficial de Claro Colombia</a>.
+      Los catálogos de Tigo y Móvil Éxito se transcribieron de las imágenes compartidas. Confirma la oferta vigente con cada operador.
+      Se excluyen los canjes de Puntos Colombia.
+    </p>
   </section>
 
   <section>
@@ -173,6 +326,17 @@
 <script>
   const firstWalletConfirmation = document.querySelector("[data-wallet-first-confirm]");
   const secondWalletConfirmation = document.querySelector("[data-wallet-second-step]");
+  const packageOperatorSelect = document.querySelector("#package-operator");
+  const packageCategorySelect = document.querySelector("#package-category");
+  const packageCategoryLabel = document.querySelector("#package-category-label");
+  const packageCards = document.querySelectorAll("#available-packages [data-package-card]");
+  const selectablePackageCards = Array.from(
+    document.querySelectorAll("#available-packages [data-select-package]"),
+    (button) => button.closest("[data-package-card]")
+  );
+  const packageSelectionPrompt = document.querySelector("#package-selection-prompt");
+  const packageSelectionStatus = document.querySelector("#package-selection-status");
+  let selectedPackageCard = null;
 
   firstWalletConfirmation?.addEventListener("click", () => {
     firstWalletConfirmation.disabled = true;
@@ -180,6 +344,109 @@
     secondWalletConfirmation.hidden = false;
     secondWalletConfirmation.querySelector("button").focus();
   });
+
+  packageOperatorSelect?.addEventListener("change", () => {
+    selectedPackageCard = null;
+    updatePackageControls();
+    const selectedOperatorId = packageOperatorSelect.value;
+    const operatorCategories = new Map();
+    packageCards.forEach((card) => {
+      if (card.dataset.operatorId === selectedOperatorId) {
+        operatorCategories.set(card.dataset.category, card.dataset.categoryLabel);
+      }
+    });
+
+    packageCategorySelect.replaceChildren(new Option("Selecciona una categoría", ""));
+    const categoryOrder = [
+      "PAQUETE", "PREPAGO", "POSTPAGO", "MOVISTAR_PRO", "OTROS_PAQUETES", "ROAMING",
+      "RECARGA_DINERO", "BOLSA_DATOS"
+    ];
+    [...operatorCategories.entries()]
+      .sort(([first], [second]) => categoryOrder.indexOf(first) - categoryOrder.indexOf(second))
+      .forEach(([category, categoryLabel]) => {
+        packageCategorySelect.add(new Option(categoryLabel, category));
+    });
+    packageCategorySelect.disabled = operatorCategories.size <= 1;
+    packageCategorySelect.hidden = operatorCategories.size <= 1;
+    packageCategoryLabel.hidden = operatorCategories.size <= 1;
+    packageCategorySelect.value = operatorCategories.size === 1
+      ? operatorCategories.keys().next().value
+      : "";
+    packageSelectionStatus.textContent = "";
+    showPackagesForSelection();
+  });
+
+  packageCategorySelect?.addEventListener("change", () => {
+    selectedPackageCard = null;
+    updatePackageControls();
+    packageSelectionStatus.textContent = "";
+    showPackagesForSelection();
+  });
+
+  selectablePackageCards.forEach((card) => {
+    card.querySelector("[data-select-package]").addEventListener("click", () => {
+      selectedPackageCard = card;
+      updatePackageControls();
+      card.querySelector('form select[name="lineaId"], form input[name="monto"]')?.focus();
+      packageSelectionStatus.textContent =
+        "Paquete seleccionado. Los demás están deshabilitados; cancela la selección para elegir otro.";
+    });
+
+    card.querySelector("[data-cancel-package]").addEventListener("click", () => {
+      const lineSelect = card.querySelector('select[name="lineaId"]');
+      if (lineSelect) {
+        lineSelect.selectedIndex = 0;
+      }
+      const amountInput = card.querySelector('input[name="monto"]');
+      if (amountInput) {
+        amountInput.value = "";
+      }
+      selectedPackageCard = null;
+      updatePackageControls();
+      packageSelectionStatus.textContent = "Selección cancelada. Ya puedes elegir otro paquete.";
+      card.querySelector("[data-select-package]").focus();
+    });
+  });
+
+  function updatePackageControls() {
+    selectablePackageCards.forEach((card) => {
+      const selected = card === selectedPackageCard;
+      card.classList.toggle("is-selected", selected);
+      card.classList.toggle("is-locked", selectedPackageCard !== null && !selected);
+      card.querySelector("[data-select-package]").hidden = selected;
+      card.querySelector("[data-select-package]").disabled = selectedPackageCard !== null && !selected;
+      card.querySelector("[data-cancel-package]").hidden = !selected;
+      card.querySelectorAll('form select[name="lineaId"], form input[name="monto"]')
+        .forEach((input) => { input.disabled = !selected; });
+
+      const purchaseButton = card.querySelector('button[type="submit"]');
+      purchaseButton.disabled = !selected || purchaseButton.dataset.walletBlocked === "true";
+    });
+  }
+
+  function showPackagesForSelection() {
+    const operatorId = packageOperatorSelect?.value ?? "";
+    const category = packageCategorySelect?.value ?? "";
+    let visiblePackages = 0;
+
+    packageCards.forEach((card) => {
+      const matchesOperator = card.dataset.operatorId === operatorId;
+      const matchesCategory = !packageCategorySelect || packageCategorySelect.disabled
+        || card.dataset.category === category;
+      const visible = Boolean(operatorId && matchesOperator && matchesCategory);
+      card.hidden = !visible;
+      if (visible) {
+        visiblePackages += 1;
+      }
+    });
+
+    packageSelectionPrompt.hidden = visiblePackages > 0;
+    packageSelectionPrompt.textContent = !operatorId
+      ? "Elige un operador para consultar sus paquetes disponibles."
+      : packageCategorySelect && !packageCategorySelect.disabled && !category
+        ? "Elige una categoría para ver sus ofertas."
+        : "Este operador no tiene productos activos en esta categoría.";
+  }
 </script>
 </body>
 </html>

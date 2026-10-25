@@ -38,14 +38,17 @@ public class SecurityConfig {
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/internal/**", "/logout"))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/css/**", "/js/**", "/images/**", "/error/**").permitAll()
+                        .requestMatchers("/css/**", "/js/**", "/images/**", "/error", "/error/**").permitAll()
                         .requestMatchers("/internal/**").permitAll()
+                        .requestMatchers("/admin/tarjetas-desactivadas/**")
+                        .hasAnyAuthority("MODERATOR_BILLETERA", "ROLE_ADMIN")
                         .requestMatchers("/admin/**").hasAnyAuthority("MODERATOR_BILLETERA", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(
-                        (request, response, authException) -> response.sendRedirect(accesoUrl + "/login")))
+                        (request, response, authException) -> response.sendRedirect(accesoUrl + "/login"))
+                        .accessDeniedPage("/error/403"))
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .addLogoutHandler((request, response, authentication) -> {

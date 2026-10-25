@@ -1,24 +1,30 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <link rel="stylesheet" th:href="@{/css/usuario.css}" />
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Página no encontrada</title>
+    <link rel="stylesheet" th:href="@{/css/usuario.css}">
+    <link rel="stylesheet" th:href="@{/css/error.css}">
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body>
-    <div class="page">
+<body class="transport-error-page" th:attr="data-sistema=${sistemaActual}">
+    <main class="page">
         <div class="center-card">
-            <div class="card" style="text-align: center;">
-                <h1 style="font-size: 80px; color: #ffc107; margin: 0;">404</h1>
-                <h2>¡Ups! Ruta no encontrada</h2>
-                <p>Lo sentimos, la página que buscas no existe en Digitrans.</p>
-                <a href="/" class="primary" style="text-decoration: none; display: inline-block; padding: 10px 20px;">
-                    Volver al Inicio
-                </a>
-            </div>
+            <section class="transport-error-card" role="alert">
+                <div class="transport-error-content">
+                    <span class="transport-error-system"
+                          th:text="${sistemaActual == 'TRANSMILENIO' ? 'TransMilenio' : (sistemaActual == 'TRANSMETRO' ? 'Transmetro' : 'Transcaribe')}">Transcaribe</span>
+                    <p class="transport-error-code">404</p>
+                    <h1>Ruta no encontrada</h1>
+                    <p class="transport-error-message">
+                        No encontramos la página que buscas. Puede que el enlace haya cambiado o que la dirección esté mal escrita.
+                    </p>
+                    <a th:href="@{/}" class="primary">Volver al inicio</a>
+                </div>
+            </section>
         </div>
-    </div>
+    </main>
     <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
 </body>
 </html>

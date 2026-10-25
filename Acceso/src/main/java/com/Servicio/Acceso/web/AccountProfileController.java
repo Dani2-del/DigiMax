@@ -4,9 +4,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.Instant;
+import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 import org.springframework.dao.DuplicateKeyException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -19,6 +23,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.client.RestClientException;
 
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.UsuarioRepository;
@@ -27,6 +32,8 @@ import com.Servicio.Acceso.security.JwtService;
 import com.Servicio.Acceso.service.AccountService;
 import com.Servicio.Acceso.service.MailDeliveryException;
 import com.Servicio.Acceso.service.EmailService;
+import com.Servicio.Acceso.service.TransportSitmClient;
+import com.Servicio.Acceso.service.TransportSitmClient.SitmInfo;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,10 +42,13 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 public class AccountProfileController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AccountProfileController.class);
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final long CODE_LIFETIME_MILLIS = 10 * 60 * 1000;
     private static final int MAX_CODE_ATTEMPTS = 5;
     private static final String PENDING_PROFILE_CHANGE = "pendingProfileChange";
+    private static final Set<String> TRANSPORT_SITMS = Set.of(
+            "TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO");
 
     private final AccountService accountService;
     private final UsuarioRepository usuarios;
@@ -46,16 +56,19 @@ public class AccountProfileController {
     private final UserDetailsService userDetailsService;
     private final JwtService jwtService;
     private final JwtCookieService jwtCookieService;
+    private final TransportSitmClient transportSitmClient;
 
     public AccountProfileController(AccountService accountService, UsuarioRepository usuarios,
             EmailService emailService, UserDetailsService userDetailsService,
-            JwtService jwtService, JwtCookieService jwtCookieService) {
+            JwtService jwtService, JwtCookieService jwtCookieService,
+            TransportSitmClient transportSitmClient) {
         this.accountService = accountService;
         this.usuarios = usuarios;
         this.emailService = emailService;
         this.userDetailsService = userDetailsService;
         this.jwtService = jwtService;
         this.jwtCookieService = jwtCookieService;
+        this.transportSitmClient = transportSitmClient;
     }
 
     @GetMapping("/cuenta/perfil")
@@ -63,7 +76,86 @@ public class AccountProfileController {
         Usuario usuario = usuarios.findByCorreoIgnoreCase(principal.getUsername()).orElseThrow();
         model.addAttribute("nombre", usuario.getNombre());
         model.addAttribute("correo", usuario.getCorreo());
+        model.addAttribute("sitms", List.of(
+                new SitmOption("TRANSCARIBE", "Transcaribe"),
+                new SitmOption("TRANSMILENIO", "TransMilenio"),
+                new SitmOption("TRANSMETRO", "Transmetro")));
+        model.addAttribute("puedeCambiarSitm", Usuario.ROLE_USER.equals(usuario.getRole())
+                || Usuario.ROLE_MODERATOR.equals(usuario.getRole()));
+        model.addAttribute("esModeradorTransporte", esModeradorTransporte(usuario));
+        try {
+            SitmInfo sitmInfo = transportSitmClient.getSitm(jwtService.generateToken(principal));
+            model.addAttribute("sitmActual", sitmInfo.currentSitm());
+            model.addAttribute("sitmActualNombre", visibleSitm(sitmInfo.currentSitm()));
+            model.addAttribute("sitmDisponible", true);
+        } catch (RestClientException | IllegalStateException exception) {
+            LOGGER.warn("No se pudo consultar el SITM del usuario {} en Transporte.", usuario.getId(), exception);
+            model.addAttribute("sitmDisponible", false);
+            model.addAttribute("sitmError",
+                    "No se pudo consultar tu SITM ahora. Inténtalo nuevamente más tarde.");
+        }
         return "cuenta-perfil";
+    }
+
+    @PostMapping("/cuenta/perfil/sitm")
+    public String cambiarSitm(@AuthenticationPrincipal UserDetails principal,
+            @RequestParam String sitm,
+            RedirectAttributes redirectAttributes) {
+        String requestedSitm = sitm == null ? "" : sitm.trim().toUpperCase(Locale.ROOT);
+        if (!TRANSPORT_SITMS.contains(requestedSitm)) {
+            redirectAttributes.addFlashAttribute("error", "Selecciona un sistema de transporte válido.");
+            return "redirect:/cuenta/perfil";
+        }
+
+        Usuario usuario = usuarios.findByCorreoIgnoreCase(principal.getUsername()).orElseThrow();
+        String accessToken = jwtService.generateToken(principal);
+        boolean transportModerator = esModeradorTransporte(usuario);
+        try {
+            SitmInfo current = transportSitmClient.getSitm(accessToken);
+            if (requestedSitm.equals(current.currentSitm())) {
+                redirectAttributes.addFlashAttribute("mensaje", "Ya tienes seleccionado ese SITM.");
+                return "redirect:/cuenta/perfil";
+            }
+            if (transportModerator) {
+                emailService.enviarAvisoCambioSitmModerador(
+                        usuario.getCorreo(), usuario.getNombre(),
+                        visibleSitm(current.currentSitm()), visibleSitm(requestedSitm));
+                redirectAttributes.addFlashAttribute("mensaje",
+                        "No cambiamos tu SITM porque eres moderador. Te enviamos un correo con la explicación "
+                                + "y los pasos para contactar a soporte.");
+                return "redirect:/cuenta/perfil";
+            }
+            transportSitmClient.changeSitm(accessToken, requestedSitm);
+            redirectAttributes.addFlashAttribute("mensaje", "Tu SITM se actualizó correctamente.");
+        } catch (RestClientException | IllegalStateException exception) {
+            LOGGER.warn("No se pudo actualizar el SITM del usuario {}.", usuario.getId(), exception);
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo actualizar tu SITM. Inténtalo nuevamente más tarde.");
+        } catch (MailDeliveryException exception) {
+            LOGGER.error("No se pudo enviar el aviso de cambio de SITM al moderador {}.",
+                    usuario.getId(), exception);
+            redirectAttributes.addFlashAttribute("error",
+                    "No pudimos enviar el correo de aviso; tu SITM no cambió. Inténtalo más tarde.");
+        }
+        return "redirect:/cuenta/perfil";
+    }
+
+    private static String visibleSitm(String sitm) {
+        return switch (sitm == null ? "" : sitm) {
+            case "TRANSCARIBE" -> "Transcaribe";
+            case "TRANSMILENIO" -> "TransMilenio";
+            case "TRANSMETRO" -> "Transmetro";
+            default -> "sin asignar";
+        };
+    }
+
+    private static boolean esModeradorTransporte(Usuario usuario) {
+        return Usuario.ROLE_MODERATOR.equals(usuario.getRole())
+                && usuario.getServicioAsignado() != null
+                && TRANSPORT_SITMS.contains(usuario.getServicioAsignado().toUpperCase(Locale.ROOT));
+    }
+
+    public record SitmOption(String code, String name) {
     }
 
     @PostMapping("/cuenta/perfil")

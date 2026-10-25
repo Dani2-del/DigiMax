@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel moderador | Billetera Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+</head>
+<body>
+<main class="wallet-page admin-page wallet-moderator-page">
+    <header class="page-header admin-header" id="inicio">
+        <div>
+            <p class="eyebrow">CENTRO DE OPERACIONES · DIGITRANS</p>
+            <h1>Panel moderador</h1>
+            <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '. Busca cuentas y atiende operaciones de Billetera.'}"></p>
+        </div>
+        <nav class="header-links" aria-label="Cambiar vista">
+            <a class="wallet-view-moderator" th:href="@{/admin/dashboard}">Panel principal</a>
+            <a class="back-link" th:href="@{/}">Vista usuario</a>
+        </nav>
+    </header>
+
+    <nav class="wallet-section-nav" aria-label="Secciones del panel">
+        <a href="#resumen">Resumen</a>
+        <a href="#cuentas">Cuentas</a>
+        <a href="#herramientas">Herramientas</a>
+        <a th:href="@{/admin/tarjetas-desactivadas}">Tarjetas desactivadas</a>
+    </nav>
+
+    <section id="resumen" class="admin-overview" aria-label="Resumen de billeteras">
+        <article class="admin-stat">
+            <span class="admin-stat-icon">▤</span>
+            <div><span class="admin-stat-label">Cuentas registradas</span>
+                <strong th:text="${totalCuentas}">0</strong></div>
+        </article>
+        <article class="admin-stat admin-stat-balance">
+            <span class="admin-stat-icon is-balance">⌕</span>
+            <div><span class="admin-stat-label">Cuentas mostradas</span>
+                <strong th:text="${resultadosCuentas}">0</strong>
+                <small>Máximo 5 resultados por búsqueda</small></div>
+        </article>
+    </section>
+
+    <section id="cuentas" class="admin-directory">
+        <div class="admin-directory-heading">
+            <div>
+                <p class="eyebrow">BÚSQUEDA Y SOPORTE</p>
+                <h2>Seleccionar una cuenta</h2>
+                <p class="muted">Busca por nombre, correo, ID o número de tarjeta; filtra por saldo. Las herramientas aparecen al abrir una cuenta.</p>
+            </div>
+            <form class="wallet-account-filters" method="get" th:action="@{/admin}">
+                <label class="wallet-account-search">Nombre, correo, ID o tarjeta
+                    <input name="buscar" type="search" maxlength="120"
+                           placeholder="Ej. nombre@correo.com" th:value="${buscar}">
+                </label>
+                <label>Saldo desde (COP)
+                    <input name="saldoDesde" type="number" min="0" step="0.01"
+                           placeholder="Sin mínimo" th:value="${saldoDesde}">
+                </label>
+                <label>Saldo hasta (COP)
+                    <input name="saldoHasta" type="number" min="0" step="0.01"
+                           placeholder="Sin máximo" th:value="${saldoHasta}">
+                </label>
+                <div class="wallet-filter-actions">
+                    <button type="submit">Buscar cuentas</button>
+                    <a class="button-secondary admin-clear" th:href="@{/admin#cuentas}">Limpiar</a>
+                </div>
+            </form>
+        </div>
+
+        <p class="notice error" th:if="${errorFiltroSaldo}" role="alert">
+            Revisa el rango de saldo: los valores deben ser positivos y el mínimo no puede superar el máximo.
+        </p>
+        <p class="wallet-results-caption" th:if="${resultadosCuentas > 0}">
+            Mostrando hasta <strong th:text="${resultadosCuentas}">0</strong> de las cuentas más recientes.
+        </p>
+        <p th:if="${#lists.isEmpty(cuentas)}" class="empty-state">
+            <span th:if="${#strings.isEmpty(buscar) and saldoDesde == null and saldoHasta == null}">
+                No hay cuentas de Billetera para mostrar.
+            </span>
+            <span th:unless="${#strings.isEmpty(buscar) and saldoDesde == null and saldoHasta == null}">
+                No encontramos cuentas que coincidan con esos filtros.
+            </span>
+        </p>
+        <div class="wallet-account-list" th:unless="${#lists.isEmpty(cuentas)}">
+            <a class="wallet-account-row" th:each="cuenta : ${cuentas}"
+               th:href="@{/admin/cuentas/{id}(id=${cuenta.usuarioId})}">
+                <span class="wallet-account-avatar" aria-hidden="true">▰</span>
+                <span class="wallet-account-main">
+                    <strong th:text="${cuenta.nombre != null and !cuenta.nombre.isBlank() ? cuenta.nombre : cuenta.usuarioId}">Nombre de usuario</strong>
+                    <small th:text="${cuenta.correo}">correo@ejemplo.com</small>
+                    <small class="wallet-account-number"
+                           th:text="${cuenta.numeroTarjeta != null ? cuenta.numeroTarjeta : 'Sin tarjeta emitida'}">UNI-000000000000</small>
+                </span>
+                <span class="wallet-account-balance">
+                    <small>SALDO</small>
+                    <strong th:text="${'$ ' + #numbers.formatDecimal(cuenta.saldo, 0, 'COMMA', 2, 'POINT')}">$ 0.00</strong>
+                    <span class="admin-status"
+                          th:classappend="${cuenta.estado == 'Activa' ? ' is-active' : (cuenta.estado == 'Congelada' ? ' is-frozen' : ' is-disabled')}"
+                          th:text="${cuenta.estado}">Activa</span>
+                </span>
+                <span class="wallet-account-open">Abrir cuenta <b aria-hidden="true">→</b></span>
+            </a>
+        </div>
+    </section>
+
+    <section id="herramientas" class="wallet-moderator-tools">
+        <div class="wallet-tools-heading">
+            <div>
+                <p class="eyebrow">AL SELECCIONAR UNA CUENTA</p>
+                <h2>Herramientas del moderador</h2>
+                <p class="welcome">Las operaciones se habilitan dentro de la cuenta seleccionada para evitar acciones sobre el usuario equivocado.</p>
+            </div>
+        </div>
+        <div class="wallet-tools-grid">
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-credit">↕</span>
+                <h3>Ajustar saldo</h3>
+                <p>Abonar o descontar un monto con motivo de soporte y movimiento auditado.</p>
+            </article>
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-security">⌑</span>
+                <h3>Congelar o desbloquear</h3>
+                <p>Restringir o restaurar el uso de una tarjeta por un caso documentado.</p>
+            </article>
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-history">◷</span>
+                <h3>Consultar movimientos</h3>
+                <p>Revisar los movimientos recientes y el historial de tarjetas anteriores.</p>
+            </article>
+        </div>
+    </section>
+    <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · OPERACIONES CON TRAZABILIDAD</footer>
+</main>
+</body>
+</html>

@@ -17,6 +17,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.transcaribe.transcaribe.Model.Usuario;
 import com.transcaribe.transcaribe.service.AccessIdentityClient;
 import com.transcaribe.transcaribe.service.AccessUser;
 
@@ -64,9 +65,13 @@ public class RemoteAccessAuthenticationFilter extends OncePerRequestFilter {
                         && identity.id() != null && identity.active()) {
                     request.setAttribute(AccessIdentityClient.TOKEN_ATTRIBUTE, token);
                     request.setAttribute(AccessIdentityClient.USER_ATTRIBUTE, identity);
+                    String transportRole = Usuario.ROLE_MODERATOR.equals(identity.role())
+                            && !identity.isTransportModerator()
+                                    ? Usuario.ROLE_USER
+                                    : identity.role();
                     var principal = User.withUsername(identity.email())
                             .password("")
-                            .authorities(identity.role())
+                            .authorities(transportRole)
                             .build();
                     var authentication = new UsernamePasswordAuthenticationToken(
                             principal, null, principal.getAuthorities());

@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${statusCode + ' | ' + moduleName}">Error | Recargas Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/error.css}">
+</head>
+<body class="error-page">
+<main class="error-card" role="alert">
+    <span class="error-brand" th:text="${moduleName}">Recargas móviles Digitrans</span>
+    <p class="error-code" th:text="${statusCode}">500</p>
+    <h1 th:text="${errorTitle}">Ocurrió un problema</h1>
+    <p class="error-message" th:text="${errorMessage}">No pudimos completar la solicitud.</p>
+    <nav class="error-actions" aria-label="Acciones">
+        <a class="error-primary" th:href="@{/}">Volver a Recargas</a>
+        <a class="error-secondary" th:href="${accesoUrl + '/servicios'}">Ir a servicios</a>
+    </nav>
+</main>
+</body>
+</html>

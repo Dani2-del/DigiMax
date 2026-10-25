@@ -69,7 +69,7 @@ public class SecurityConfig {
                                 "/olvido-password", "/verificar-codigo-recuperar-password",
                                 "/validar-codigo-restablecimiento", "/restablecer-password",
                                 "/confirmar-restablecimiento", "/css/**", "/js/**", "/images/**",
-                                "/oauth2/**", "/login/oauth2/**", "/error")
+                                "/oauth2/**", "/login/oauth2/**", "/error", "/error/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
                         .hasAnyRole("ADMIN", "MODERATOR")
@@ -104,13 +104,15 @@ public class SecurityConfig {
                                 jwtCookieService.clearCookie(response))
                         .invalidateHttpSession(true)
                         .permitAll());
-        http.exceptionHandling(exception -> exception.authenticationEntryPoint((request, response, authException) -> {
-            if (request.getRequestURI().startsWith("/api/")) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
-            } else {
-                response.sendRedirect("/login");
-            }
-        }));
+        http.exceptionHandling(exception -> exception
+                .authenticationEntryPoint((request, response, authException) -> {
+                    if (request.getRequestURI().startsWith("/api/")) {
+                        response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                    } else {
+                        response.sendRedirect("/login");
+                    }
+                })
+                .accessDeniedPage("/error/403"));
         if (googleOAuthEnabled) {
             http.oauth2Login(oauth -> oauth
                     .loginPage("/login")

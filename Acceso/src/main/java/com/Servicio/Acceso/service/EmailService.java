@@ -50,6 +50,16 @@ public class EmailService {
                         + "\n\nEste código vence en 10 minutos.");
     }
 
+    public void enviarAvisoCambioSitmModerador(
+            String correo, String nombre, String sitmActual, String sitmSolicitado) {
+        enviar(correo, "Solicitud de cambio de SITM no aplicada",
+                "Hola " + nombre + ",\n\nRecibimos una solicitud para cambiar tu SITM de "
+                        + sitmActual + " a " + sitmSolicitado + ".\n\nNo aplicamos el cambio porque tu cuenta "
+                        + "es moderadora de " + sitmActual + " y tu SITM está vinculado a esa responsabilidad. "
+                        + "Si necesitas cambiarlo, contacta al equipo de soporte para que revise y aplique "
+                        + "la solicitud.\n\nTu asignación actual no ha cambiado.");
+    }
+
     @org.springframework.scheduling.annotation.Async
     public void enviarNotificacionLogin(String correo, String nombre) {
         enviar(correo, "Nuevo inicio de sesión en Digitrans",

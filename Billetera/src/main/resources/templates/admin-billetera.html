@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Panel de Billetera | Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+</head>
+<body>
+<main class="wallet-page admin-page">
+    <header class="page-header admin-header">
+        <div>
+            <p class="eyebrow">CENTRO DE OPERACIONES · DIGITRANS</p>
+            <h1>Panel moderador</h1>
+            <p class="welcome">
+                Cuenta seleccionada:
+                <strong th:text="${usuarioSeleccionado != null and usuarioSeleccionado.name() != null ? usuarioSeleccionado.name() : tarjetas[0].usuarioId}">Usuario</strong>
+                <span th:if="${usuarioSeleccionado != null}" th:text="${' · ' + usuarioSeleccionado.email()}"></span>
+            </p>
+        </div>
+        <nav class="header-links" aria-label="Navegación de administración">
+            <a class="back-link" th:href="@{/admin}">← Volver a cuentas</a>
+            <a class="back-link" th:href="@{/admin/tarjetas-desactivadas}">Tarjetas desactivadas</a>
+            <a class="back-link" th:href="@{/}">Vista usuario</a>
+        </nav>
+    </header>
+
+    <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
+    <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
+
+    <section class="admin-directory" id="cuentas">
+        <div class="admin-directory-heading">
+            <div>
+                <p class="eyebrow">SOPORTE Y SUPERVISIÓN</p>
+                <h2>Cuenta seleccionada</h2>
+                <p class="muted">Confirma la identidad y los datos de la tarjeta antes de aplicar una acción.</p>
+            </div>
+        </div>
+        <div class="admin-wallet-list">
+            <article class="admin-wallet-card" th:each="wallet : ${tarjetas}">
+                <div class="admin-wallet-top">
+                    <div class="admin-wallet-identity">
+                        <span class="admin-card-icon" aria-hidden="true">▰</span>
+                        <div>
+                            <span class="admin-stat-label">CUENTA · ID DE USUARIO</span>
+                            <h3 th:text="${wallet.usuarioId}">user-id</h3>
+                            <p class="admin-card-number"
+                               th:text="${wallet.numeroTarjeta != null ? wallet.numeroTarjeta : 'Sin número de tarjeta emitido'}">
+                                UNI-000000000000
+                            </p>
+                        </div>
+                    </div>
+                    <div class="admin-wallet-balance">
+                        <span class="admin-stat-label">SALDO</span>
+                        <strong th:text="${'$ ' + #numbers.formatDecimal(wallet.saldo, 0, 'COMMA', 2, 'POINT')}">$ 0</strong>
+                        <span class="admin-status"
+                              th:classappend="${wallet.estado.name() == 'ACTIVA' and wallet.activadaPorUsuario ? ' is-active' : (wallet.estado.name() == 'CONGELADA' ? ' is-frozen' : ' is-disabled')}"
+                              th:text="${!wallet.activadaPorUsuario ? 'Pendiente de activación' : (wallet.estado.name() == 'ACTIVA' ? 'Activa' : (wallet.estado.name() == 'CONGELADA' ? 'Congelada' : 'Desactivada'))}">
+                            Activa
+                        </span>
+                    </div>
+                </div>
+
+                <div class="admin-wallet-content">
+                    <section class="admin-tool">
+                        <div class="admin-tool-heading">
+                            <span class="admin-tool-icon">↕</span>
+                            <div><h4>Ajuste de saldo</h4>
+                                <p>Abona o descuenta con motivo obligatorio y registro automático.</p></div>
+                        </div>
+                        <form th:if="${wallet.activadaPorUsuario and wallet.estado.name() != 'DESACTIVADA'}"
+                              class="admin-adjust-form" method="post"
+                              th:action="@{/admin/cuentas/{id}/ajustar(id=${wallet.usuarioId})}">
+                            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <label>Operación
+                                <select name="accion" required>
+                                    <option value="ABONAR">Abonar saldo</option>
+                                    <option value="DESCONTAR">Descontar saldo</option>
+                                </select>
+                            </label>
+                            <label>Monto (COP)
+                                <input name="monto" type="number" min="0.01" max="1000000"
+                                       step="0.01" placeholder="0.00" required>
+                            </label>
+                            <label class="admin-reason">Motivo de soporte
+                                <input name="motivo" type="text" minlength="5" maxlength="200"
+                                       placeholder="Describe el caso o la corrección" required>
+                            </label>
+                            <button type="submit"
+                                    onclick="return confirm('¿Confirmas este ajuste? Quedará registrado en los movimientos de la cuenta.')">
+                                Aplicar ajuste
+                            </button>
+                        </form>
+                        <p th:unless="${wallet.activadaPorUsuario and wallet.estado.name() != 'DESACTIVADA'}"
+                           class="admin-note">Los ajustes solo están disponibles para tarjetas activadas y no desactivadas.</p>
+                    </section>
+
+                    <section class="admin-tool">
+                        <div class="admin-tool-heading">
+                            <span class="admin-tool-icon is-security">⌑</span>
+                            <div><h4>Estado y seguridad</h4>
+                                <p>Congela o desbloquea por un caso de soporte documentado.</p></div>
+                        </div>
+                        <form th:if="${wallet.activadaPorUsuario and wallet.estado.name() != 'DESACTIVADA'}"
+                              class="admin-status-form" method="post"
+                              th:action="@{/admin/cuentas/{id}/estado(id=${wallet.usuarioId})}">
+                            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <input type="hidden" name="estado"
+                                   th:value="${wallet.estado.name() == 'CONGELADA' ? 'ACTIVA' : 'CONGELADA'}">
+                            <label>Motivo
+                                <input name="motivo" type="text" minlength="5" maxlength="200"
+                                       placeholder="Motivo del cambio de estado" required>
+                            </label>
+                            <button type="submit" class="button-secondary"
+                                    th:text="${wallet.estado.name() == 'CONGELADA' ? 'Desbloquear tarjeta' : 'Congelar tarjeta'}">
+                                Congelar tarjeta
+                            </button>
+                        </form>
+                    </section>
+                </div>
+
+                <details class="admin-movements">
+                    <summary>Movimientos recientes
+                        <span th:text="${#lists.size(wallet.movimientos)}">0</span>
+                    </summary>
+                    <p th:if="${#lists.isEmpty(wallet.movimientos)}" class="admin-note">
+                        Esta cuenta todavía no tiene movimientos.
+                    </p>
+                    <div class="table-wrap" th:unless="${#lists.isEmpty(wallet.movimientos)}">
+                        <table class="movement-table">
+                            <thead><tr><th>Tipo</th><th>Detalle</th><th>Fecha</th><th class="amount-heading">Monto</th></tr></thead>
+                            <tbody>
+                            <tr th:each="movimiento, iter : ${wallet.movimientos}" th:if="${iter.index < 8}">
+                                <td><span class="movement-kind"
+                                          th:classappend="${movimiento.categoria == 'RECARGA' or movimiento.tipo == 'AJUSTE_ADMIN' ? ' is-credit' : (movimiento.categoria == 'PAGO' or movimiento.tipo == 'RETIRO_ADMIN' ? ' is-debit' : '')}"
+                                          th:text="${movimiento.tipo}">ABONO</span></td>
+                                <td th:text="${movimiento.descripcion}"></td>
+                                <td class="movement-date"
+                                    th:text="${movimiento.fecha != null ? #temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                                <td class="movement-amount"
+                                    th:text="${movimiento.monto != null ? ((movimiento.tipo == 'AJUSTE_ADMIN' ? '+ ' : (movimiento.tipo == 'RETIRO_ADMIN' ? '− ' : '')) + '$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')) : '-'}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+
+                <details class="admin-movements" th:if="${not #lists.isEmpty(wallet.tarjetasDesactivadas)}">
+                    <summary>Historial de tarjetas anteriores
+                        <span th:text="${#lists.size(wallet.tarjetasDesactivadas)}">0</span>
+                    </summary>
+                    <div class="table-wrap">
+                        <table class="movement-table">
+                            <thead><tr><th>Número anterior</th><th>Saldo histórico</th><th>Desactivada</th><th>Traslado</th></tr></thead>
+                            <tbody>
+                            <tr th:each="anterior : ${wallet.tarjetasDesactivadas}">
+                                <td th:text="${anterior.numeroTarjeta}"></td>
+                                <td th:text="${'$ ' + #numbers.formatDecimal(anterior.saldoAlDesactivar, 0, 'COMMA', 2, 'POINT')}"></td>
+                                <td th:text="${anterior.desactivadaEn != null ? #temporals.format(anterior.desactivadaEn, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                                <td th:text="${anterior.saldoTransferido ? 'Trasladado' : 'Pendiente'}"></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </details>
+            </article>
+        </div>
+    </section>
+    <footer class="page-footer">DIGITRANS · Herramientas de soporte y supervisión</footer>
+</main>
+</body>
+</html>

@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Usuarios globales — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261024-1)}">
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261024-2)}">
   <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="global-admin-page">
@@ -75,7 +75,8 @@
                                   th:selected="${role == usuario.role}"></option>
                         </select>
                       </label>
-                      <label class="moderator-service-field">Servicio moderado
+                      <label class="moderator-service-field"
+                             th:hidden="${usuario.role != 'ROLE_MODERATOR'}">Servicio moderado
                         <select name="servicioAsignado" class="moderator-service-select">
                           <option value="">Selecciona un servicio</option>
                           <option th:each="service : ${moderatorServices}" th:value="${service.code}"
@@ -123,6 +124,7 @@
       const updateServiceField = () => {
         const moderator = role.value === "ROLE_MODERATOR";
         serviceField.hidden = !moderator;
+        service.disabled = !moderator;
         service.required = moderator;
         if (!moderator) service.value = "";
       };

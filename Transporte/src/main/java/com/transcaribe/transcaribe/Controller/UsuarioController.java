@@ -156,6 +156,8 @@ public class UsuarioController {
         try {
             java.util.Optional<WalletClient.Wallet> tarjetaUniversal = walletClient.findWallet(usuario.getId());
             model.addAttribute("billeteraDisponible", tarjetaUniversal.isPresent());
+            model.addAttribute("billeteraCongelada",
+                    tarjetaUniversal.map(WalletClient.Wallet::isFrozen).orElse(false));
             tarjetaUniversal.ifPresent(wallet -> model.addAttribute("tarjetaUniversal", wallet));
         } catch (ResourceAccessException exception) {
             model.addAttribute("billeteraDisponible", false);

@@ -242,6 +242,8 @@ public class BusService {
             return exception.getMessage();
         } catch (WalletClient.WalletNotFoundException exception) {
             return exception.getMessage();
+        } catch (WalletClient.WalletFrozenException exception) {
+            return exception.getMessage();
         }
         Transaccion transaccion = new Transaccion(
                 monto.doubleValue(), LocalDateTime.now(),

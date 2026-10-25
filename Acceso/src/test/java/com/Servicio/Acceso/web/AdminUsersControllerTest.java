@@ -41,7 +41,15 @@ class AdminUsersControllerTest {
 
     @Test
     void rejectsInvalidUserListFilters() {
-        var response = controller.listUsers(0, 101, "", "", null, null, null, null);
+        var response = controller.listUsers(0, 101, "", "", null, null, null, null, "name");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(mongoTemplate, never()).count(any(Query.class), eq(Usuario.class));
+    }
+
+    @Test
+    void rejectsUnknownUserListSortOrder() {
+        var response = controller.listUsers(0, 50, "", "", null, null, null, null, "oldest");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(mongoTemplate, never()).count(any(Query.class), eq(Usuario.class));
@@ -54,7 +62,7 @@ class AdminUsersControllerTest {
         when(mongoTemplate.count(any(Query.class), eq(Usuario.class))).thenReturn(1L);
         when(mongoTemplate.find(any(Query.class), eq(Usuario.class))).thenReturn(List.of(user));
 
-        var response = controller.listUsers(0, 50, "", "", null, null, null, null);
+        var response = controller.listUsers(0, 50, "", "", null, null, null, null, "name");
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).isEqualTo(new AdminUsersController.UserPage(

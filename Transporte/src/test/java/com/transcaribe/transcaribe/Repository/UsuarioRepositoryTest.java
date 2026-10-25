@@ -102,19 +102,22 @@ class UsuarioRepositoryTest {
     }
 
     @Test
-    void doesNotTreatAnotherServiceModeratorAsTransportModerator() {
+    void treatsWalletModeratorAsRegularTransportUser() {
         AccessUser identity = new AccessUser(
                 "central-user-id", "Persona", "persona@example.com", Usuario.ROLE_MODERATOR,
-                true, true, null, null, "RECARGAS_MOVIL");
+                true, true, null, null, "BILLETERA");
         PerfilTransporte profile = new PerfilTransporte();
         profile.setId("central-user-id");
         profile.setUsuarioId("central-user-id");
         profile.setSistemaAsignado(SistemaTransporte.TRANSCARIBE);
+        profile.setSitm(SistemaTransporte.TRANSCARIBE);
         acceso.identity = identity;
         when(perfiles.findByUsuarioId("central-user-id")).thenReturn(Optional.of(profile));
 
         Usuario result = repository.findByCorreoIgnoreCase("persona@example.com").orElseThrow();
 
+        assertThat(result.getRole()).isEqualTo(Usuario.ROLE_USER);
+        assertThat(result.getSitm()).isEqualTo(SistemaTransporte.TRANSCARIBE);
         assertThat(result.getSistemaAsignado()).isNull();
     }
 

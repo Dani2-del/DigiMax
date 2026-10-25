@@ -181,7 +181,10 @@ public class UsuarioRepository {
         usuario.setId(identity.id());
         usuario.setCorreo(identity.email());
         usuario.setNombre(identity.name());
-        usuario.setRole(identity.role());
+        usuario.setRole(Usuario.ROLE_MODERATOR.equals(identity.role())
+                && !identity.isTransportModerator()
+                        ? Usuario.ROLE_USER
+                        : identity.role());
         usuario.setActivo(identity.active());
         usuario.setVerificado(identity.verified());
         usuario.setFechaRegistro(identity.registeredAt());
@@ -202,11 +205,10 @@ public class UsuarioRepository {
         if (identity.serviceAssignment() == null || identity.serviceAssignment().isBlank()) {
             return profile.getSistemaAsignado();
         }
-        try {
-            return SistemaTransporte.valueOf(identity.serviceAssignment());
-        } catch (IllegalArgumentException exception) {
+        if (!identity.isTransportModerator()) {
             return null;
         }
+        return SistemaTransporte.valueOf(identity.serviceAssignment());
     }
 
     private Optional<PerfilTransporte> profileFromLegacy(Usuario identity) {

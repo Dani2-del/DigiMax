@@ -13,8 +13,10 @@ import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.bson.Document;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -25,6 +27,8 @@ import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
+import com.Servicio.Billetera.model.DisenoTarjeta;
+import com.Servicio.Billetera.model.EstadoTarjeta;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.repository.BilleteraUniversalRepository;
 
@@ -85,11 +89,27 @@ class BilleteraServiceTest {
     }
 
     @Test
+    void deactivatedWalletIsHiddenFromItsOwnerUntilReissue() {
+        BilleteraUniversal wallet = wallet("user-1", "2500");
+        wallet.setEstado(EstadoTarjeta.DESACTIVADA);
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet));
+
+        assertThat(service.buscar("user-1")).isEmpty();
+        assertThatThrownBy(() -> service.obtener("user-1"))
+                .isInstanceOf(BilleteraService.WalletNotFoundException.class);
+    }
+
+    @Test
     void existingWalletIsHiddenUntilUserAcceptsAndThenKeepsItsBalance() {
         BilleteraUniversal existing = wallet("user-1", "2500");
         existing.setActivadaPorUsuario(false);
         when(billeteras.findById("user-1")).thenReturn(Optional.of(existing));
-        when(billeteras.save(existing)).thenReturn(existing);
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class)))
+                .thenAnswer(invocation -> {
+                    existing.setActivadaPorUsuario(true);
+                    return existing;
+                });
 
         assertThat(service.buscar("user-1")).isEmpty();
         assertThat(service.crear("user-1")).isSameAs(existing);
@@ -132,6 +152,144 @@ class BilleteraServiceTest {
         assertThat(service.crear("user-1")).isSameAs(existing);
 
         verify(billeteras, times(1)).insert(any(BilleteraUniversal.class));
+    }
+
+    @Test
+    void deactivationArchivesBalanceAndKeepsItInTheWallet() {
+        BilleteraUniversal active = wallet("user-1", "8750");
+        BilleteraUniversal deactivated = wallet("user-1", "8750");
+        deactivated.setEstado(EstadoTarjeta.DESACTIVADA);
+        BilleteraUniversal archivedWallet = wallet("user-1", "8750");
+        archivedWallet.setEstado(EstadoTarjeta.DESACTIVADA);
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(active));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class)))
+                .thenReturn(deactivated)
+                .thenReturn(archivedWallet);
+
+        BilleteraUniversal result = service.desactivar("user-1");
+
+        assertThat(result.getEstado()).isEqualTo(EstadoTarjeta.DESACTIVADA);
+        assertThat(result.getSaldo()).isEqualByComparingTo("8750");
+        ArgumentCaptor<Update> updates = ArgumentCaptor.forClass(Update.class);
+        verify(mongoOperations, times(2)).findAndModify(any(Query.class), updates.capture(),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+        Object archivedCardValue = updates.getAllValues().get(1)
+                .getUpdateObject().get("$push", Document.class).get("tarjetasDesactivadas");
+        assertThat(archivedCardValue).isInstanceOf(BilleteraUniversal.TarjetaDesactivada.class);
+        BilleteraUniversal.TarjetaDesactivada archivedCard =
+                (BilleteraUniversal.TarjetaDesactivada) archivedCardValue;
+        assertThat(archivedCard.getNumeroTarjeta()).isEqualTo(active.getNumeroTarjeta());
+        assertThat(archivedCard.getSaldoAlDesactivar())
+                .isEqualByComparingTo("8750");
+    }
+
+    @Test
+    void creatingAfterDeactivationIssuesANewNumberAndCarriesTheSameBalance() {
+        BilleteraUniversal archivedWallet = wallet("user-1", "8750");
+        archivedWallet.setEstado(EstadoTarjeta.DESACTIVADA);
+        BilleteraUniversal.TarjetaDesactivada oldCard = new BilleteraUniversal.TarjetaDesactivada();
+        oldCard.setNumeroTarjeta(archivedWallet.getNumeroTarjeta());
+        oldCard.setSaldoAlDesactivar(new BigDecimal("8750"));
+        oldCard.setDiseno(DisenoTarjeta.COBRE);
+        archivedWallet.setTarjetasDesactivadas(List.of(oldCard));
+        BilleteraUniversal reissuedWallet = wallet("user-1", "8750");
+        reissuedWallet.setEstado(EstadoTarjeta.ACTIVA);
+        reissuedWallet.setNumeroTarjeta("UNI-NEW0000000");
+        oldCard.setSaldoTransferido(true);
+        reissuedWallet.setTarjetasDesactivadas(List.of(oldCard));
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(archivedWallet));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(reissuedWallet);
+
+        BilleteraUniversal reissued = service.crear("user-1");
+
+        assertThat(reissued.getNumeroTarjeta()).isEqualTo("UNI-NEW0000000");
+        assertThat(reissued.getEstado()).isEqualTo(EstadoTarjeta.ACTIVA);
+        assertThat(reissued.getSaldo()).isEqualByComparingTo("8750");
+        assertThat(reissued.getTarjetasDesactivadas()).singleElement()
+                .extracting(BilleteraUniversal.TarjetaDesactivada::isSaldoTransferido)
+                .isEqualTo(true);
+    }
+
+    @Test
+    void frozenWalletRejectsDebitsAndTopUpsBeforeChangingBalance() {
+        BilleteraUniversal frozen = wallet("user-1", "2500");
+        frozen.setEstado(EstadoTarjeta.CONGELADA);
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(frozen));
+
+        assertThatThrownBy(() -> service.debitar(
+                "user-1", new BigDecimal("100"), "operation-1", "Pasaje"))
+                .isInstanceOf(BilleteraService.WalletFrozenException.class);
+        assertThatThrownBy(() -> service.abonarSimulado(
+                "user-1", new BigDecimal("100"), "operation-2", "PSE"))
+                .isInstanceOf(BilleteraService.WalletFrozenException.class);
+        verify(mongoOperations, times(0)).findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+    }
+
+    @Test
+    void moderatorBalanceAdjustmentStoresActorAndReasonAsMovement() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "2500")));
+        BilleteraUniversal updated = wallet("user-1", "3500");
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(updated);
+
+        BilleteraUniversal result = service.ajustarSaldoAdministrativamente(
+                "user-1", "moderador@digitrans.test", new BigDecimal("1000.00"),
+                true, "Corrección de recarga reportada", "admin-operation-1");
+
+        assertThat(result.getSaldo()).isEqualByComparingTo("3500");
+        ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+        verify(mongoOperations).findAndModify(any(Query.class), update.capture(),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+        Document increment = update.getValue().getUpdateObject().get("$inc", Document.class);
+        assertThat(increment.get("saldo", BigDecimal.class)).isEqualByComparingTo("1000.00");
+
+        MovimientoBilletera auditMovement = new MovimientoBilletera(
+                "admin-operation-1", "AJUSTE_ADMIN",
+                "Ajuste por moderador@digitrans.test: Corrección de recarga reportada",
+                new BigDecimal("1000.00"), null);
+        assertThat(auditMovement.getCategoria()).isEqualTo("AJUSTE");
+        assertThat(auditMovement.getServicio()).isEqualTo("Soporte Billetera");
+    }
+
+    @Test
+    void moderatorCannotWithdrawMoreThanTheAvailableBalance() {
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "500")));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(null);
+
+        assertThatThrownBy(() -> service.ajustarSaldoAdministrativamente(
+                "user-1", "moderador@digitrans.test", new BigDecimal("1000.00"),
+                false, "Corrección solicitada por soporte", "admin-operation-2"))
+                .isInstanceOf(SaldoInsuficienteException.class);
+    }
+
+    @Test
+    void moderatorStatusChangesIncludeAnAuditableSupportMovement() {
+        BilleteraUniversal active = wallet("user-1", "2500");
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(active));
+        BilleteraUniversal frozen = wallet("user-1", "2500");
+        frozen.setEstado(EstadoTarjeta.CONGELADA);
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(frozen);
+
+        BilleteraUniversal result = service.cambiarEstadoAdministrativamente(
+                "user-1", EstadoTarjeta.CONGELADA, "moderador@digitrans.test", "Reporte de posible fraude");
+
+        assertThat(result.getEstado()).isEqualTo(EstadoTarjeta.CONGELADA);
+        ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+        verify(mongoOperations).findAndModify(any(Query.class), update.capture(),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+        assertThat(update.getValue().getUpdateObject().toString()).contains("CONGELADA");
+
+        MovimientoBilletera auditMovement = new MovimientoBilletera(
+                "status-operation-1", "CAMBIO_ESTADO",
+                "Estado cambiado a CONGELADA por moderador@digitrans.test: Reporte de posible fraude",
+                BigDecimal.ZERO, null);
+        assertThat(auditMovement.getCategoria()).isEqualTo("SOPORTE");
+        assertThat(auditMovement.getServicio()).isEqualTo("Soporte Billetera");
     }
 
     @Test

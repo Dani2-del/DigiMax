@@ -206,11 +206,15 @@
                     th:value="${t.numeroTarjeta}"
                     th:text="${t.numeroTarjeta + ' · Saldo $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT')}">
             </option>
-            <option th:if="${billeteraDisponible}"
+            <option th:if="${billeteraDisponible and !billeteraCongelada}"
                     value="UNIVERSAL"
                     th:text="${'Tarjeta universal · Saldo $' + #numbers.formatDecimal(tarjetaUniversal.balance, 0, 'COMMA', 0, 'POINT')}">
             </option>
           </select>
+          <p th:if="${billeteraCongelada}" class="muted" role="status">
+            Tu tarjeta Digitrans está congelada y no se puede usar para viajes.
+            <a th:href="${billeteraUrl}" target="_blank" rel="noopener">Descongelarla en Billetera</a>.
+          </p>
           <p th:if="${errorTarjetaUniversal}" class="muted" th:text="${errorTarjetaUniversal}" role="status"></p>
           <a th:if="${billeteraDisponible}" th:href="${billeteraUrl}" target="_blank" rel="noopener">
             Consultar o cargar saldo de tu tarjeta Digitrans

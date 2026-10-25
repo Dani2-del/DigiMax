@@ -44,12 +44,17 @@ public class MovimientoBilletera {
         if (detalle.contains("paquete")) return "Paquetes y recargas";
         if (detalle.contains("pasaje")) return "Transporte";
         if ("ABONO".equalsIgnoreCase(tipo)) return "Billetera";
+        if ("AJUSTE_ADMIN".equalsIgnoreCase(tipo) || "RETIRO_ADMIN".equalsIgnoreCase(tipo)
+                || "CAMBIO_ESTADO".equalsIgnoreCase(tipo)) return "Soporte Billetera";
         return "Otros";
     }
     public void setServicio(String servicio) { this.servicio = servicio; }
 
     public String getCategoria() {
         if ("ABONO".equalsIgnoreCase(tipo)) return "RECARGA";
+        if ("AJUSTE_ADMIN".equalsIgnoreCase(tipo)) return "AJUSTE";
+        if ("RETIRO_ADMIN".equalsIgnoreCase(tipo)) return "AJUSTE";
+        if ("CAMBIO_ESTADO".equalsIgnoreCase(tipo)) return "SOPORTE";
         if ("CONSUMO".equalsIgnoreCase(tipo)) return "PAGO";
         return tipo == null ? "OTRO" : tipo;
     }

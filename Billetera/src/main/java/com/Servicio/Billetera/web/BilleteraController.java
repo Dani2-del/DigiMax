@@ -10,6 +10,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -22,6 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
+import com.Servicio.Billetera.model.DisenoTarjeta;
+import com.Servicio.Billetera.model.EstadoTarjeta;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.service.BilleteraService;
@@ -54,6 +57,11 @@ public class BilleteraController {
         model.addAttribute("identity", identity);
         model.addAttribute("wallet", wallet.orElse(null));
         model.addAttribute("walletExists", wallet.isPresent());
+        model.addAttribute("disenos", DisenoTarjeta.values());
+        model.addAttribute("puedeAdministrar",
+                SecurityContextHolder.getContext().getAuthentication().getAuthorities().stream()
+                        .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())
+                                || "MODERATOR_BILLETERA".equals(authority.getAuthority())));
         model.addAttribute("movimientos", wallet.map(BilleteraUniversal::getMovimientos)
                 .map(movimientos -> movimientos.stream()
                         .sorted(Comparator.comparing(MovimientoBilletera::getFecha,
@@ -61,6 +69,7 @@ public class BilleteraController {
                         .toList())
                 .orElse(List.of()));
         model.addAttribute("accesoUrl", accesoUrl);
+        model.addAttribute("adminUrl", "/admin");
         return "billetera";
     }
 
@@ -71,6 +80,67 @@ public class BilleteraController {
         billeteraService.crear(identity.id());
         redirectAttributes.addFlashAttribute("mensaje",
                 "Tu tarjeta Digitrans se creó correctamente.");
+        return "redirect:/";
+    }
+
+    @PostMapping("/tarjeta/congelar")
+    public String freezeWallet(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            RedirectAttributes redirectAttributes) {
+        try {
+            billeteraService.congelar(identity.id());
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Tu tarjeta está congelada. No se pueden realizar transacciones mientras permanezca así.");
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/tarjeta/descongelar")
+    public String unfreezeWallet(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            RedirectAttributes redirectAttributes) {
+        try {
+            billeteraService.descongelar(identity.id());
+            redirectAttributes.addFlashAttribute("mensaje", "Tu tarjeta Digitrans está activa nuevamente.");
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/tarjeta/desactivar")
+    public String deactivateWallet(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @RequestParam(defaultValue = "false") boolean confirmacionFinal,
+            RedirectAttributes redirectAttributes) {
+        if (!confirmacionFinal) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Confirma la desactivación de tu tarjeta antes de continuar.");
+            return "redirect:/";
+        }
+        try {
+            billeteraService.desactivar(identity.id());
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "La tarjeta fue desactivada. Su saldo e historial se conservaron y se trasladarán cuando crees otra.");
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/tarjeta/diseno")
+    public String changeCardDesign(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @RequestParam DisenoTarjeta diseno,
+            RedirectAttributes redirectAttributes) {
+        try {
+            billeteraService.cambiarDiseno(identity.id(), diseno);
+            redirectAttributes.addFlashAttribute("mensaje", "Se actualizó el diseño de tu tarjeta.");
+        } catch (IllegalArgumentException | BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        }
         return "redirect:/";
     }
 
@@ -91,6 +161,8 @@ public class BilleteraController {
         } catch (BilleteraService.WalletNotFoundException exception) {
             redirectAttributes.addFlashAttribute("error",
                     "Activa tu tarjeta Digitrans antes de cargar saldo.");
+        } catch (BilleteraService.WalletFrozenException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
         }
         return "redirect:/";
     }
@@ -125,6 +197,51 @@ public class BilleteraController {
             return WalletResponse.from(billeteraService.crear(identity.id()));
         }
 
+        @PostMapping("/freeze")
+        public ResponseEntity<?> freeze(
+                @AuthenticationPrincipal AuthenticatedIdentity identity) {
+            try {
+                return ResponseEntity.ok(WalletResponse.from(billeteraService.congelar(identity.id())));
+            } catch (BilleteraService.WalletNotFoundException exception) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
+        @PostMapping("/unfreeze")
+        public ResponseEntity<?> unfreeze(
+                @AuthenticationPrincipal AuthenticatedIdentity identity) {
+            try {
+                return ResponseEntity.ok(WalletResponse.from(billeteraService.descongelar(identity.id())));
+            } catch (BilleteraService.WalletNotFoundException exception) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
+        @PostMapping("/deactivate")
+        public ResponseEntity<?> deactivate(
+                @AuthenticationPrincipal AuthenticatedIdentity identity) {
+            try {
+                billeteraService.desactivar(identity.id());
+                return ResponseEntity.noContent().build();
+            } catch (BilleteraService.WalletNotFoundException exception) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
+        @PostMapping("/design")
+        public ResponseEntity<?> changeDesign(
+                @AuthenticationPrincipal AuthenticatedIdentity identity,
+                @Valid @RequestBody DesignRequest request) {
+            try {
+                return ResponseEntity.ok(
+                        WalletResponse.from(billeteraService.cambiarDiseno(identity.id(), request.design())));
+            } catch (IllegalArgumentException exception) {
+                return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
+            } catch (BilleteraService.WalletNotFoundException exception) {
+                return ResponseEntity.notFound().build();
+            }
+        }
+
         @GetMapping("/movements")
         public ResponseEntity<?> movements(@AuthenticationPrincipal AuthenticatedIdentity identity) {
             return billeteraService.buscar(identity.id())
@@ -147,6 +264,9 @@ public class BilleteraController {
                         .body(new ApiError(exception.getMessage()));
             } catch (BilleteraService.WalletNotFoundException exception) {
                 return ResponseEntity.notFound().build();
+            } catch (BilleteraService.WalletFrozenException exception) {
+                return ResponseEntity.status(HttpStatus.LOCKED)
+                        .body(new ApiError(exception.getMessage()));
             } catch (IllegalArgumentException exception) {
                 return ResponseEntity.badRequest().body(new ApiError(exception.getMessage()));
             }
@@ -159,9 +279,14 @@ public class BilleteraController {
             @NotBlank @Size(max = 160) String description) {
     }
 
-    public record WalletResponse(String userId, String cardNumber, BigDecimal balance) {
+    public record DesignRequest(@NotNull DisenoTarjeta design) {
+    }
+
+    public record WalletResponse(
+            String userId, String cardNumber, BigDecimal balance, EstadoTarjeta status, DisenoTarjeta design) {
         private static WalletResponse from(BilleteraUniversal wallet) {
-            return new WalletResponse(wallet.getUsuarioId(), wallet.getNumeroTarjeta(), wallet.getSaldo());
+            return new WalletResponse(wallet.getUsuarioId(), wallet.getNumeroTarjeta(), wallet.getSaldo(),
+                    wallet.getEstado(), wallet.getDiseno());
         }
     }
 

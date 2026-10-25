@@ -61,9 +61,11 @@ public class AdminUsersController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Boolean verified,
             @RequestParam(required = false) LocalDate registeredFrom,
-            @RequestParam(required = false) LocalDate registeredTo) {
+            @RequestParam(required = false) LocalDate registeredTo,
+            @RequestParam(defaultValue = "name") String sort) {
         if (page < 0 || size < 1 || size > MAX_PAGE_SIZE
                 || (!role.isBlank() && !ALLOWED_ROLES.contains(role))
+                || (!"name".equals(sort) && !"recent".equals(sort))
                 || (registeredFrom != null && registeredTo != null
                         && registeredFrom.isAfter(registeredTo))) {
             return ResponseEntity.badRequest().build();
@@ -98,8 +100,11 @@ public class AdminUsersController {
         }
 
         long total = mongoTemplate.count(filter, Usuario.class);
+        Sort resultSort = "recent".equals(sort)
+                ? Sort.by(Sort.Direction.DESC, "fechaRegistro").and(Sort.by(Sort.Direction.ASC, "id"))
+                : Sort.by(Sort.Direction.ASC, "nombre").and(Sort.by(Sort.Direction.ASC, "id"));
         Query pageQuery = Query.of(filter)
-                .with(Sort.by(Sort.Direction.ASC, "nombre").and(Sort.by(Sort.Direction.ASC, "id")))
+                .with(resultSort)
                 .skip((long) page * size)
                 .limit(size);
         List<UserSummary> content = mongoTemplate.find(pageQuery, Usuario.class).stream()

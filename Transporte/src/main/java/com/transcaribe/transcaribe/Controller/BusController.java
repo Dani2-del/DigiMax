@@ -68,6 +68,9 @@ public class BusController {
             String resultado = busService.pagarPasajeConTarjetaEspecifica(
                     usuarioId, busId, numeroTarjeta, sistema,
                     operationId == null || operationId.isBlank() ? UUID.randomUUID().toString() : operationId);
+            if (resultado.contains("está congelada")) {
+                return ResponseEntity.status(423).body(resultado);
+            }
             if (resultado.contains("Saldo insuficiente") || resultado.contains("no es válida")) {
                 return ResponseEntity.badRequest().body(resultado);
             }

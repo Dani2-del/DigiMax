@@ -1,5 +1,6 @@
 package com.Servicio.RecargasMovil.web;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -15,6 +16,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.Servicio.RecargasMovil.model.OperadorMovil;
 import com.Servicio.RecargasMovil.model.PaqueteMovil;
 import com.Servicio.RecargasMovil.security.AuthenticatedIdentity;
 import com.Servicio.RecargasMovil.security.RemoteAccessAuthenticationFilter;
@@ -53,6 +55,14 @@ public class ServiceLandingController {
         var packages = recargasService.paquetesActivos();
         model.addAttribute("operadores", operators);
         model.addAttribute("paquetes", packages);
+        model.addAttribute("operadoresPorId", operators.stream()
+                .collect(Collectors.toMap(OperadorMovil::getId, OperadorMovil::getNombre)));
+        model.addAttribute("movilExitoId", operators.stream()
+                .filter(operator -> "Móvil Éxito".equalsIgnoreCase(operator.getNombre()))
+                .map(OperadorMovil::getId)
+                .findFirst()
+                .orElse(null));
+        model.addAttribute("customRechargeOperationId", UUID.randomUUID().toString());
         model.addAttribute("lineas", recargasService.lineasDelUsuario(identity.id()));
         model.addAttribute("recargas", recargasService.historialDelUsuario(identity.id()));
         model.addAttribute("operationIds", packages.stream()
@@ -61,8 +71,11 @@ public class ServiceLandingController {
         model.addAttribute("billeteraUrl", billeteraUrl);
         model.addAttribute("walletError", false);
         model.addAttribute("walletMissing", false);
+        model.addAttribute("walletFrozen", false);
         try {
-            model.addAttribute("wallet", walletClient.getWallet(token(request)));
+            var wallet = walletClient.getWallet(token(request));
+            model.addAttribute("wallet", wallet);
+            model.addAttribute("walletFrozen", wallet.isFrozen());
         } catch (WalletClient.WalletNotFoundException exception) {
             model.addAttribute("walletMissing", true);
         } catch (ResourceAccessException exception) {
@@ -148,6 +161,8 @@ public class ServiceLandingController {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (WalletClient.WalletNotFoundException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletFrozenException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (ResourceAccessException exception) {
@@ -157,6 +172,41 @@ public class ServiceLandingController {
             redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
                     + exception.getStatusCode().value()
                     + "). La operación sigue pendiente; vuelve a revisar su estado.");
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/recargar/saldo")
+    public String rechargeBalance(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
+            @RequestParam String operadorId,
+            @RequestParam String lineaId,
+            @RequestParam BigDecimal monto,
+            @RequestParam String operationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            var recharge = recargasService.solicitarRecargaDinero(
+                    identity.id(), operadorId, lineaId, monto, operationId, token(request));
+            redirectAttributes.addFlashAttribute("mensaje",
+                    recharge.getEstado().equals("SIMULADA")
+                            ? "Recarga simulada completada. No se envió saldo al operador."
+                            : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
+        } catch (InsufficientWalletBalanceException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletFrozenException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo confirmar la respuesta de Billetera. La operación sigue pendiente; revisa su estado antes de reintentar.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+                    + exception.getStatusCode().value()
+                    + "). La operación sigue pendiente; revisa su estado antes de reintentar.");
         }
         return "redirect:/";
     }
@@ -173,6 +223,8 @@ public class ServiceLandingController {
         } catch (InsufficientWalletBalanceException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (WalletClient.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (WalletClient.WalletFrozenException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());

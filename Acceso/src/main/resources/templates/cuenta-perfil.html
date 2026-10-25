@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi cuenta — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/usuario.css}">
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261024-2)}">
   <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="login-page">
@@ -20,6 +20,33 @@
           <input type="email" id="correo" name="correo" th:value="${correo}" required autocomplete="email">
           <button class="primary" type="submit">Guardar cambios</button>
         </form>
+        <section class="sitm-profile-section" aria-labelledby="sitm-profile-title"
+                 th:if="${puedeCambiarSitm}">
+          <h2 id="sitm-profile-title">Sistema de transporte</h2>
+          <p class="sitm-current" th:if="${sitmDisponible and sitmActual != null}">
+            SITM actual: <strong th:text="${sitmActualNombre}">Transcaribe</strong>
+          </p>
+          <p class="sitm-current" th:if="${sitmDisponible and sitmActual == null}">
+            Aún no tienes un SITM seleccionado.
+          </p>
+          <p class="error" th:if="${sitmError}" th:text="${sitmError}" role="alert"></p>
+          <p class="sitm-moderator-notice" th:if="${esModeradorTransporte}">
+            Tu asignación de moderador está vinculada a este SITM. Si solicitas otro, no se cambiará
+            automáticamente; te enviaremos un correo para que contactes a soporte.
+          </p>
+          <form th:if="${sitmDisponible}" th:action="@{/cuenta/perfil/sitm}" method="post" class="sitm-change-form">
+            <label for="sitm">Cambiar SITM</label>
+            <select id="sitm" name="sitm" required>
+              <option value="" th:selected="${sitmActual == null}" disabled>Selecciona un SITM</option>
+              <option th:each="option : ${sitms}" th:value="${option.code}"
+                      th:text="${option.name}" th:selected="${option.code == sitmActual}"></option>
+            </select>
+            <button class="primary" type="submit"
+                    th:text="${esModeradorTransporte ? 'Solicitar cambio a soporte' : 'Cambiar SITM'}">
+              Cambiar SITM
+            </button>
+          </form>
+        </section>
         <p class="error" th:if="${error}" th:text="${error}"></p>
         <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
         <a th:href="@{/cuenta/seguridad}" class="back-to-login">Cambiar contraseña</a>

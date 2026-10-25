@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Tarjetas desactivadas | Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+</head>
+<body>
+<main class="wallet-page">
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">SUPERVISIÓN DE BILLETERA</p>
+            <h1>Tarjetas desactivadas</h1>
+            <p class="welcome">Registro de tarjetas históricas y trazabilidad del saldo transferido.</p>
+        </div>
+        <nav class="header-links">
+            <a class="back-link" th:href="@{/admin}">← Volver a cuentas</a>
+            <a class="back-link" th:href="@{/}">Volver a Billetera</a>
+        </nav>
+    </header>
+    <section class="panel">
+        <p class="muted">
+            El saldo registrado es una captura histórica; no representa fondos adicionales. El dinero permanece
+            en la billetera del usuario y se conserva al emitir una tarjeta nueva.
+        </p>
+        <p th:if="${#lists.isEmpty(tarjetas)}" class="empty-state">No hay tarjetas desactivadas.</p>
+        <div class="table-wrap" th:unless="${#lists.isEmpty(tarjetas)}">
+            <table class="movement-table">
+                <thead>
+                <tr>
+                    <th>Usuario</th>
+                    <th>Tarjeta anterior</th>
+                    <th>Diseño</th>
+                    <th>Saldo al desactivar</th>
+                    <th>Fecha</th>
+                    <th>Traslado a nueva tarjeta</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="tarjeta : ${tarjetas}">
+                    <td th:text="${tarjeta.usuarioId}"></td>
+                    <td th:text="${tarjeta.numeroTarjeta}"></td>
+                    <td th:text="${tarjeta.diseno.nombre}"></td>
+                    <td th:text="${'$ ' + #numbers.formatDecimal(tarjeta.saldoAlDesactivar, 0, 'COMMA', 2, 'POINT')}"></td>
+                    <td th:text="${tarjeta.desactivadaEn != null ? #temporals.format(tarjeta.desactivadaEn, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                    <td th:text="${tarjeta.saldoTransferido ? 'Sí' : 'Pendiente'}"></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

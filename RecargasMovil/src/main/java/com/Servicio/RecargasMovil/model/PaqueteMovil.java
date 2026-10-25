@@ -15,6 +15,7 @@ public class PaqueteMovil {
     private String nombre;
     private String descripcion;
     private BigDecimal precio;
+    private CategoriaPaquete categoria = CategoriaPaquete.PAQUETE;
     private boolean activo = true;
 
     public String getId() { return id; }
@@ -31,6 +32,11 @@ public class PaqueteMovil {
 
     public BigDecimal getPrecio() { return precio; }
     public void setPrecio(BigDecimal precio) { this.precio = precio; }
+
+    public CategoriaPaquete getCategoria() {
+        return categoria == null ? CategoriaPaquete.PAQUETE : categoria;
+    }
+    public void setCategoria(CategoriaPaquete categoria) { this.categoria = categoria; }
 
     public boolean isActivo() { return activo; }
     public void setActivo(boolean activo) { this.activo = activo; }
