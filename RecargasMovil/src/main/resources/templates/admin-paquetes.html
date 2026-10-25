@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Paquetes · Moderación</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div><p class="eyebrow">Moderación · Catálogo</p><h1>Paquetes móviles</h1><p class="muted">Crea, edita o desactiva las opciones disponibles para los usuarios.</p></div>
+      <a class="button-link" th:href="@{/admin/paquetes/nuevo}">+ Crear paquete</a>
+    </header>
+    <div th:if="${mensaje}" class="notice" role="status" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="notice error" role="alert" th:text="${error}"></div>
+
+    <section class="admin-section">
+      <div class="section-heading"><div><h2>Catálogo</h2><p class="muted" th:text="|${paquetes.size()} paquete(s)|">0 paquetes</p></div></div>
+      <label style="max-width: 380px; margin-bottom: 16px">Buscar en el catálogo<input id="packageSearch" type="search" placeholder="Nombre, operador o categoría" autocomplete="off"></label>
+      <div th:if="${paquetes.isEmpty()}" class="empty-state">No hay paquetes registrados. Crea el primero para que aparezca en el catálogo.</div>
+      <div th:unless="${paquetes.isEmpty()}" class="table-wrap">
+        <table>
+          <thead><tr><th>Paquete</th><th>Operador</th><th>Categoría</th><th>Precio</th><th>Estado</th><th>Acciones</th></tr></thead>
+          <tbody id="packageRows">
+            <tr th:each="paquete : ${paquetes}" th:attr="data-search=${(paquete.nombre + ' ' + paquete.descripcion + ' ' + operatorNames.get(paquete.operadorId) + ' ' + paquete.categoria.nombreVisible).toLowerCase()}">
+              <td><strong th:text="${paquete.nombre}">Nombre</strong><span class="subtext" th:text="${paquete.descripcion}">Descripción</span></td>
+              <td th:text="${operatorNames.get(paquete.operadorId) ?: 'Operador no disponible'}">Operador</td>
+              <td th:text="${paquete.categoria.nombreVisible}">Categoría</td>
+              <td th:text="|$${#numbers.formatDecimal(paquete.precio, 1, 2)}|">$0.00</td>
+              <td><span class="status" th:classappend="${paquete.activo ? ' status-activo' : ' status-inactivo'}" th:text="${paquete.activo ? 'Activo' : 'Inactivo'}">Estado</span></td>
+              <td>
+                <div class="row-actions">
+                  <a class="button-link secondary table-action" th:href="@{/admin/paquetes/{id}/editar(id=${paquete.id})}">Editar</a>
+                  <form method="post" th:action="@{/admin/paquetes/estado}" class="compact-form">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                    <input type="hidden" name="paqueteId" th:value="${paquete.id}">
+                    <button class="table-action" th:classappend="${paquete.activo ? ' danger' : ' secondary'}" type="submit" th:text="${paquete.activo ? 'Desactivar' : 'Activar'}">Cambiar</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <p id="noPackageMatches" class="empty-state" hidden>No hay paquetes que coincidan con la búsqueda.</p>
+      </div>
+    </section>
+    <p class="muted">Desactivar un paquete lo oculta para nuevas operaciones; no elimina el historial asociado.</p>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+  <script>
+    const packageSearch = document.getElementById("packageSearch");
+    const packageRows = [...document.querySelectorAll("#packageRows tr")];
+    const noPackageMatches = document.getElementById("noPackageMatches");
+    packageSearch?.addEventListener("input", () => {
+      const query = packageSearch.value.trim().toLocaleLowerCase();
+      let visible = 0;
+      packageRows.forEach((row) => {
+        const matches = row.dataset.search.includes(query);
+        row.hidden = !matches;
+        if (matches) visible++;
+      });
+      if (noPackageMatches) noPackageMatches.hidden = visible !== 0;
+    });
+  </script>
+</body>
+</html>

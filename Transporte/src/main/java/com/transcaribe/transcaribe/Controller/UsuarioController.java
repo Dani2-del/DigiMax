@@ -100,6 +100,9 @@ public class UsuarioController {
 
         boolean esModerador = Usuario.ROLE_MODERATOR.equals(usuario.getRole());
         boolean esAdmin = Usuario.ROLE_ADMIN.equals(usuario.getRole());
+        if (esAdmin && !confirmarSITM) {
+            session.removeAttribute(SITM_PENDIENTE_CONFIRMACION);
+        }
         Object sistemaEnSesion = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);
         SistemaTransporte sistemaAdmin = sistemaEnSesion instanceof SistemaTransporte seleccionado
                 && seleccionado.estaDisponible() ? seleccionado : usuario.getSitm();
@@ -171,6 +174,14 @@ public class UsuarioController {
         }
         model.addAttribute("alertasAdmin", avisoAdministrativoService.obtenerPendientes(usuario.getId(), sistemaActual));
         model.addAttribute("alertaReturnTo", "/menu");
+        Object pendingSystem = session.getAttribute(SITM_PENDIENTE_CONFIRMACION);
+        boolean adminConfirmingSystem = esAdmin
+                && confirmarSITM
+                && pendingSystem instanceof SistemaTransporte;
+        model.addAttribute("confirmarCambioAdmin", adminConfirmingSystem);
+        if (adminConfirmingSystem) {
+            model.addAttribute("sistemaPendienteAdmin", pendingSystem);
+        }
         return "usuarios/cuenta/menu";
     }
 
@@ -189,6 +200,7 @@ public class UsuarioController {
             return "redirect:/menu";
         }
         if (sistema == null || !sistema.estaDisponible() || !primeraConfirmacion) {
+            session.removeAttribute(SITM_PENDIENTE_CONFIRMACION);
             return "redirect:/menu?error=true";
         }
         session.setAttribute(SITM_PENDIENTE_CONFIRMACION, sistema);

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Historial de recargas · Moderación</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div><p class="eyebrow">Moderación · Operaciones</p><h1>Historial de recargas</h1><p class="muted">Busca y filtra operaciones por usuario, teléfono, operador, estado o fecha.</p></div>
+      <a class="button-link secondary" th:href="@{/admin}">Volver al resumen</a>
+    </header>
+    <div th:if="${errorFiltros}" class="notice error" role="alert" th:text="${errorFiltros}"></div>
+    <section class="admin-section">
+      <form method="get" th:action="@{/admin/operaciones}" class="filter-grid">
+        <label>Buscar<input type="search" name="q" th:value="${filtroQ}" placeholder="Usuario, teléfono u operación"></label>
+        <label>Estado
+          <select name="estado">
+            <option value="">Todos</option>
+            <option value="SIMULADA" th:selected="${filtroEstado == 'SIMULADA'}">Simulada</option>
+            <option value="PROCESANDO" th:selected="${filtroEstado == 'PROCESANDO'}">Procesando</option>
+            <option value="RECHAZADA" th:selected="${filtroEstado == 'RECHAZADA'}">Rechazada</option>
+          </select>
+        </label>
+        <label>Operador
+          <select name="operadorId">
+            <option value="">Todos</option>
+            <option th:each="operador : ${operadores}" th:value="${operador.id}" th:text="${operador.nombre}" th:selected="${filtroOperador == operador.id}"></option>
+          </select>
+        </label>
+        <label>Tipo
+          <select name="tipo">
+            <option value="">Todos</option>
+            <option value="saldo" th:selected="${filtroTipo == 'saldo'}">Recarga de saldo</option>
+            <option value="paquete" th:selected="${filtroTipo == 'paquete'}">Paquete</option>
+          </select>
+        </label>
+        <label>Desde<input type="date" name="desde" th:value="${filtroDesde}"></label>
+        <label>Hasta<input type="date" name="hasta" th:value="${filtroHasta}"></label>
+        <div class="filter-actions"><button type="submit">Aplicar filtros</button><a class="button-link secondary" th:href="@{/admin/operaciones}">Limpiar</a></div>
+      </form>
+    </section>
+
+    <section class="admin-section">
+      <div class="section-heading"><div><h2>Operaciones registradas</h2><p class="muted count-caption" th:text="|${recargasPage.totalElements} resultado(s)|">0 resultados</p></div></div>
+      <div th:if="${recargasPage.content.isEmpty()}" class="empty-state">No hay operaciones que coincidan con los filtros.</div>
+      <div th:unless="${recargasPage.content.isEmpty()}" class="table-wrap">
+        <table>
+          <thead><tr><th>Operación</th><th>Usuario</th><th>Operador / línea</th><th>Concepto</th><th>Importe</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <tbody>
+            <tr th:each="recarga : ${recargasPage.content}">
+              <td class="mono" th:text="${recarga.operacionId}">id</td>
+              <td th:text="${recarga.usuarioId}">usuario</td>
+              <td><strong th:text="${recarga.operador}">Operador</strong><span class="subtext" th:text="${recarga.telefono}">línea</span></td>
+              <td th:text="${recarga.paquete}">Concepto</td>
+              <td th:text="${recarga.monto != null ? '$' + #numbers.formatDecimal(recarga.monto, 1, 2) : '—'}">—</td>
+              <td><span class="status" th:classappend="| status-${#strings.toLowerCase(recarga.estado)}|" th:text="${recarga.estado}">Estado</span></td>
+              <td th:text="${recarga.fecha != null ? #temporals.format(recarga.fecha, 'dd/MM/yyyy HH:mm') : '—'}">fecha</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <nav th:if="${recargasPage.totalPages > 1}" class="pagination" aria-label="Paginación del historial">
+        <a class="button-link secondary" th:if="${recargasPage.hasPrevious()}" th:href="@{/admin/operaciones(q=${filtroQ},estado=${filtroEstado},operadorId=${filtroOperador},tipo=${filtroTipo},desde=${filtroDesde},hasta=${filtroHasta},pagina=${recargasPage.number - 1})}">Anterior</a>
+        <span class="pagination-label" th:text="|Página ${recargasPage.number + 1} de ${recargasPage.totalPages}|">Página 1</span>
+        <a class="button-link secondary" th:if="${recargasPage.hasNext()}" th:href="@{/admin/operaciones(q=${filtroQ},estado=${filtroEstado},operadorId=${filtroOperador},tipo=${filtroTipo},desde=${filtroDesde},hasta=${filtroHasta},pagina=${recargasPage.number + 1})}">Siguiente</a>
+      </nav>
+    </section>
+    <p class="muted">Las operaciones de recarga mostradas son simuladas y no representan saldo enviado al operador.</p>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+</body>
+</html>

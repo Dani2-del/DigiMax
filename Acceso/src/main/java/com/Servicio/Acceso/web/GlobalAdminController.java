@@ -66,6 +66,11 @@ public class GlobalAdminController {
         return "admin/global-dashboard";
     }
 
+    @GetMapping("/modelo-predictivo")
+    public String modeloPredictivo() {
+        return "admin/global-modelo-predictivo";
+    }
+
     @GetMapping("/usuarios")
     public String usuarios(
             @RequestParam(defaultValue = "0") int page,

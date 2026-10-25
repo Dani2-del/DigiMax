@@ -1,0 +1,11 @@
+<nav xmlns:th="http://www.thymeleaf.org"
+     th:fragment="moderatorNav"
+     class="moderator-nav"
+     aria-label="Navegación de moderación">
+  <a class="moderator-brand" th:href="@{/admin}" aria-label="Digitrans, moderación de Recargas móviles">
+    <span class="brand-mark" aria-hidden="true">D</span>
+    <strong class="brand-name">Digitrans</strong>
+  </a>
+  <a th:href="@{/}">Vista usuario</a>
+  <a th:href="${serviciosUrl}">Volver a servicios</a>
+</nav>

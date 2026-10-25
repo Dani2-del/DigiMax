@@ -496,7 +496,131 @@ a.module-card:hover { transform: translateY(-3px); border-color: #f0b57d; box-sh
 .chat-module-pending { opacity: 0.78; }
 .global-data-panel .global-users-table { min-width: 850px; }
 
+.global-admin-page .global-main > * {
+  animation: dashboard-enter 520ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.global-admin-page .global-main > :nth-child(1) { animation-delay: 40ms; }
+.global-admin-page .global-main > :nth-child(2) { animation-delay: 100ms; }
+.global-admin-page .global-main > :nth-child(3) { animation-delay: 160ms; }
+.global-admin-page .global-main > :nth-child(4) { animation-delay: 220ms; }
+.global-admin-page .global-main > :nth-child(5) { animation-delay: 280ms; }
+.global-admin-page .global-main > :nth-child(6) { animation-delay: 340ms; }
+
+.global-admin-page .metric-card,
+.global-admin-page .module-card {
+  animation: dashboard-card-enter 560ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.global-admin-page .metric-card:nth-child(1),
+.global-admin-page .module-card:nth-child(1) { animation-delay: 220ms; }
+.global-admin-page .metric-card:nth-child(2),
+.global-admin-page .module-card:nth-child(2) { animation-delay: 270ms; }
+.global-admin-page .metric-card:nth-child(3),
+.global-admin-page .module-card:nth-child(3) { animation-delay: 320ms; }
+.global-admin-page .metric-card:nth-child(4),
+.global-admin-page .module-card:nth-child(4) { animation-delay: 370ms; }
+.global-admin-page .metric-card:nth-child(5),
+.global-admin-page .module-card:nth-child(5) { animation-delay: 420ms; }
+.global-admin-page .metric-card:nth-child(6),
+.global-admin-page .module-card:nth-child(6) { animation-delay: 470ms; }
+
+.global-admin-page .welcome-mark {
+  animation: welcome-mark-enter 700ms cubic-bezier(0.2, 0.75, 0.25, 1) 180ms both,
+    welcome-mark-float 5s ease-in-out 1s infinite;
+}
+
+.global-admin-page .audit-panel {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.global-admin-page .audit-panel:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 22px rgba(20, 36, 58, 0.06);
+}
+
+.global-admin-page .audit-list li {
+  animation: dashboard-enter 380ms ease both;
+}
+
+.global-admin-page .audit-list li:nth-child(2) { animation-delay: 50ms; }
+.global-admin-page .audit-list li:nth-child(3) { animation-delay: 100ms; }
+.global-admin-page .audit-list li:nth-child(4) { animation-delay: 150ms; }
+.global-admin-page .audit-list li:nth-child(5) { animation-delay: 200ms; }
+
+.global-admin-page .users-panel,
+.global-admin-page .global-chart-card,
+.global-admin-page .analytics-global-grid > *,
+.global-admin-page .global-section > .module-grid,
+.global-admin-page .report-privacy-note {
+  animation: dashboard-card-enter 600ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.global-admin-page .users-panel-heading,
+.global-admin-page .user-search,
+.global-admin-page .global-report-form > *,
+.global-admin-page .global-horizontal-row,
+.global-admin-page .global-role-list > div {
+  animation: dashboard-enter 460ms ease both;
+}
+
+.global-admin-page .global-users-table tbody tr {
+  animation: dashboard-enter 420ms ease both;
+}
+
+.global-admin-page .global-users-table tbody tr:nth-child(2) { animation-delay: 45ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(3) { animation-delay: 90ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(4) { animation-delay: 135ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(5) { animation-delay: 180ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(6) { animation-delay: 225ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(7) { animation-delay: 270ms; }
+.global-admin-page .global-users-table tbody tr:nth-child(8) { animation-delay: 315ms; }
+
+.global-admin-page .global-bar {
+  transform-origin: bottom;
+  animation: chart-bar-enter 700ms cubic-bezier(0.2, 0.75, 0.25, 1) both;
+}
+
+.global-admin-page .global-bar:nth-child(2n) { animation-delay: 80ms; }
+.global-admin-page .global-bar:nth-child(3n) { animation-delay: 160ms; }
+
+@keyframes dashboard-enter {
+  from { opacity: 0; translate: 0 12px; }
+  to { opacity: 1; translate: 0 0; }
+}
+
+@keyframes dashboard-card-enter {
+  from { opacity: 0; translate: 0 16px; scale: 0.985; }
+  to { opacity: 1; translate: 0 0; scale: 1; }
+}
+
+@keyframes welcome-mark-enter {
+  from { opacity: 0; scale: 0.78; rotate: -12deg; }
+  to { opacity: 1; scale: 1; rotate: 0deg; }
+}
+
+@keyframes welcome-mark-float {
+  0%, 100% { translate: 0 0; }
+  50% { translate: 0 -4px; }
+}
+
+@keyframes chart-bar-enter {
+  from { scale: 1 0.05; opacity: 0.35; }
+  to { scale: 1 1; opacity: 1; }
+}
+
 :focus-visible { outline: 3px solid rgba(237, 128, 38, 0.75); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .global-admin-page *,
+  .global-admin-page *::before,
+  .global-admin-page *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 @media (max-width: 1050px) {
   .global-admin-shell { grid-template-columns: 220px minmax(0, 1fr); }

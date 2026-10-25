@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Operadores · Moderación</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div><p class="eyebrow">Moderación · Catálogo</p><h1>Operadores móviles</h1><p class="muted">Controla qué operadores pueden usarse para registrar líneas y recargas.</p></div>
+      <a class="button-link secondary" th:href="@{/admin}">Volver al resumen</a>
+    </header>
+    <div th:if="${mensaje}" class="notice" role="status" th:text="${mensaje}"></div>
+    <div th:if="${error}" class="notice error" role="alert" th:text="${error}"></div>
+
+    <section class="admin-section">
+      <div class="section-heading"><div><h2>Añadir operador</h2><p class="muted">El nombre debe ser único. Los operadores inactivos no aparecerán en las opciones de usuario.</p></div></div>
+      <form method="post" th:action="@{/admin/operadores}" class="form-grid">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <label>Nombre del operador<input type="text" name="nombre" maxlength="80" placeholder="Ej. Claro" required></label>
+        <button type="submit">Crear operador</button>
+      </form>
+    </section>
+
+    <section class="admin-section">
+      <div class="section-heading"><div><h2>Operadores registrados</h2><p class="muted" th:text="|${operadores.size()} operador(es)|">0 operadores</p></div></div>
+      <div th:if="${operadores.isEmpty()}" class="empty-state">Aún no hay operadores registrados.</div>
+      <div th:unless="${operadores.isEmpty()}" class="table-wrap">
+        <table>
+          <thead><tr><th>Operador</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody>
+            <tr th:each="operador : ${operadores}">
+              <td><strong th:text="${operador.nombre}">Operador</strong></td>
+              <td><span class="status" th:classappend="${operador.activo ? ' status-activo' : ' status-inactivo'}" th:text="${operador.activo ? 'Activo' : 'Inactivo'}">Estado</span></td>
+              <td>
+                <form method="post" th:action="@{/admin/operadores/estado}" class="compact-form">
+                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                  <input type="hidden" name="operadorId" th:value="${operador.id}">
+                  <button class="table-action" th:classappend="${operador.activo ? ' danger' : ' secondary'}" type="submit" th:text="${operador.activo ? 'Desactivar' : 'Activar'}">Cambiar</button>
+                </form>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+</body>
+</html>

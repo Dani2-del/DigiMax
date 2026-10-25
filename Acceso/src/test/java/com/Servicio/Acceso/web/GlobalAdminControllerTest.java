@@ -65,6 +65,11 @@ class GlobalAdminControllerTest {
     }
 
     @Test
+    void predictiveModelPageShowsPlaceholderView() {
+        assertThat(controller.modeloPredictivo()).isEqualTo("admin/global-modelo-predictivo");
+    }
+
+    @Test
     void recordsPreviousAndUpdatedUserStateInAuditEvent() {
         Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
         target.setId("user-1");

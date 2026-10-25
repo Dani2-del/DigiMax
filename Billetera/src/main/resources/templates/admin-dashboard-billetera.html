@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Administración de Billetera | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-16)}">
 </head>
 <body>
 <main class="wallet-page admin-page wallet-admin-dashboard wallet-admin-nav-page">
@@ -14,10 +14,6 @@
             <h1>Panel moderador de Billetera</h1>
             <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '. Supervisa cuentas, atiende casos y revisa movimientos.'}"></p>
         </div>
-        <nav class="header-links" aria-label="Cambiar vista">
-            <a class="back-link" th:href="@{/}">Vista usuario</a>
-            <a class="wallet-view-moderator" th:href="@{/admin}">Vista moderador <span aria-hidden="true">→</span></a>
-        </nav>
     </header>
 
     <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
@@ -55,27 +51,39 @@
             </div>
         </div>
         <div class="wallet-tools-grid">
-            <a class="wallet-tool-card" th:href="@{/admin#cuentas}">
+            <article class="wallet-tool-card">
                 <span class="wallet-tool-icon">⌕</span>
                 <h3>Supervisar cuentas</h3>
                 <p>Busca por nombre, correo, ID, tarjeta o saldo y abre la cuenta para gestionarla.</p>
-                <span class="wallet-tool-action">Ir a cuentas <b aria-hidden="true">→</b></span>
-            </a>
-            <a class="wallet-tool-card" th:href="@{/admin/movimientos}">
+                <a class="wallet-tool-action" th:href="@{/admin/cuentas}">Buscar cuentas <b aria-hidden="true">→</b></a>
+            </article>
+            <article class="wallet-tool-card">
                 <span class="wallet-tool-icon is-history">◷</span>
                 <h3>Movimientos</h3>
                 <p>Busca y filtra movimientos, y recorre el historial de cinco en cinco.</p>
-                <span class="wallet-tool-action">Consultar movimientos <b aria-hidden="true">→</b></span>
-            </a>
-            <a class="wallet-tool-card" th:href="@{/admin/tarjetas-desactivadas}">
+                <a class="wallet-tool-action" th:href="@{/admin/movimientos}">Consultar movimientos <b aria-hidden="true">→</b></a>
+            </article>
+            <article class="wallet-tool-card">
                 <span class="wallet-tool-icon is-archive">▣</span>
                 <h3>Tarjetas desactivadas</h3>
                 <p>Revisa tarjetas archivadas, saldos históricos y estado de traslado.</p>
-                <span class="wallet-tool-action">Abrir archivo <b aria-hidden="true">→</b></span>
-            </a>
+                <a class="wallet-tool-action" th:href="@{/admin/tarjetas-desactivadas}">Abrir archivo <b aria-hidden="true">→</b></a>
+            </article>
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-history">◌</span>
+                <h3>Chat administrativo</h3>
+                <p>Coordina con administradores y moderadores de Billetera.</p>
+                <a class="wallet-tool-action" th:href="@{/admin/chat}">Abrir chat <b aria-hidden="true">→</b></a>
+            </article>
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-balance">▦</span>
+                <h3>Reportes Excel</h3>
+                <p>Exporta movimientos de Billetera con columnas y filtros seleccionables.</p>
+                <a class="wallet-tool-action" th:href="@{/admin/reportes}">Generar reporte <b aria-hidden="true">→</b></a>
+            </article>
         </div>
     </section>
-    <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · OPERACIONES CON TRAZABILIDAD</footer>
+    <div th:replace="~{fragments/admin-wallet-footer :: servicesFooter}"></div>
 </main>
 </body>
 </html>

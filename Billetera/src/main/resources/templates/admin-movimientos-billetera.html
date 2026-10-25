@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Movimientos de Billetera | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-14)}">
 </head>
 <body>
 <main class="wallet-page admin-page wallet-admin-nav-page">
@@ -15,9 +15,6 @@
             <h1>Movimientos</h1>
             <p class="welcome">Busca, filtra y recorre los movimientos registrados en todas las billeteras.</p>
         </div>
-        <nav class="header-links" aria-label="Navegación de administración">
-            <a class="back-link" th:href="@{/admin/dashboard}">← Panel principal</a>
-        </nav>
     </header>
 
     <p th:if="${errorFiltroFecha}" class="notice error" role="alert">
@@ -103,21 +100,32 @@
         <nav class="wallet-movement-pagination" th:if="${totalMovimientos > 0}"
              aria-label="Paginación de movimientos">
             <a th:if="${hasPreviousPage}"
+               class="movement-page-arrow"
+               aria-label="Ver movimientos más recientes"
                th:href="@{/admin/movimientos(page=${pageIndex - 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, servicio=${servicioSeleccionado}, desde=${desde}, hasta=${hasta})}">
-                ← Más recientes
+                <span aria-hidden="true">←</span> Más recientes
             </a>
+            <span th:unless="${hasPreviousPage}" class="movement-page-arrow is-disabled"
+                  aria-disabled="true" aria-label="No hay movimientos más recientes">
+                <span aria-hidden="true">←</span> Más recientes
+            </span>
             <span>
                 Mostrando <strong th:text="${firstMovement}">1</strong>–<strong th:text="${lastMovement}">5</strong>
                 de <strong th:text="${totalMovimientos}">0</strong>
                 · Página <strong th:text="${pageIndex + 1}">1</strong> de <strong th:text="${totalPages}">1</strong>
             </span>
             <a th:if="${hasNextPage}"
+               class="movement-page-arrow"
+               aria-label="Ver movimientos más antiguos"
                th:href="@{/admin/movimientos(page=${pageIndex + 1}, buscar=${buscar}, tipo=${tipoSeleccionado}, servicio=${servicioSeleccionado}, desde=${desde}, hasta=${hasta})}">
-                Más antiguos →
+                Más antiguos <span aria-hidden="true">→</span>
             </a>
+            <span th:unless="${hasNextPage}" class="movement-page-arrow is-disabled"
+                  aria-disabled="true" aria-label="No hay movimientos más antiguos">
+                Más antiguos <span aria-hidden="true">→</span>
+            </span>
         </nav>
     </section>
-    <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · HISTORIAL DE MOVIMIENTOS</footer>
 </main>
 </body>
 </html>

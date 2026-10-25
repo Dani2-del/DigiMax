@@ -67,15 +67,18 @@ img { max-width: 100%; display: block; }
 
 /* ===== NAV ===== */
 .landing-nav {
-  position: relative;
-  z-index: 5;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 22px 28px;
-  max-width: 1180px;
-  margin: 0 auto;
+  min-height: 76px;
+  padding: 14px max(28px, calc((100vw - 1180px) / 2 + 28px));
+  background: #0F172A;
+  box-shadow: 0 8px 22px rgba(4, 10, 20, 0.2);
 }
 
 .landing-nav .brand {
@@ -171,18 +174,41 @@ img { max-width: 100%; display: block; }
   inset: 0;
   width: 100%;
   height: 100%;
-  background-image: url("/images/Background.png");
+  background-image: url("/images/digitrans_bg_naranja.jpg");
   background-size: cover;
-  background-position: center 64%;
-  opacity: 0.58;
+  background-position: center 52%;
+  opacity: 1;
 }
 
 .hero-illustration::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, #0F172A 0%, rgba(15, 23, 42, 0.94) 28%, rgba(15, 23, 42, 0.62) 56%, rgba(15, 23, 42, 0.32) 100%),
-              linear-gradient(0deg, rgba(15, 23, 42, 0.58) 0%, transparent 42%);
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.93) 0%, rgba(15, 23, 42, 0.84) 35%, rgba(15, 23, 42, 0.55) 68%, rgba(15, 23, 42, 0.42) 100%),
+              linear-gradient(0deg, rgba(15, 23, 42, 0.5) 0%, transparent 48%);
+}
+
+.landing-footer {
+  width: 100%;
+  text-align: center;
+}
+
+.landing-footer .footer {
+  display: flex;
+  width: 100%;
+  min-height: 58px;
+  padding: 12px 20px;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 auto;
+  color: var(--piedra);
+  background: var(--arena);
+  border: 0;
+  border-radius: 0;
+  font-size: 0.82rem;
+  text-align: center;
 }
 
 .hero .wrap {
@@ -194,7 +220,7 @@ img { max-width: 100%; display: block; }
 .hero-content {
   position: relative;
   z-index: 2;
-  padding: 52px 0 86px;
+  padding: 130px 0 86px;
   max-width: 680px;
 }
 
@@ -676,28 +702,28 @@ img { max-width: 100%; display: block; }
     background: linear-gradient(90deg, rgba(15, 23, 42, 0.92), rgba(15, 23, 42, 0.52)),
                 linear-gradient(180deg, rgba(15, 23, 42, 0.1) 30%, #0F172A 100%);
   }
-  .hero-content { max-width: 680px; padding: 58px 0 76px; }
+  .hero-content { max-width: 680px; padding: 112px 0 76px; }
   .about-grid { grid-template-columns: 1fr; }
   .about-card { max-width: 620px; transform: none; }
   .roles-grid { grid-template-columns: 1fr; }
   .student-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .route-line { grid-template-columns: 1fr; gap: 34px; }
   .route-line::before { display: none; }
-  .landing-nav { padding: 18px 28px; }
+  .landing-nav { padding: 12px 28px; }
   .landing-nav .brand span { font-size: 1.05rem; }
   .route-cards { grid-template-columns: repeat(2, 1fr); }
 }
 
 @media (max-width: 560px) {
   .wrap { padding: 0 20px; }
-  .landing-nav { padding: 16px 20px; gap: 12px; }
+  .landing-nav { padding: 10px 16px; gap: 12px; }
   .landing-nav .brand { gap: 7px; }
   .landing-nav .brand img { width: 28px; height: 28px; }
   .landing-nav .brand span { font-size: 0.96rem; }
   .landing-nav .nav-actions { gap: 7px; }
   .landing-nav .nav-actions .btn { padding: 9px 11px; font-size: 0.78rem; }
 
-  .hero-content { padding: 48px 0 66px; }
+  .hero-content { padding: 88px 0 66px; }
   .eyebrow-pill { font-size: 0.72rem; line-height: 1.45; margin-bottom: 18px; }
   .hero h1 { font-size: clamp(2.55rem, 12vw, 3.5rem); }
   .hero p.lead { font-size: 1rem; margin-bottom: 28px; }

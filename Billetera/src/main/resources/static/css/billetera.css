@@ -722,6 +722,274 @@ legend {
     padding-top: 76px;
 }
 
+.wallet-admin-footer {
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+    justify-content: center;
+    gap: 12px;
+    border-top: 1px solid #e4deed;
+    text-align: center;
+}
+
+.wallet-admin-footer > span {
+    order: 1;
+    width: 100%;
+    text-align: center;
+}
+
+.wallet-admin-footer .wallet-admin-exit {
+    display: inline-flex;
+    order: 0;
+    min-width: 96px;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 11px;
+    color: #fff;
+    background: #087c86;
+    font-size: .86rem;
+    font-weight: 750;
+    letter-spacing: 0;
+    text-decoration: none;
+}
+
+.wallet-admin-footer .wallet-admin-exit:hover {
+    background: #076b76;
+}
+
+.wallet-admin-report,
+.wallet-admin-chat {
+    animation: wallet-admin-feature-enter .45s cubic-bezier(.2, .75, .25, 1) both;
+}
+
+.wallet-admin-report {
+    max-width: 900px;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+.wallet-admin-report-form {
+    display: grid;
+    gap: 22px;
+}
+
+.wallet-report-columns {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px 18px;
+    margin: 0;
+    padding: 18px;
+    border: 1px solid #dce6ec;
+    border-radius: 14px;
+}
+
+.wallet-report-columns legend {
+    padding: 0 8px;
+    color: #25415b;
+    font-size: .88rem;
+    font-weight: 800;
+}
+
+.wallet-report-columns label {
+    display: flex;
+    min-height: 30px;
+    align-items: center;
+    flex-direction: row;
+    gap: 9px;
+    color: #25415b;
+    font-size: .88rem;
+    font-weight: 650;
+    cursor: pointer;
+}
+
+.wallet-report-columns input {
+    width: 17px;
+    min-height: 17px;
+    flex: 0 0 auto;
+    accent-color: #087c86;
+}
+
+.wallet-admin-report-filters {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.wallet-admin-report-actions {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.wallet-admin-report-actions button,
+.wallet-admin-chat-compose-footer button {
+    min-height: 42px;
+    padding: 10px 16px;
+    border: 0;
+    border-radius: 11px;
+    color: #fff;
+    background: #087c86;
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 750;
+    cursor: pointer;
+    transition: background .15s ease, transform .15s ease;
+}
+
+.wallet-admin-report-actions button:hover,
+.wallet-admin-chat-compose-footer button:hover:not(:disabled) {
+    background: #076b76;
+    transform: translateY(-1px);
+}
+
+.wallet-admin-chat {
+    padding: 0;
+    overflow: hidden;
+}
+
+.wallet-admin-chat-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 22px 24px;
+    border-bottom: 1px solid #e4ebf1;
+}
+
+.wallet-admin-chat-heading h2 {
+    margin: 0 0 5px;
+    color: #17324d;
+}
+
+.wallet-admin-chat-heading .muted {
+    margin: 0;
+}
+
+.wallet-admin-chat-current-user {
+    padding: 7px 11px;
+    border-radius: 999px;
+    color: #075d68;
+    background: #e5f4f3;
+    font-size: .82rem;
+    font-weight: 750;
+}
+
+.wallet-admin-chat-messages {
+    display: flex;
+    min-height: 340px;
+    max-height: 55vh;
+    flex-direction: column;
+    gap: 12px;
+    overflow-y: auto;
+    padding: 20px 24px;
+}
+
+.wallet-admin-chat-empty {
+    margin: auto;
+    text-align: center;
+}
+
+.wallet-admin-chat-message {
+    max-width: min(80%, 720px);
+    padding: 12px 15px;
+    border: 1px solid #e4ebf1;
+    border-radius: 15px 15px 15px 4px;
+    background: #f7fafc;
+    overflow-wrap: anywhere;
+}
+
+.wallet-admin-chat-message.is-own {
+    align-self: flex-end;
+    border-color: #b8dedd;
+    border-radius: 15px 15px 4px 15px;
+    background: #edf8f7;
+}
+
+.wallet-admin-chat-message-heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.wallet-admin-chat-message-heading strong {
+    color: #17324d;
+    font-size: .86rem;
+}
+
+.wallet-admin-chat-message-heading span,
+.wallet-admin-chat-message-heading time {
+    color: #718096;
+    font-size: .74rem;
+}
+
+.wallet-admin-chat-message p {
+    margin: 0;
+    color: #25415b;
+    line-height: 1.5;
+    white-space: pre-wrap;
+}
+
+.wallet-admin-chat-error {
+    margin: 0 24px 16px;
+}
+
+.wallet-admin-chat-compose {
+    display: grid;
+    gap: 10px;
+    padding: 18px 24px 22px;
+    border-top: 1px solid #e4ebf1;
+}
+
+.wallet-admin-chat-compose label {
+    color: #25415b;
+    font-size: .86rem;
+    font-weight: 750;
+}
+
+.wallet-admin-chat-compose textarea {
+    width: 100%;
+    min-height: 80px;
+    resize: vertical;
+    padding: 12px;
+    border: 1px solid #cfe1e4;
+    border-radius: 11px;
+    color: #17324d;
+    font: inherit;
+}
+
+.wallet-admin-chat-compose textarea:focus {
+    outline: 3px solid #a7d8d7;
+    outline-offset: 2px;
+}
+
+.wallet-admin-chat-compose-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.wallet-admin-chat-compose-footer .muted {
+    margin: 0;
+    font-size: .82rem;
+}
+
+@keyframes wallet-admin-feature-enter {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.wallet-user-nav-page {
+    padding-top: 88px;
+}
+
+.wallet-user-nav-page [id] {
+    scroll-margin-top: 86px;
+}
+
 .wallet-section-nav a {
     padding: 9px 13px;
     border-radius: 9px;
@@ -849,7 +1117,16 @@ legend {
     text-align: center;
 }
 
-.wallet-movement-pagination a {
+.wallet-movement-pagination a,
+.wallet-movement-pagination .movement-page-arrow {
+    display: inline-flex;
+    min-height: 38px;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 8px 12px;
+    border: 1px solid #c7e1e2;
+    border-radius: 10px;
     color: #087c86;
     font-weight: 750;
     text-decoration: none;
@@ -857,7 +1134,15 @@ legend {
 }
 
 .wallet-movement-pagination a:hover {
-    text-decoration: underline;
+    border-color: #087c86;
+    background: #edf8f8;
+}
+
+.wallet-movement-pagination .movement-page-arrow.is-disabled {
+    border-color: #e4ebf1;
+    color: #9aa8b5;
+    background: #f7f9fb;
+    cursor: not-allowed;
 }
 
 .wallet-account-filters {
@@ -1014,7 +1299,7 @@ legend {
 
 .wallet-tools-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 14px;
 }
 
@@ -1070,15 +1355,32 @@ legend {
 }
 
 .wallet-tool-action {
-    display: flex;
-    width: 100%;
+    display: inline-flex;
+    width: fit-content;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 10px;
     margin-top: auto;
-    color: #087c86;
+    padding: 10px 14px;
+    border: 1px solid #087c86;
+    border-radius: 11px;
+    color: #fff;
+    background: #087c86;
     font-size: .84rem;
     font-weight: 750;
+    text-decoration: none;
+    transition: background .16s ease, transform .16s ease;
+}
+
+.wallet-tool-action:hover {
+    transform: translateY(-1px);
+    color: #fff;
+    background: #076b76;
+}
+
+.wallet-tool-action:focus-visible {
+    outline: 3px solid #8ed2d6;
+    outline-offset: 3px;
 }
 
 .admin-directory {
@@ -1338,6 +1640,10 @@ legend {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .wallet-tools-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     .admin-directory-heading {
         align-items: stretch;
         flex-direction: column;
@@ -1444,6 +1750,10 @@ legend {
         gap: 9px;
     }
 
+    .wallet-tools-grid {
+        grid-template-columns: 1fr;
+    }
+
     .admin-stat {
         min-height: 96px;
         gap: 10px;
@@ -1492,6 +1802,35 @@ legend {
         left: 0;
         z-index: 1;
         background: #087c86;
+    }
+
+    .wallet-admin-footer {
+        align-items: center;
+        flex-direction: column;
+    }
+
+    .wallet-report-columns,
+    .wallet-admin-report-filters {
+        grid-template-columns: 1fr;
+    }
+
+    .wallet-admin-chat-heading,
+    .wallet-admin-chat-compose-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .wallet-admin-chat-messages {
+        min-height: 300px;
+        padding: 16px;
+    }
+
+    .wallet-admin-chat-message {
+        max-width: 92%;
+    }
+
+    .wallet-admin-chat-compose {
+        padding: 16px;
     }
 
     .wallet-account-filters {

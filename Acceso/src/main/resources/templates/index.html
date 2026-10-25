@@ -5,10 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Digitrans — Una cuenta, varios servicios</title>
   <link rel="icon" th:href="@{/images/digitrans-mark.svg}">
-  <link rel="stylesheet" th:href="@{/css/index.css}">
+  <link rel="stylesheet" th:href="@{/css/index.css(v=20261025-5)}">
 </head>
 <body>
   <section class="hero">
+    <div class="hero-illustration" aria-hidden="true"></div>
     <nav class="landing-nav">
       <a class="brand" th:href="@{/}">
         <img th:src="@{/images/digitrans-mark.svg}" alt="Digitrans">
@@ -68,6 +69,8 @@
       </ul>
     </div>
   </section>
-  <div th:replace="~{fragments/footer :: footer}"></div>
+  <div class="landing-footer">
+    <div th:replace="~{fragments/footer :: footer}"></div>
+  </div>
 </body>
 </html>

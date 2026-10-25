@@ -1339,6 +1339,72 @@ body::after {
   top: -115px;
 }
 
+.admin-sitm-confirmation {
+  margin-top: 18px;
+  padding: 22px;
+  border: 1px solid var(--linea);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fff, #f7fbfc);
+}
+
+.admin-sitm-confirmation .choice-eyebrow {
+  margin: 0 0 7px;
+  color: var(--coral);
+  font-size: .7rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.admin-sitm-confirmation h2 {
+  margin: 0;
+  color: var(--tinta);
+  font-size: 1.2rem;
+}
+
+.admin-sitm-confirmation > p:not(.choice-eyebrow) {
+  color: var(--piedra);
+}
+
+.admin-sitm-confirmation .confirmation-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-sitm-confirmation .confirmation-actions form {
+  margin: 0;
+}
+
+.admin-sitm-confirmation .secondary-action,
+.admin-sitm-confirmation .primary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 10px 15px;
+  border: 1px solid var(--linea);
+  border-radius: 11px;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.admin-sitm-confirmation .secondary-action {
+  color: var(--tinta);
+  background: #fff;
+}
+
+.admin-sitm-confirmation .primary-action {
+  border-color: var(--coral);
+  color: #fff;
+  background: var(--coral);
+}
+
+.admin-sitm-confirmation .primary-action:hover {
+  filter: brightness(.94);
+}
+
 .dashboard-section {
   display: grid;
   gap: 16px;
@@ -2393,4 +2459,12 @@ body.login-page::before {
 
 body.login-page::after {
   display: none;
+}
+
+body[data-sistema="TRANSMETRO"]::before {
+  background-image: url("/images/fondo_transmetro.jpg");
+}
+
+body[data-sistema="TRANSMILENIO"]::before {
+  background-image: url("/images/fondo_transmilenio.jpg");
 }

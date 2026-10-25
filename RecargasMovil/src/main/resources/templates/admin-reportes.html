@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Reportes Excel · Recargas móviles</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Exportación de datos · Recargas móviles</p>
+        <h1>Reportes Excel</h1>
+        <p class="muted">Elige las columnas y los filtros para generar tu archivo Excel.</p>
+      </div>
+      <a class="button-link secondary" th:href="@{/admin}">Volver al panel</a>
+    </header>
+
+    <section class="admin-section form-card">
+      <div class="section-heading">
+        <div>
+          <h2>Configurar reporte</h2>
+          <p class="muted">Marca los datos que quieres ver como columnas en el archivo.</p>
+        </div>
+      </div>
+      <form method="get" th:action="@{/admin/reporte/excel}" class="filter-grid admin-report-form">
+        <label>Nombre del archivo
+          <input type="text" name="nombreReporte" maxlength="100" placeholder="Reporte_Recargas">
+        </label>
+        <fieldset class="admin-report-columns">
+          <legend>Columnas incluidas</legend>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="operacion" checked> Operación</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="usuario" checked> Usuario</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="telefono" checked> Teléfono</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="operador" checked> Operador</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="tipo" checked> Tipo</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="concepto" checked> Concepto</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="monto" checked> Monto</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="estado" checked> Estado</label>
+          <label class="admin-report-column"><input type="checkbox" name="columnas" value="fecha" checked> Fecha</label>
+        </fieldset>
+        <label>Estado
+          <select name="estado">
+            <option value="">Todos</option>
+            <option value="SIMULADA">Simulada</option>
+            <option value="PROCESANDO">Procesando</option>
+            <option value="RECHAZADA">Rechazada</option>
+          </select>
+        </label>
+        <label>Operador
+          <select name="operadorId">
+            <option value="">Todos</option>
+            <option th:each="operador : ${operadores}" th:value="${operador.id}" th:text="${operador.nombre}"></option>
+          </select>
+        </label>
+        <label>Tipo
+          <select name="tipo">
+            <option value="">Todos</option>
+            <option value="saldo">Recarga de saldo</option>
+            <option value="paquete">Paquete</option>
+          </select>
+        </label>
+        <label>Desde
+          <input type="date" name="desde">
+        </label>
+        <label>Hasta
+          <input type="date" name="hasta">
+        </label>
+        <div class="admin-report-actions">
+          <button type="submit">Descargar Excel (.xlsx)</button>
+        </div>
+      </form>
+    </section>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+</body>
+</html>

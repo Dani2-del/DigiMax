@@ -1,6 +1,7 @@
 package com.Servicio.Billetera.web;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -14,13 +15,21 @@ import java.util.Comparator;
 
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
@@ -28,6 +37,8 @@ import com.Servicio.Billetera.model.EstadoTarjeta;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.service.BilleteraService;
+import com.Servicio.Billetera.service.BilleteraExcelReportService;
+import com.Servicio.Billetera.service.BilleteraExcelReportService.MovementReportRow;
 import com.Servicio.Billetera.service.SaldoInsuficienteException;
 import com.Servicio.Billetera.service.WalletUserDirectoryClient;
 import com.Servicio.Billetera.service.WalletUserDirectoryClient.UserSummary;
@@ -38,13 +49,24 @@ public class AdminTarjetasController {
 
     private final BilleteraService billeteraService;
     private final WalletUserDirectoryClient userDirectory;
+    private final BilleteraExcelReportService excelReportService;
+    @Value("${app.acceso.base-url}")
+    private String accesoUrl;
 
     private static final int MOVEMENT_PAGE_SIZE = 5;
 
     public AdminTarjetasController(
-            BilleteraService billeteraService, WalletUserDirectoryClient userDirectory) {
+            BilleteraService billeteraService,
+            WalletUserDirectoryClient userDirectory,
+            BilleteraExcelReportService excelReportService) {
         this.billeteraService = billeteraService;
         this.userDirectory = userDirectory;
+        this.excelReportService = excelReportService;
+    }
+
+    @ModelAttribute("serviciosUrl")
+    public String serviciosUrl() {
+        return accesoUrl + "/servicios";
     }
 
     @GetMapping("/dashboard")
@@ -73,7 +95,70 @@ public class AdminTarjetasController {
         return "admin-dashboard-billetera";
     }
 
-    @GetMapping
+    @GetMapping({"", "/"})
+    public String adminHome() {
+        return "redirect:/admin/dashboard";
+    }
+
+    @GetMapping("/reportes")
+    public String reports(Model model) {
+        List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
+        model.addAttribute("tipos", movementTypes(wallets));
+        model.addAttribute("servicios", movementServices(wallets));
+        return "admin-reportes-billetera";
+    }
+
+    @GetMapping("/reporte/excel")
+    public ResponseEntity<byte[]> downloadExcelReport(
+            @RequestParam(name = "columnas", required = false) List<String> columnKeys,
+            @RequestParam(defaultValue = "") String tipo,
+            @RequestParam(defaultValue = "") String servicio,
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta) {
+        List<BilleteraExcelReportService.ReportColumn> columns =
+                BilleteraExcelReportService.ReportColumn.fromKeys(columnKeys);
+        if (columns.isEmpty() || (desde != null && hasta != null && desde.isAfter(hasta))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Selecciona al menos una columna y revisa el rango de fechas.");
+        }
+
+        List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
+        if ((!tipo.isBlank() && !movementTypes(wallets).contains(tipo))
+                || (!servicio.isBlank() && !movementServices(wallets).contains(servicio))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "El tipo o servicio seleccionado no es válido.");
+        }
+        List<MovementReportRow> reportRows = wallets.stream()
+                .flatMap(wallet -> wallet.getMovimientos().stream()
+                        .map(movement -> new MovementReportRow(wallet.getUsuarioId(), movement)))
+                .filter(row -> tipo.isBlank()
+                        || tipo.equalsIgnoreCase(row.movement().getTipo()))
+                .filter(row -> servicio.isBlank()
+                        || servicio.equalsIgnoreCase(row.movement().getServicio()))
+                .filter(row -> inDateRange(row.movement().getFecha(), desde, hasta))
+                .sorted(Comparator.comparing(
+                        (MovementReportRow row) -> row.movement().getFecha(),
+                        Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+
+        try {
+            byte[] content = excelReportService.createReport(reportRows, columns);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            ContentDisposition.attachment()
+                                    .filename("Reporte_Billetera_" + LocalDate.now() + ".xlsx",
+                                            StandardCharsets.UTF_8)
+                                    .build().toString())
+                    .contentType(MediaType.parseMediaType(
+                            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .contentLength(content.length)
+                    .body(content);
+        } catch (java.io.IOException exception) {
+            throw new IllegalStateException("No se pudo generar el reporte Excel de Billetera.", exception);
+        }
+    }
+
+    @GetMapping("/cuentas")
     public String index(
             @RequestParam(defaultValue = "") String buscar,
             @RequestParam(required = false) BigDecimal saldoDesde,
@@ -250,6 +335,22 @@ public class AdminTarjetasController {
         return date != null
                 && (from == null || !date.toLocalDate().isBefore(from))
                 && (through == null || !date.toLocalDate().isAfter(through));
+    }
+
+    private static List<String> movementTypes(List<BilleteraUniversal> wallets) {
+        return wallets.stream()
+                .flatMap(wallet -> wallet.getMovimientos().stream())
+                .map(MovimientoBilletera::getTipo)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct().sorted().toList();
+    }
+
+    private static List<String> movementServices(List<BilleteraUniversal> wallets) {
+        return wallets.stream()
+                .flatMap(wallet -> wallet.getMovimientos().stream())
+                .map(MovimientoBilletera::getServicio)
+                .filter(value -> value != null && !value.isBlank())
+                .distinct().sorted().toList();
     }
 
     @GetMapping("/cuentas/{usuarioId}")

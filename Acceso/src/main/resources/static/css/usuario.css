@@ -2452,3 +2452,13 @@ body.login-page::before {
 body.login-page::after {
   display: none;
 }
+
+body.identity-page::before {
+  background-image: url("/images/digitrans_bg_naranja.jpg");
+  filter: none;
+  opacity: 1;
+}
+
+body.identity-page::after {
+  display: none;
+}

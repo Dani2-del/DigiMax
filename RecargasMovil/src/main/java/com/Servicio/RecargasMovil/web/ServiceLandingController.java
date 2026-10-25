@@ -57,16 +57,18 @@ public class ServiceLandingController {
         model.addAttribute("paquetes", packages);
         model.addAttribute("operadoresPorId", operators.stream()
                 .collect(Collectors.toMap(OperadorMovil::getId, OperadorMovil::getNombre)));
-        model.addAttribute("movilExitoId", operators.stream()
-                .filter(operator -> "Móvil Éxito".equalsIgnoreCase(operator.getNombre()))
-                .map(OperadorMovil::getId)
-                .findFirst()
-                .orElse(null));
         model.addAttribute("customRechargeOperationId", UUID.randomUUID().toString());
-        model.addAttribute("lineas", recargasService.lineasDelUsuario(identity.id()));
+        var userLines = recargasService.lineasDelUsuario(identity.id());
+        model.addAttribute("lineas", userLines);
         model.addAttribute("recargas", recargasService.historialDelUsuario(identity.id()));
         model.addAttribute("operationIds", packages.stream()
                 .collect(Collectors.toMap(PaqueteMovil::getId, ignored -> UUID.randomUUID().toString())));
+        var activeOperatorIds = operators.stream()
+                .map(OperadorMovil::getId)
+                .collect(Collectors.toSet());
+        model.addAttribute("lineasRecargables", userLines.stream()
+                .filter(line -> activeOperatorIds.contains(line.getOperadorId()))
+                .toList());
         model.addAttribute("accesoUrl", accesoUrl);
         model.addAttribute("billeteraUrl", billeteraUrl);
         model.addAttribute("walletError", false);
@@ -154,17 +156,16 @@ public class ServiceLandingController {
     public String rechargeBalance(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             HttpServletRequest request,
-            @RequestParam String operadorId,
             @RequestParam String lineaId,
             @RequestParam BigDecimal monto,
             @RequestParam String operationId,
             RedirectAttributes redirectAttributes) {
         try {
             var recharge = recargasService.solicitarRecargaDinero(
-                    identity.id(), operadorId, lineaId, monto, operationId, token(request));
+                    identity.id(), lineaId, monto, operationId, token(request));
             redirectAttributes.addFlashAttribute("mensaje",
                     recharge.getEstado().equals("SIMULADA")
-                            ? "Recarga simulada completada. No se envió saldo al operador."
+                            ? "Recarga simulada: el importe se descontó de tu tarjeta universal, pero no se envió saldo al operador."
                             : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
         } catch (InsufficientWalletBalanceException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());

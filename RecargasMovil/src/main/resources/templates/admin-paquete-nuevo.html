@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Crear paquete · Moderación</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div><p class="eyebrow">Moderación · Catálogo</p><h1>Crear paquete</h1><p class="muted">Añade una opción al catálogo de recargas móviles.</p></div>
+      <a class="button-link secondary" th:href="@{/admin/paquetes}">Volver a paquetes</a>
+    </header>
+    <div th:if="${error}" class="notice error" role="alert" th:text="${error}"></div>
+    <section class="admin-section form-card">
+      <form method="post" th:action="@{/admin/paquetes}" class="form-grid">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <label>Operador
+          <select name="operadorId" required>
+            <option value="">Selecciona un operador</option>
+            <option th:each="operador : ${operadoresActivos}" th:value="${operador.id}" th:text="${operador.nombre}"></option>
+          </select>
+        </label>
+        <label>Nombre<input type="text" name="nombre" maxlength="100" required></label>
+        <label>Categoría
+          <select name="categoria" required>
+            <option th:each="categoria : ${categorias}" th:value="${categoria}" th:text="${categoria.nombreVisible}" th:selected="${categoria == paquete.categoria}"></option>
+          </select>
+        </label>
+        <label>Precio<input type="number" name="precio" min="0.01" step="0.01" required></label>
+        <label style="grid-column: 1 / -1">Descripción<input type="text" name="descripcion" maxlength="240" placeholder="Datos, vigencia u otros detalles"></label>
+        <div class="form-actions" style="grid-column: 1 / -1">
+          <a class="button-link secondary" th:href="@{/admin/paquetes}">Cancelar</a>
+          <button type="submit">Crear paquete</button>
+        </div>
+      </form>
+    </section>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+</body>
+</html>

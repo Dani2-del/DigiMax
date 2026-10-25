@@ -7,7 +7,7 @@
   <style>
     :root { font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #28243d; background: #f7f5fb; }
     body { margin: 0; background: radial-gradient(ellipse at 8% 0%, #eee8ff 0, transparent 34rem), #f7f5fb; }
-    main { max-width: 1160px; margin: 28px auto; padding: 20px; }
+    main { max-width: 1160px; margin: 0 auto; padding: 82px 20px 20px; }
     header, section { background: #fff; border: 1px solid #ece8f3; border-radius: 22px; padding: 26px; margin-bottom: 18px; box-shadow: 0 12px 32px #30234a0a; }
     header { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; border-top: 4px solid #7957e8; }
     main > header { animation: recargas-enter .55s cubic-bezier(.2, .75, .25, 1) both; }
@@ -17,10 +17,39 @@
     main > section:nth-of-type(4) { animation-delay: .21s; }
     header h1 { margin: 0; color: #30264f; font-size: clamp(1.65rem, 3vw, 2.2rem); letter-spacing: -.04em; }
     header p { margin-bottom: 0; color: #77718a; }
-    nav { font-size: .94rem; font-weight: 650; }
-    .wallet { position: relative; overflow: hidden; color: white; background: linear-gradient(120deg, #38245e, #7549bd 62%, #fa796a); border: 0; box-shadow: 0 16px 34px #6645a533; }
-    .wallet::after { content: ""; position: absolute; width: 230px; height: 230px; right: -55px; top: -120px; border: 1px solid #ffffff40; border-radius: 50%; box-shadow: 0 0 0 24px #ffffff0c, 0 0 0 48px #ffffff0a; pointer-events: none; animation: wallet-orbit 8s ease-in-out infinite alternate; }
-    .wallet h2, .wallet p, .wallet strong { position: relative; z-index: 1; }
+    .service-header-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+    a.service-header-action { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 10px 15px; border: 0; border-radius: 11px; color: #fff; background: #7250d5; font-size: .9rem; font-weight: 750; text-decoration: none; transition: background .15s ease, transform .15s ease; }
+    a.service-header-action:hover, a.service-header-action:focus-visible { color: #fff; background: #5e3dbd; transform: translateY(-1px); }
+    .recargas-nav { position: fixed; z-index: 20; top: 0; left: 0; display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; box-sizing: border-box; width: 100%; margin: 0; padding: 9px max(12px, calc((100vw - 1120px) / 2 + 9px)); overflow-x: auto; border: 0; border-radius: 0; background: #7250d5; box-shadow: 0 8px 22px #7250d529; }
+    .recargas-nav a { flex: 0 0 auto; padding: 9px 13px; border-radius: 9px; color: #fff; font-size: .84rem; font-weight: 700; text-decoration: none; transition: background .15s ease; }
+    .recargas-nav a:hover, .recargas-nav a:focus-visible { color: #fff; background: #5e3dbd; }
+    .recargas-nav .recargas-brand { display: inline-flex; align-items: center; gap: 9px; margin-right: 8px; padding: 4px 14px 4px 4px; border-right: 1px solid #ffffff70; border-radius: 0; color: #fff; font-size: .95rem; letter-spacing: -.02em; }
+    .recargas-brand-mark { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 10px; background: #fff; color: #7250d5; font-size: 1.2rem; font-weight: 900; }
+    #inicio, section[id] { scroll-margin-top: 86px; }
+    .universal-card { position: relative; min-height: 260px; overflow: hidden; padding: 28px 32px; border: 1px solid #ffffff2b; border-radius: 24px; color: #fff; background: linear-gradient(118deg, #14385b 0%, #0b6677 62%, #07858b 100%); box-shadow: 0 22px 44px #17324d24, inset 0 1px #ffffff26; }
+    .universal-card.theme-oceano { background: linear-gradient(118deg, #14385b, #0b6677 62%, #07858b); }
+    .universal-card.theme-bosque { background: linear-gradient(118deg, #163d32, #26734e 62%, #74a65a); }
+    .universal-card.theme-atardecer { background: linear-gradient(118deg, #7b2d44, #ce5f48 62%, #f0a45b); }
+    .universal-card.theme-lavanda { background: linear-gradient(118deg, #44366f, #785ca8 62%, #b88bc4); }
+    .universal-card.theme-rubi { background: linear-gradient(118deg, #541c32, #a52d49 62%, #df5d5b); }
+    .universal-card.theme-carbon { background: linear-gradient(118deg, #202831, #414d59 62%, #73808a); }
+    .universal-card.theme-esmeralda { background: linear-gradient(118deg, #064d4b, #087e70 62%, #4db59a); }
+    .universal-card.theme-cobre { background: linear-gradient(118deg, #5b352b, #a95f3e 62%, #d99b63); }
+    .universal-card.theme-glaciar { background: linear-gradient(118deg, #31536b, #5589a5 62%, #91c4d0); }
+    .universal-card.theme-galaxia { background: linear-gradient(118deg, #261f58, #563b8d 62%, #bc4f9b); }
+    .card-glow { position: absolute; top: -125px; right: -55px; width: 270px; height: 270px; border: 1px solid #ffffff25; border-radius: 50%; box-shadow: 0 0 0 22px #ffffff0d, 0 0 0 48px #ffffff08; pointer-events: none; }
+    .card-heading, .card-footer { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .card-title { margin: 0; font-weight: 800; letter-spacing: .11em; }
+    .card-title span { font-weight: 400; letter-spacing: .06em; }
+    .card-mark { font-size: 1.25rem; }
+    .card-chip { display: block; width: 48px; height: 36px; margin-top: 22px; border: 1px solid #fff9; border-radius: 8px; background: linear-gradient(135deg, #f1dfa5, #ad9d63); box-shadow: inset 0 1px #fff8; }
+    .card-number { position: relative; z-index: 1; margin: 18px 0 16px; font: 700 1.12rem ui-monospace, "Cascadia Code", monospace; letter-spacing: .14em; }
+    .card-status { position: relative; z-index: 1; display: inline-block; padding: 5px 9px; border: 1px solid #ffffff66; border-radius: 999px; font-size: .68rem; font-weight: 800; letter-spacing: .09em; }
+    .card-status.status-congelada { color: #442f10; background: #ffe5a3; }
+    .card-footer { align-items: end; }
+    .card-holder { display: block; max-width: 420px; overflow-wrap: anywhere; font-size: .78rem; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; }
+    .card-caption { margin: 8px 0 0; color: #d3e8ec; font-size: .68rem; letter-spacing: .08em; }
+    .card-balance { flex: 0 0 auto; font-size: clamp(1.35rem, 4vw, 1.8rem); font-weight: 800; letter-spacing: -.03em; text-align: right; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 18px; }
     .package { display: flex; flex-direction: column; min-height: 300px; padding: 20px; border: 1px solid #e8e2f1; border-radius: 18px; background: linear-gradient(155deg, #fff, #fdfbff); box-shadow: 0 8px 22px #30234a0a; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
     .package:not([hidden]) { animation: package-enter .38s cubic-bezier(.2, .75, .25, 1) both; }
@@ -38,12 +67,34 @@
     .informational-plan { padding: 12px; border-radius: 12px; color: #8a4c38; background: #fff1ec; font-size: .9rem; line-height: 1.5; }
     .package-filter { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; max-width: 760px; margin: 18px 0; }
     .package-filter label { display: block; margin-bottom: 6px; color: #51466c; font-size: .9rem; font-weight: 700; }
+    .catalog-search, .history-filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin: 16px 0; }
+    .catalog-search label, .history-filters label { display: flex; flex-direction: column; gap: 6px; color: #51466c; font-size: .9rem; font-weight: 700; }
+    .history-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 16px; }
+    .history-pagination button { width: auto; min-width: 110px; }
+    .history-pagination span { color: #51466c; font-weight: 700; }
+    .history-empty { padding: 16px; border: 1px dashed #cfc5e1; border-radius: 14px; color: #77718a; background: #fcfaff; }
     .package-empty { padding: 18px; border: 1px dashed #cfc5e1; border-radius: 14px; color: #77718a; background: #fcfaff; }
     .custom-recharge-input { margin-bottom: 10px; }
+    .user-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+    .guide-card { display: flex; align-items: flex-start; gap: 13px; padding: 17px; border: 1px solid #ece8f3; border-radius: 16px; color: inherit; background: linear-gradient(155deg, #fff, #fcfaff); text-decoration: none; transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease; }
+    .guide-card:hover { transform: translateY(-2px); border-color: #cfc1f2; box-shadow: 0 10px 24px #30234a10; }
+    .guide-number { display: grid; width: 36px; height: 36px; flex: 0 0 auto; place-items: center; border-radius: 11px; color: #7250d5; background: #f0ebff; font-weight: 850; }
+    .guide-card strong { display: block; margin: 1px 0 5px; color: #30264f; }
+    .guide-card span:last-child { color: #77718a; font-size: .86rem; line-height: 1.5; }
+    .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .section-heading h2 { margin: 0 0 7px; color: #30264f; font-size: 1.35rem; letter-spacing: -.025em; }
+    .section-heading p { margin: 0; color: #77718a; line-height: 1.55; }
+    .eyebrow { margin: 0 0 6px !important; color: #7250d5 !important; font-size: .72rem; font-weight: 850; letter-spacing: .14em; text-transform: uppercase; }
+    .lines-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; margin: 14px 0 0; padding: 0; list-style: none; }
+    .lines-list li { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 13px 14px; border: 1px solid #ece8f3; border-radius: 13px; color: #51466c; background: #fcfaff; overflow-wrap: anywhere; }
+    .line-icon { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 10px; color: #7250d5; background: #f0ebff; font-weight: 850; }
+    .section-count { display: inline-flex; align-items: center; gap: 7px; margin-bottom: 14px !important; padding: 6px 10px; border-radius: 999px; color: #6542bf !important; background: #f0ebff; font-size: .78rem; font-weight: 800; }
     .simulation-warning { padding: 14px 16px; border: 1px solid #f4d4a1; border-radius: 14px; color: #805625; background: #fff8e9; line-height: 1.6; }
     .catalog-source { margin-top: 22px; color: #77718a; font-size: .9rem; line-height: 1.6; }
     form { display: flex; flex-direction: column; gap: 10px; }
+    form.grid { display: grid; }
     input, select, button { box-sizing: border-box; width: 100%; font: inherit; padding: 11px 13px; border: 1px solid #ded8e9; border-radius: 11px; background: #fff; }
+    label { display: flex; flex-direction: column; gap: 6px; color: #51466c; font-size: .88rem; font-weight: 750; }
     input:focus, select:focus, button:focus-visible, a:focus-visible { outline: 3px solid #b9a7f5; outline-offset: 2px; }
     button { color: white; background: #7250d5; border: 0; cursor: pointer; font-weight: 700; transition: background .15s ease, transform .15s ease; }
     button:hover:not(:disabled) { background: #5e3dbd; transform: translateY(-1px); }
@@ -56,6 +107,10 @@
     .wallet-missing h2 { margin-top: 0; color: #805625; }
     .wallet-link { display: inline-block; width: auto; padding: 11px 17px; color: #fff; text-decoration: none; border-radius: 11px; background: #7250d5; font-weight: 700; }
     .wallet-link:hover { background: #5e3dbd; }
+    main > .recargas-page-footer { display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 12px; margin: 22px 0 10px; padding: 18px 4px 4px; border-top: 1px solid #e4deed; text-align: center; }
+    .recargas-page-footer p { width: 100%; margin: 0; color: #77718a; font-size: .86rem; text-align: center; }
+    .recargas-page-footer form { width: auto; margin: 0; }
+    .recargas-page-footer button { width: auto; min-width: 120px; }
     [hidden] { display: none !important; }
     .muted { color: #77718a; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -76,16 +131,27 @@
       55% { transform: scale(1.015); }
       100% { transform: scale(1); }
     }
-    @keyframes wallet-orbit {
-      from { transform: translate(-8px, 6px) scale(.96); }
-      to { transform: translate(8px, -5px) scale(1.04); }
-    }
     @media (max-width: 640px) {
-      main { padding: 12px; margin: 0 auto; }
+      main { padding: 76px 12px 12px; margin: 0 auto; }
       header, section { padding: 19px; border-radius: 17px; }
+      .user-guide { grid-template-columns: 1fr; gap: 9px; }
+      .guide-card { padding: 13px; }
+      .section-heading { margin-bottom: 14px; }
+      .recargas-nav { gap: 3px; padding: 8px 10px; }
+      .recargas-nav a { padding: 9px 10px; }
+      .recargas-nav .recargas-brand { gap: 6px; margin-right: 2px; padding-right: 9px; }
+      .recargas-brand-name { display: none; }
+      .universal-card { min-height: 230px; padding: 22px 20px; border-radius: 20px; }
+      .card-footer { align-items: flex-start; flex-direction: column; gap: 12px; }
+      .card-balance { text-align: left; }
       .package-filter { grid-template-columns: 1fr; gap: 8px; }
+      .history-pagination { gap: 8px; }
+      .history-pagination button { min-width: 0; }
       .row { align-items: flex-start; flex-direction: column; }
       .package { min-height: 0; }
+      .history-filters { grid-template-columns: 1fr; }
+      .lines-list { grid-template-columns: 1fr; }
+      main > .recargas-page-footer { align-items: center; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
@@ -98,20 +164,29 @@
   </style>
 </head>
 <body>
+<nav class="recargas-nav" aria-label="Navegación de Recargas móviles">
+  <a class="recargas-brand" href="#inicio" aria-label="Digitrans, Recargas móviles">
+    <span class="recargas-brand-mark" aria-hidden="true">D</span>
+    <strong class="recargas-brand-name">Digitrans</strong>
+  </a>
+  <a href="#lineas">Mis líneas</a>
+  <a href="#recargar-saldo">Recargar saldo</a>
+  <a href="#paquetes">Comprar paquetes</a>
+  <a href="#historial">Historial</a>
+  <a th:href="${accesoUrl + '/servicios'}">Volver a servicios</a>
+</nav>
 <main>
-  <header>
+  <header id="inicio">
     <div>
       <h1>Recargas móviles</h1>
       <p th:text="${'Hola, ' + (identity.name != null ? identity.name : identity.email) + '.'}"></p>
     </div>
-    <nav>
-      <a th:if="${!walletMissing}" th:href="${billeteraUrl}">Tarjeta universal</a>
-      <span th:if="${!walletMissing}"> · </span>
-      <a th:href="${accesoUrl + '/servicios'}">Servicios</a>
-      <span th:if="${identity.role == 'ROLE_MODERATOR' or identity.role == 'ROLE_ADMIN'}">
-        · <a th:href="@{/admin/catalogo}">Administrar catálogo</a>
-      </span>
-    </nav>
+    <div class="service-header-actions">
+      <a class="service-header-action" th:if="${!walletMissing}" th:href="${billeteraUrl}">Tarjeta universal</a>
+      <a class="service-header-action"
+         th:if="${identity.role == 'ROLE_MODERATOR' or identity.role == 'ROLE_ADMIN'}"
+         th:href="@{/admin/catalogo}">Panel moderación</a>
+    </div>
   </header>
 
   <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
@@ -119,36 +194,66 @@
 
   <section th:if="${walletMissing}" class="wallet-missing" aria-labelledby="wallet-missing-title">
     <h2 id="wallet-missing-title">Aún no tienes una tarjeta Digitrans</h2>
-    <p>Para comprar paquetes necesitas una tarjeta universal. Continúa a Billetera para crearla.
+    <p>Para recargar saldo o comprar paquetes necesitas una tarjeta universal. Continúa a Billetera para crearla.
       Si desactivaste una tarjeta anterior, su saldo se conservará en la nueva.</p>
     <a class="wallet-link" th:href="${billeteraUrl}">Ir a Billetera y crear mi tarjeta</a>
   </section>
 
-  <section class="wallet" th:if="${wallet}">
-    <div class="row">
-      <div>
-        <h2>Pago con tarjeta universal</h2>
-        <p th:text="${'Tarjeta ' + wallet.cardNumber}"></p>
-      </div>
-      <div>
-        <strong>Saldo disponible</strong>
-        <p th:text="${'$ ' + #numbers.formatDecimal(wallet.balance, 0, 'COMMA', 2, 'POINT') + ' COP'}"></p>
-      </div>
+  <section class="universal-card"
+           id="tarjeta"
+           th:if="${wallet}"
+           th:classappend="${' theme-' + #strings.toLowerCase(wallet.design != null ? wallet.design : 'OCEANO')}"
+           aria-label="Tarjeta universal Digitrans">
+    <span class="card-glow" aria-hidden="true"></span>
+    <div class="card-heading">
+      <p class="card-title">DIGITRANS <span>· UNIVERSAL</span></p>
+      <span class="card-mark" aria-hidden="true">●</span>
     </div>
-    <p class="muted" style="color:#e0f2f1">El valor del paquete se descontará de esta billetera compartida.</p>
-    <p th:if="${walletFrozen}" class="notice error" role="status">
-      Tu tarjeta está congelada. Puedes consultar el saldo, pero no comprar paquetes hasta descongelarla en
-      <a th:href="${billeteraUrl}">Billetera</a>.
-    </p>
+    <span class="card-chip" aria-hidden="true"></span>
+    <p class="card-number" th:text="${wallet.cardNumber}"></p>
+    <span class="card-status"
+          th:classappend="${' status-' + #strings.toLowerCase(wallet.status != null ? wallet.status : 'ACTIVA')}"
+          th:text="${walletFrozen ? 'CONGELADA' : 'ACTIVA'}"></span>
+    <div class="card-footer">
+      <div>
+        <span class="card-holder"
+              th:text="${identity.name != null ? identity.name : identity.email}"></span>
+        <p class="card-caption">SALDO DISPONIBLE · COP</p>
+      </div>
+      <div class="card-balance"
+           th:text="${'$ ' + #numbers.formatDecimal(wallet.balance, 0, 'COMMA', 2, 'POINT')}"></div>
+    </div>
+  </section>
+  <p th:if="${walletFrozen}" class="notice error" role="status">
+    Tu tarjeta está congelada. Puedes consultar el saldo, pero no realizar recargas ni comprar paquetes hasta descongelarla en
+    <a th:href="${billeteraUrl}">Billetera</a>.
+  </p>
+
+  <section class="user-guide" aria-label="Guía rápida para empezar">
+    <a class="guide-card" href="#lineas">
+      <span class="guide-number" aria-hidden="true">1</span>
+      <span><strong>Guarda tu línea</strong><span>Registra tu SIM para asociar tus recargas.</span></span>
+    </a>
+    <a class="guide-card" href="#recargar-saldo">
+      <span class="guide-number" aria-hidden="true">2</span>
+      <span><strong>Elige qué necesitas</strong><span>Recarga saldo o busca un paquete de tu operador.</span></span>
+    </a>
+    <a class="guide-card" href="#historial">
+      <span class="guide-number" aria-hidden="true">3</span>
+      <span><strong>Revisa el resultado</strong><span>Consulta el estado y el historial de tus operaciones.</span></span>
+    </a>
   </section>
 
-  <section>
-    <h2>Mis líneas</h2>
-    <p class="muted">Guarda la línea SIM a la que quieres enviar paquetes. Las líneas solo son visibles en tu cuenta.</p>
+  <section id="lineas">
+    <div class="section-heading">
+      <div><p class="eyebrow">Paso 1 · Tu perfil</p><h2>Mis líneas</h2><p>Guarda tus SIM para saber a qué número se enviaría cada recarga. Solo tú puedes verlas.</p></div>
+    </div>
+    <p class="section-count" th:text="|${lineas.size()} línea(s) guardada(s)|">0 líneas guardadas</p>
     <p th:if="${#lists.isEmpty(operadores)}" class="muted">
       Todavía no hay operadores configurados. Un moderador debe habilitar el catálogo.
     </p>
     <form th:if="${not #lists.isEmpty(operadores)}" th:action="@{/lineas}" method="post" class="grid">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <label>Operador
         <select name="operadorId" required>
           <option value="" disabled selected>Selecciona operador</option>
@@ -167,15 +272,54 @@
     </form>
     <div th:if="${not #lists.isEmpty(lineas)}">
       <h3>Líneas guardadas</h3>
-      <ul>
-        <li th:each="linea : ${lineas}"
-            th:text="${linea.alias + ' · ' + linea.telefono}"></li>
+      <ul class="lines-list">
+        <li th:each="linea : ${lineas}">
+          <span class="line-icon" aria-hidden="true">SIM</span>
+          <span><strong th:text="${linea.alias}">Mi línea</strong><br><span th:text="${linea.telefono}">Número</span></span>
+        </li>
       </ul>
     </div>
   </section>
 
-  <section>
-    <h2>Paquetes disponibles</h2>
+  <section id="recargar-saldo">
+    <div class="section-heading">
+      <div><p class="eyebrow">Paso 2 · Saldo a tu SIM</p><h2>Recargar saldo</h2><p>Elige una de tus líneas y el monto que quieres agregar a su saldo prepago.</p></div>
+    </div>
+    <p class="simulation-warning" role="note">
+      Esta operación es una simulación: el valor se descontará de tu tarjeta universal, pero el saldo no se enviará
+      a la SIM hasta que DigiTrans tenga integración con el operador.
+    </p>
+    <form th:action="@{/recargar/saldo}" method="post" class="grid">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <input type="hidden" name="operationId" th:value="${customRechargeOperationId}">
+      <label>Línea a recargar
+        <select name="lineaId" required th:disabled="${#lists.isEmpty(lineasRecargables)}">
+          <option value="" disabled selected>Selecciona una línea SIM</option>
+          <option th:each="linea : ${lineasRecargables}"
+                  th:value="${linea.id}"
+                  th:text="${linea.alias + ' · ' + linea.telefono + ' · ' + operadoresPorId[linea.operadorId]}"></option>
+        </select>
+      </label>
+      <label class="custom-recharge-input">Monto (COP)
+        <input name="monto" type="number" min="1000" max="100000" step="1000"
+               placeholder="Ej. 25.000" required>
+      </label>
+      <div>
+        <button type="submit"
+                th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineasRecargables)}">
+          Simular recarga
+        </button>
+        <p th:if="${#lists.isEmpty(lineasRecargables)}" class="muted">
+          Primero <a href="#lineas">guarda una línea con operador activo</a> para poder recargarla.
+        </p>
+      </div>
+    </form>
+  </section>
+
+  <section id="paquetes">
+    <div class="section-heading">
+      <div><p class="eyebrow">Paso 2 · Oferta de tu operador</p><h2>Comprar paquetes</h2><p>Selecciona el operador y la categoría para comparar sus opciones.</p></div>
+    </div>
     <p class="simulation-warning" role="note">
       Importante: estos paquetes se muestran como catálogo informativo. La compra en DigiTrans es una simulación:
       el importe sí se descuenta de tu tarjeta universal, pero no se envía al operador ni se activa el paquete.
@@ -196,15 +340,29 @@
           <option value="">Selecciona una categoría</option>
         </select>
       </div>
+      <div class="catalog-search">
+        <label for="package-search">Buscar paquete
+          <input id="package-search" type="search" placeholder="Nombre o descripción">
+        </label>
+        <label for="package-min-price">Precio mínimo (COP)
+          <input id="package-min-price" type="number" min="0" step="1000" placeholder="Sin mínimo">
+        </label>
+        <label for="package-max-price">Precio máximo (COP)
+          <input id="package-max-price" type="number" min="0" step="1000" placeholder="Sin máximo">
+        </label>
+      </div>
       <p class="package-empty" id="package-selection-prompt">
         Elige Claro, Tigo u otro operador para consultar sus paquetes disponibles.
       </p>
+      <p class="package-empty" id="package-no-results" hidden>No hay paquetes que coincidan con esos filtros.</p>
       <div class="grid" id="available-packages">
       <article class="package" th:each="paquete : ${paquetes}"
                data-package-card
                th:attr="data-operator-id=${paquete.operadorId},
                         data-category=${paquete.categoria.name()},
-                        data-category-label=${paquete.categoria.nombreVisible}" hidden>
+                        data-category-label=${paquete.categoria.nombreVisible},
+                        data-price=${paquete.precio},
+                        data-search=${paquete.nombre + ' ' + paquete.descripcion + ' ' + operadoresPorId[paquete.operadorId]}" hidden>
         <p class="package-operator" th:text="${operadoresPorId[paquete.operadorId]}">Operador</p>
         <h3 th:text="${paquete.nombre}"></h3>
         <p th:text="${paquete.descripcion}"></p>
@@ -221,6 +379,7 @@
             <button type="button" class="cancel-package" data-cancel-package hidden>Cancelar selección</button>
           </div>
           <form th:action="@{/recargar}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <input type="hidden" name="paqueteId" th:value="${paquete.id}">
             <input type="hidden" name="operationId" th:value="${operationIds[paquete.id]}">
             <label>Enviar a
@@ -239,40 +398,6 @@
           </form>
         </div>
       </article>
-      <article class="package" data-package-card
-               th:if="${movilExitoId != null}"
-               th:attr="data-operator-id=${movilExitoId},
-                        data-category='RECARGA_DINERO',
-                        data-category-label='Recargas en dinero'" hidden>
-        <p class="package-operator">Móvil Éxito</p>
-        <h3>Recarga otro valor</h3>
-        <p>Elige el monto de tu recarga entre $1.000 y $100.000 COP.</p>
-        <div class="package-actions">
-          <button type="button" class="secondary" data-select-package>Elegir este paquete</button>
-          <button type="button" class="cancel-package" data-cancel-package hidden>Cancelar selección</button>
-        </div>
-        <form th:action="@{/recargar/saldo}" method="post">
-          <input type="hidden" name="operadorId" th:value="${movilExitoId}">
-          <input type="hidden" name="operationId" th:value="${customRechargeOperationId}">
-          <label class="custom-recharge-input">Monto a recargar (COP)
-            <input name="monto" type="number" min="1000" max="100000" step="1000"
-                   placeholder="Ej. 25.000" required disabled>
-          </label>
-          <label>Enviar a
-            <select name="lineaId" required disabled>
-              <option value="" disabled selected>Selecciona tu línea SIM</option>
-              <option th:each="linea : ${lineas}"
-                      th:if="${linea.operadorId == movilExitoId}"
-                      th:value="${linea.id}"
-                      th:text="${linea.alias + ' · ' + linea.telefono}"></option>
-            </select>
-          </label>
-          <button type="submit"
-                  th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
-                  th:attr="data-wallet-blocked=${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
-                  disabled>Simular recarga</button>
-        </form>
-      </article>
       </div>
       <p class="package-selection-status" id="package-selection-status" aria-live="polite"></p>
     </div>
@@ -286,13 +411,53 @@
     </p>
   </section>
 
-  <section>
-    <h2>Mis recargas recientes</h2>
+  <section id="historial">
+    <div class="section-heading">
+      <div><p class="eyebrow">Paso 3 · Seguimiento</p><h2>Historial de recargas</h2><p>Busca y filtra tus operaciones. Las más recientes aparecen primero.</p></div>
+    </div>
     <p th:if="${#lists.isEmpty(recargas)}" class="muted">Aún no has realizado recargas.</p>
-    <table th:unless="${#lists.isEmpty(recargas)}">
+    <div th:unless="${#lists.isEmpty(recargas)}">
+    <div class="history-filters" aria-label="Filtros del historial">
+      <label for="history-search">Buscar
+        <input id="history-search" type="search" placeholder="Operador, línea, paquete o ID">
+      </label>
+      <label for="history-operator">Operador
+        <select id="history-operator"><option value="">Todos</option></select>
+      </label>
+      <label for="history-status">Estado
+        <select id="history-status">
+          <option value="">Todos</option>
+          <option value="SIMULADA">Simulada</option>
+          <option value="PROCESANDO">Procesando</option>
+          <option value="RECHAZADA">Rechazada</option>
+        </select>
+      </label>
+      <label for="history-type">Tipo
+        <select id="history-type">
+          <option value="">Todos</option>
+          <option value="saldo">Recarga de saldo</option>
+          <option value="paquete">Paquete</option>
+        </select>
+      </label>
+      <label for="history-from">Desde
+        <input id="history-from" type="date">
+      </label>
+      <label for="history-to">Hasta
+        <input id="history-to" type="date">
+      </label>
+    </div>
+    <p id="history-results" class="muted" aria-live="polite"></p>
+    <p id="history-no-results" class="history-empty" hidden>No hay recargas que coincidan con esos filtros.</p>
+    <div style="overflow-x:auto">
+    <table id="history-table">
       <thead><tr><th>Fecha</th><th>Línea</th><th>Paquete</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
       <tbody>
-      <tr th:each="recarga : ${recargas}">
+      <tr th:each="recarga : ${recargas}" data-history-row
+          th:attr="data-search=${recarga.operador + ' ' + recarga.telefono + ' ' + recarga.paquete + ' ' + recarga.operacionId},
+                   data-operator=${recarga.operador},
+                   data-status=${recarga.estado},
+                   data-type=${#strings.startsWith(recarga.paquete, 'Recarga de saldo') ? 'saldo' : 'paquete'},
+                   data-date=${#temporals.format(recarga.fecha, 'yyyy-MM-dd')}">
         <td th:text="${#temporals.format(recarga.fecha, 'dd/MM/yyyy HH:mm')}"></td>
         <td th:text="${recarga.operador + ' · ' + recarga.telefono}"></td>
         <td th:text="${recarga.paquete}"></td>
@@ -301,13 +466,28 @@
         <td>
           <form th:if="${recarga.estado == 'PROCESANDO'}"
                 th:action="@{'/recargar/' + ${recarga.operacionId} + '/reintentar'}" method="post">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
             <button type="submit" class="secondary">Revisar estado</button>
           </form>
         </td>
       </tr>
       </tbody>
     </table>
+    </div>
+    <nav class="history-pagination" aria-label="Paginación del historial">
+      <button type="button" id="history-previous" class="secondary">← Anteriores</button>
+      <span id="history-page" aria-live="polite"></span>
+      <button type="button" id="history-next" class="secondary">Siguientes →</button>
+    </nav>
+    </div>
   </section>
+  <footer class="page-footer recargas-page-footer">
+    <form th:action="@{/logout}" method="post">
+      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+      <button type="submit">Salir</button>
+    </form>
+    <p>Digitrans · Recargas móviles</p>
+  </footer>
 </main>
 <script>
   const packageOperatorSelect = document.querySelector("#package-operator");
@@ -320,6 +500,10 @@
   );
   const packageSelectionPrompt = document.querySelector("#package-selection-prompt");
   const packageSelectionStatus = document.querySelector("#package-selection-status");
+  const packageSearch = document.querySelector("#package-search");
+  const packageMinPrice = document.querySelector("#package-min-price");
+  const packageMaxPrice = document.querySelector("#package-max-price");
+  const packageNoResults = document.querySelector("#package-no-results");
   let selectedPackageCard = null;
 
   packageOperatorSelect?.addEventListener("change", () => {
@@ -336,7 +520,7 @@
     packageCategorySelect.replaceChildren(new Option("Selecciona una categoría", ""));
     const categoryOrder = [
       "PAQUETE", "PREPAGO", "POSTPAGO", "MOVISTAR_PRO", "OTROS_PAQUETES", "ROAMING",
-      "RECARGA_DINERO", "BOLSA_DATOS"
+      "BOLSA_DATOS"
     ];
     [...operatorCategories.entries()]
       .sort(([first], [second]) => categoryOrder.indexOf(first) - categoryOrder.indexOf(second))
@@ -358,6 +542,10 @@
     updatePackageControls();
     packageSelectionStatus.textContent = "";
     showPackagesForSelection();
+  });
+
+  [packageSearch, packageMinPrice, packageMaxPrice].forEach((input) => {
+    input?.addEventListener("input", showPackagesForSelection);
   });
 
   selectablePackageCards.forEach((card) => {
@@ -404,26 +592,127 @@
   function showPackagesForSelection() {
     const operatorId = packageOperatorSelect?.value ?? "";
     const category = packageCategorySelect?.value ?? "";
+    const search = packageSearch?.value.trim().toLocaleLowerCase() ?? "";
+    const minimumPrice = packageMinPrice?.value === "" ? null : Number(packageMinPrice?.value);
+    const maximumPrice = packageMaxPrice?.value === "" ? null : Number(packageMaxPrice?.value);
+    const categoryRequired = packageCategorySelect && !packageCategorySelect.disabled && !category;
+    let matchingPackages = 0;
     let visiblePackages = 0;
 
     packageCards.forEach((card) => {
       const matchesOperator = card.dataset.operatorId === operatorId;
       const matchesCategory = !packageCategorySelect || packageCategorySelect.disabled
         || card.dataset.category === category;
-      const visible = Boolean(operatorId && matchesOperator && matchesCategory);
+      const price = Number(card.dataset.price);
+      const matchesSearch = (card.dataset.search ?? "").toLocaleLowerCase().includes(search);
+      const matchesPrice = (minimumPrice === null || price >= minimumPrice)
+        && (maximumPrice === null || price <= maximumPrice);
+      const matchesSelection = Boolean(operatorId && matchesOperator && matchesCategory);
+      if (matchesSelection) {
+        matchingPackages += 1;
+      }
+      const visible = matchesSelection && matchesSearch && matchesPrice;
       card.hidden = !visible;
       if (visible) {
         visiblePackages += 1;
       }
     });
 
-    packageSelectionPrompt.hidden = visiblePackages > 0;
+    const needsSelection = !operatorId || categoryRequired;
+    packageSelectionPrompt.hidden = !needsSelection;
+    packageNoResults.hidden = needsSelection || visiblePackages > 0;
     packageSelectionPrompt.textContent = !operatorId
       ? "Elige un operador para consultar sus paquetes disponibles."
-      : packageCategorySelect && !packageCategorySelect.disabled && !category
+      : categoryRequired
         ? "Elige una categoría para ver sus ofertas."
-        : "Este operador no tiene productos activos en esta categoría.";
+        : matchingPackages === 0
+          ? "Este operador no tiene productos activos en esta categoría."
+          : packageSelectionPrompt.textContent;
   }
+
+  const historyRows = Array.from(document.querySelectorAll("[data-history-row]"));
+  const historyOperator = document.querySelector("#history-operator");
+  const historySearch = document.querySelector("#history-search");
+  const historyStatus = document.querySelector("#history-status");
+  const historyType = document.querySelector("#history-type");
+  const historyFrom = document.querySelector("#history-from");
+  const historyTo = document.querySelector("#history-to");
+  const historyTable = document.querySelector("#history-table");
+  const historyNoResults = document.querySelector("#history-no-results");
+  const historyResults = document.querySelector("#history-results");
+  const historyPagination = document.querySelector(".history-pagination");
+  const historyPageLabel = document.querySelector("#history-page");
+  const historyPrevious = document.querySelector("#history-previous");
+  const historyNext = document.querySelector("#history-next");
+  const historyPageSize = 5;
+  let historyPageIndex = 0;
+
+  const historyOperators = [...new Set(historyRows.map((row) => row.dataset.operator))]
+    .sort((first, second) => first.localeCompare(second, "es"));
+  historyOperators.forEach((operator) => historyOperator?.add(new Option(operator, operator)));
+
+  function updateHistory() {
+    const search = historySearch?.value.trim().toLocaleLowerCase() ?? "";
+    const filteredRows = historyRows.filter((row) => {
+      const date = row.dataset.date ?? "";
+      return (row.dataset.search ?? "").toLocaleLowerCase().includes(search)
+        && (!historyOperator?.value || row.dataset.operator === historyOperator.value)
+        && (!historyStatus?.value || row.dataset.status === historyStatus.value)
+        && (!historyType?.value || row.dataset.type === historyType.value)
+        && (!historyFrom?.value || date >= historyFrom.value)
+        && (!historyTo?.value || date <= historyTo.value);
+    });
+    const pageCount = Math.ceil(filteredRows.length / historyPageSize);
+    historyPageIndex = Math.min(historyPageIndex, Math.max(pageCount - 1, 0));
+    const firstIndex = historyPageIndex * historyPageSize;
+    const pageRows = new Set(filteredRows.slice(firstIndex, firstIndex + historyPageSize));
+
+    historyRows.forEach((row) => { row.hidden = !pageRows.has(row); });
+    if (historyTable) {
+      historyTable.hidden = filteredRows.length === 0;
+    }
+    if (historyNoResults) {
+      historyNoResults.hidden = filteredRows.length > 0;
+    }
+    if (historyResults) {
+      historyResults.textContent = filteredRows.length === 0
+        ? ""
+        : `Mostrando ${firstIndex + 1}–${Math.min(firstIndex + historyPageSize, filteredRows.length)} de ${filteredRows.length} recargas`;
+    }
+    if (historyPageLabel) {
+      historyPageLabel.textContent = `Página ${pageCount === 0 ? 0 : historyPageIndex + 1} de ${pageCount}`;
+    }
+    if (historyPrevious) {
+      historyPrevious.disabled = historyPageIndex === 0;
+    }
+    if (historyNext) {
+      historyNext.disabled = historyPageIndex >= pageCount - 1;
+    }
+    if (historyPagination) {
+      historyPagination.hidden = filteredRows.length <= historyPageSize;
+    }
+  }
+
+  [historySearch, historyOperator, historyStatus, historyType, historyFrom, historyTo]
+    .forEach((input) => {
+      input?.addEventListener("input", () => {
+        historyPageIndex = 0;
+        updateHistory();
+      });
+      input?.addEventListener("change", () => {
+        historyPageIndex = 0;
+        updateHistory();
+      });
+    });
+  historyPrevious?.addEventListener("click", () => {
+    historyPageIndex -= 1;
+    updateHistory();
+  });
+  historyNext?.addEventListener("click", () => {
+    historyPageIndex += 1;
+    updateHistory();
+  });
+  updateHistory();
 </script>
 </body>
 </html>

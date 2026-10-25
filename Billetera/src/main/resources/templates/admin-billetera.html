@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel de Billetera | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-14)}">
 </head>
 <body>
-<main class="wallet-page admin-page">
+<main class="wallet-page admin-page wallet-admin-nav-page">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
     <header class="page-header admin-header">
         <div>
             <p class="eyebrow">CENTRO DE OPERACIONES · DIGITRANS</p>
@@ -19,9 +20,7 @@
             </p>
         </div>
         <nav class="header-links" aria-label="Navegación de administración">
-            <a class="back-link" th:href="@{/admin}">← Volver a cuentas</a>
-            <a class="back-link" th:href="@{/admin/tarjetas-desactivadas}">Tarjetas desactivadas</a>
-            <a class="back-link" th:href="@{/}">Vista usuario</a>
+            <a class="back-link" th:href="@{/admin/cuentas}">← Volver a cuentas</a>
         </nav>
     </header>
 
@@ -166,7 +165,7 @@
             </article>
         </div>
     </section>
-    <footer class="page-footer">DIGITRANS · Herramientas de soporte y supervisión</footer>
+    <div th:replace="~{fragments/admin-wallet-footer :: servicesFooter}"></div>
 </main>
 </body>
 </html>

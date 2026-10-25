@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Chat administrativo · Recargas móviles</title>
+  <link rel="stylesheet" th:href="@{/css/admin-recargas.css(v=20261025-4)}">
+</head>
+<body>
+  <div th:replace="~{fragments/admin-recargas-nav :: moderatorNav}"></div>
+  <main class="admin-main">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow">Coordinación interna · Recargas móviles</p>
+        <h1>Chat administrativo</h1>
+        <p class="muted">Espacio compartido para administradores y moderadores de Recargas.</p>
+      </div>
+      <a class="button-link secondary" th:href="@{/admin}">Volver al panel</a>
+    </header>
+
+    <section class="admin-section admin-chat-card" aria-label="Conversación administrativa">
+      <div class="admin-chat-heading">
+        <div>
+          <h2>Equipo de Recargas</h2>
+          <p class="muted">Actualización automática · Se muestran los últimos 100 mensajes.</p>
+        </div>
+        <span class="admin-chat-current-user"
+              th:text="${identity.name() != null and !identity.name().isBlank() ? identity.name() : identity.email()}">Usuario</span>
+      </div>
+      <div id="adminChatMessages" class="admin-chat-messages" aria-live="polite"
+           th:data-messages-url="@{/admin/chat/mensajes}"
+           th:data-author-id="${identity.id()}">
+        <p class="muted">Cargando conversación...</p>
+      </div>
+      <p id="adminChatError" class="notice error" role="alert" hidden></p>
+      <form id="adminChatForm" class="admin-chat-compose" th:action="@{/admin/chat/mensajes}" method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+        <label for="adminChatText">Escribe un mensaje</label>
+        <textarea id="adminChatText" name="texto" rows="3" maxlength="1000"
+                  placeholder="Escribe un mensaje para el equipo..." required></textarea>
+        <div class="admin-chat-compose-footer">
+          <span class="muted">Máximo 1000 caracteres</span>
+          <button id="adminChatSubmit" type="submit">Enviar mensaje</button>
+        </div>
+      </form>
+    </section>
+    <div th:replace="~{fragments/admin-recargas-footer :: logoutFooter}"></div>
+  </main>
+  <script th:src="@{/js/admin-chat.js(v=20261025-1)}" defer></script>
+</body>
+</html>

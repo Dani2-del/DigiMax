@@ -69,7 +69,7 @@ public class BilleteraController {
                         .toList())
                 .orElse(List.of()));
         model.addAttribute("accesoUrl", accesoUrl);
-        model.addAttribute("adminUrl", "/admin");
+        model.addAttribute("adminUrl", "/admin/dashboard");
         return "billetera";
     }
 

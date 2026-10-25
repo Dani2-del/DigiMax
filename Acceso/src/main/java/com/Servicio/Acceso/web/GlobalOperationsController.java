@@ -63,14 +63,20 @@ public class GlobalOperationsController {
     private final UsuarioRepository usuarios;
     private final GlobalOperationsService operations;
     private final String transporteUrl;
+    private final String billeteraUrl;
+    private final String recargasUrl;
 
     public GlobalOperationsController(
             UsuarioRepository usuarios,
             GlobalOperationsService operations,
-            @Value("${app.services.transporte-url}") String transporteUrl) {
+            @Value("${app.services.transporte-url}") String transporteUrl,
+            @Value("${app.services.billetera-url}") String billeteraUrl,
+            @Value("${app.services.recargas-url}") String recargasUrl) {
         this.usuarios = usuarios;
         this.operations = operations;
         this.transporteUrl = transporteUrl;
+        this.billeteraUrl = billeteraUrl;
+        this.recargasUrl = recargasUrl;
     }
 
     @GetMapping("/transacciones")
@@ -138,7 +144,9 @@ public class GlobalOperationsController {
                 new ChatLink("Transcaribe", transporteUrl + "/admin/chat/TRANSCARIBE", true),
                 new ChatLink("TransMilenio", transporteUrl + "/admin/chat/TRANSMILENIO", true),
                 new ChatLink("Transmetro", transporteUrl + "/admin/chat/TRANSMETRO", true)));
-        model.addAttribute("plannedChats", List.of("Billetera", "Recargas móviles"));
+        model.addAttribute("serviceChats", List.of(
+                new ChatLink("Billetera", billeteraUrl + "/admin/chat", true),
+                new ChatLink("Recargas móviles", recargasUrl + "/admin/chat", true)));
         return "admin/global-chats";
     }
 

@@ -1,6 +1,7 @@
 package com.Servicio.Billetera.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -11,16 +12,21 @@ import java.util.stream.IntStream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.ui.ExtendedModelMap;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.security.RemoteAccessAuthenticationFilter;
+import com.Servicio.Billetera.service.BilleteraExcelReportService;
+import com.Servicio.Billetera.service.BilleteraExcelReportService.MovementReportRow;
 import com.Servicio.Billetera.service.BilleteraService;
 import com.Servicio.Billetera.service.WalletUserDirectoryClient;
 import com.Servicio.Billetera.service.WalletUserDirectoryClient.UserPage;
@@ -36,8 +42,70 @@ class AdminTarjetasControllerTest {
     @Mock
     private WalletUserDirectoryClient userDirectory;
 
+    @Mock
+    private BilleteraExcelReportService excelReportService;
+
     @InjectMocks
     private AdminTarjetasController controller;
+
+    @Test
+    void adminRootOpensTheDashboardInsteadOfTheAccountSearch() {
+        assertThat(controller.adminHome()).isEqualTo("redirect:/admin/dashboard");
+    }
+
+    @Test
+    void reportsPageProvidesAvailableMovementFilters() {
+        when(billeteraService.billeterasAdministrativas())
+                .thenReturn(List.of(walletWithMovements(0)));
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertThat(controller.reports(model)).isEqualTo("admin-reportes-billetera");
+        assertThat(model.getAttribute("tipos")).isEqualTo(List.of("ABONO"));
+        assertThat(model.getAttribute("servicios")).isEqualTo(List.of("Billetera"));
+    }
+
+    @Test
+    void excelReportReturnsWorkbookWithSelectedFilters() throws Exception {
+        when(billeteraService.billeterasAdministrativas())
+                .thenReturn(List.of(walletWithMovements(0)));
+        when(excelReportService.createReport(
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.anyList()))
+                .thenReturn(new byte[] { 1, 2, 3 });
+
+        var response = controller.downloadExcelReport(
+                List.of("usuario", "operacion"), "ABONO", "Billetera",
+                LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 25));
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(response.getHeaders().getContentType())
+                .isEqualTo(MediaType.parseMediaType(
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        assertThat(response.getHeaders().getFirst(HttpHeaders.CONTENT_DISPOSITION))
+                .contains("attachment")
+                .contains("Reporte_Billetera_");
+        assertThat(response.getBody()).containsExactly(1, 2, 3);
+        org.mockito.ArgumentCaptor<List<MovementReportRow>> rows =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.ArgumentCaptor<List<BilleteraExcelReportService.ReportColumn>> columns =
+                org.mockito.ArgumentCaptor.forClass(List.class);
+        org.mockito.Mockito.verify(excelReportService).createReport(rows.capture(), columns.capture());
+        assertThat(rows.getValue()).hasSize(4);
+        assertThat(columns.getValue()).extracting(BilleteraExcelReportService.ReportColumn::name)
+                .containsExactly("USER", "OPERATION");
+    }
+
+    @Test
+    void excelReportRejectsNoColumnsAndInvalidDateRange() {
+        assertThatThrownBy(() -> controller.downloadExcelReport(
+                List.of(), "", "", null, null))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("400");
+        assertThatThrownBy(() -> controller.downloadExcelReport(
+                List.of("monto"), "", "",
+                LocalDate.of(2026, 10, 26), LocalDate.of(2026, 10, 25)))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("400");
+    }
 
     @Test
     void movementsPagePaginatesFiveMostRecentEntries() {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Panel moderador | Billetera Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-8)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-14)}">
 </head>
 <body>
 <main class="wallet-page admin-page wallet-moderator-page wallet-admin-nav-page">
@@ -14,10 +14,6 @@
             <h1>Panel moderador</h1>
             <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '. Busca cuentas y atiende operaciones de Billetera.'}"></p>
         </div>
-        <nav class="header-links" aria-label="Cambiar vista">
-            <a class="wallet-view-moderator" th:href="@{/admin/dashboard}">Panel principal</a>
-            <a class="back-link" th:href="@{/}">Vista usuario</a>
-        </nav>
     </header>
 
     <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
@@ -43,7 +39,7 @@
                 <h2>Seleccionar una cuenta</h2>
                 <p class="muted">Busca por nombre, correo, ID o número de tarjeta; filtra por saldo. Las herramientas aparecen al abrir una cuenta.</p>
             </div>
-            <form class="wallet-account-filters" method="get" th:action="@{/admin}">
+            <form class="wallet-account-filters" method="get" th:action="@{/admin/cuentas}">
                 <label class="wallet-account-search">Nombre, correo, ID o tarjeta
                     <input name="buscar" type="search" maxlength="120"
                            placeholder="Ej. nombre@correo.com" th:value="${buscar}">
@@ -58,7 +54,7 @@
                 </label>
                 <div class="wallet-filter-actions">
                     <button type="submit">Buscar cuentas</button>
-                    <a class="button-secondary admin-clear" th:href="@{/admin#cuentas}">Limpiar</a>
+                    <a class="button-secondary admin-clear" th:href="@{/admin/cuentas}">Limpiar</a>
                 </div>
             </form>
         </div>
@@ -99,7 +95,6 @@
         </div>
     </section>
 
-    <footer class="page-footer">DIGITRANS · BILLETERA UNIVERSAL · OPERACIONES CON TRAZABILIDAD</footer>
 </main>
 </body>
 </html>

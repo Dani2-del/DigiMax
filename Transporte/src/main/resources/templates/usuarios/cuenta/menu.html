@@ -6,7 +6,7 @@
   <meta name="theme-color"
         th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#0F3948')}" />
   <title>Mi espacio - Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261023-1)}" />
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261025-3)}" />
   <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}" />
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
@@ -34,6 +34,9 @@
 
       <section th:attr="data-sistema=${sistemaActual}" aria-label="Sistema de transporte activo">
         <p>Sistema seleccionado: <strong th:text="${sistemaActual.nombre}">Transcaribe</strong></p>
+        <p th:if="${param.error}" class="choice-alert" role="alert">
+          No se pudo confirmar el cambio. Selecciona el sistema e inténtalo de nuevo.
+        </p>
         <form th:if="${usuario.role == 'ROLE_ADMIN'}" th:action="@{/menu/sistema}" method="post">
           <label for="sistema">Cambiar sistema:</label>
           <select id="sistema" name="sistema">
@@ -42,8 +45,23 @@
                     th:text="${sistema.nombre}"
                     th:selected="${sistema == sistemaActual}"></option>
           </select>
+          <input type="hidden" name="primeraConfirmacion" value="true">
           <button type="submit">Cambiar sistema</button>
         </form>
+        <section th:if="${confirmarCambioAdmin}" class="admin-sitm-confirmation" aria-live="polite">
+          <p class="choice-eyebrow">CONFIRMA EL CAMBIO</p>
+          <h2>¿Cambiar el sistema de administración?</h2>
+          <p>Vas a cambiar el contexto actual a <strong th:text="${sistemaPendienteAdmin.nombre}">Transcaribe</strong>.</p>
+          <div class="choice-actions confirmation-actions">
+            <a class="secondary-action" th:href="@{/menu}">Cancelar</a>
+            <form th:action="@{/menu/sistema/confirmar}" method="post">
+              <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+              <input type="hidden" name="sistema" th:value="${sistemaPendienteAdmin.name()}">
+              <input type="hidden" name="segundaConfirmacion" value="true">
+              <button class="primary-action" type="submit">Sí, cambiar sistema</button>
+            </form>
+          </div>
+        </section>
       </section>
 
       <section class="dashboard-summary" aria-label="Resumen de cuenta">

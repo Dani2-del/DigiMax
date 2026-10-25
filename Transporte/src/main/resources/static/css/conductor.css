@@ -1009,3 +1009,11 @@ body[data-sistema="TRANSMETRO"] .conductor-navbar {
     transition-duration: 0.001ms !important;
   }
 }
+
+body[data-sistema="TRANSMETRO"]::before {
+  background-image: url("/images/fondo_transmetro.jpg");
+}
+
+body[data-sistema="TRANSMILENIO"]::before {
+  background-image: url("/images/fondo_transmilenio.jpg");
+}

@@ -8,5 +8,7 @@ import com.Servicio.RecargasMovil.model.RecargaMovil;
 
 public interface RecargaMovilRepository extends MongoRepository<RecargaMovil, String> {
 
-    List<RecargaMovil> findTop20ByUsuarioIdOrderByFechaDesc(String usuarioId);
+    List<RecargaMovil> findByUsuarioIdOrderByFechaDesc(String usuarioId);
+
+    long countByEstado(String estado);
 }

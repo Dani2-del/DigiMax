@@ -42,7 +42,27 @@ class GlobalOperationsControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new GlobalOperationsController(usuarios, operations, "http://localhost:8081");
+        controller = new GlobalOperationsController(
+                usuarios, operations, "http://localhost:8081",
+                "http://localhost:8082", "http://localhost:8083");
+    }
+
+    @Test
+    void exposesOperationalChatLinksForAllConnectedServices() {
+        var model = new org.springframework.ui.ExtendedModelMap();
+
+        assertThat(controller.chats(model)).isEqualTo("admin/global-chats");
+        assertThat((List<GlobalOperationsController.ChatLink>) model.getAttribute("transportChats"))
+                .extracting(GlobalOperationsController.ChatLink::url)
+                .containsExactly(
+                        "http://localhost:8081/admin/chat/TRANSCARIBE",
+                        "http://localhost:8081/admin/chat/TRANSMILENIO",
+                        "http://localhost:8081/admin/chat/TRANSMETRO");
+        assertThat((List<GlobalOperationsController.ChatLink>) model.getAttribute("serviceChats"))
+                .extracting(GlobalOperationsController.ChatLink::url)
+                .containsExactly(
+                        "http://localhost:8082/admin/chat",
+                        "http://localhost:8083/admin/chat");
     }
 
     @Test

@@ -4,11 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjeta universal | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261024-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-1)}">
 </head>
 <body>
-<main class="wallet-page">
-    <header class="page-header">
+<nav class="wallet-section-nav" aria-label="Navegación de tu Billetera">
+    <a class="wallet-section-brand" href="#inicio" aria-label="Digitrans, mi Billetera">
+        <span class="wallet-section-mark" aria-hidden="true">D</span>
+        <strong>Digitrans</strong>
+    </a>
+    <a th:if="${walletExists}" href="#mi-tarjeta">Mi tarjeta</a>
+    <a th:if="${walletExists}" href="#diseno-seguridad">Diseño y seguridad</a>
+    <a th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" href="#cargar-saldo">Cargar saldo</a>
+    <a th:if="${walletExists}" href="#movimientos">Movimientos</a>
+    <a th:unless="${walletExists}" href="#activar-tarjeta">Activar tarjeta</a>
+    <a th:href="${accesoUrl + '/servicios'}">Servicios</a>
+</nav>
+<main class="wallet-page wallet-user-nav-page">
+    <header class="page-header" id="inicio">
         <div>
             <p class="eyebrow">DIGITRANS · BILLETERA</p>
             <h1>Tu tarjeta universal</h1>
@@ -22,7 +34,7 @@
     <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
     <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
 
-    <section th:if="${walletExists}" class="universal-card"
+    <section th:if="${walletExists}" id="mi-tarjeta" class="universal-card"
              th:classappend="${'theme-' + wallet.diseno.name().toLowerCase()}"
              aria-label="Tarjeta universal Digitrans">
         <span class="card-glow" aria-hidden="true"></span>
@@ -45,7 +57,7 @@
         </div>
     </section>
 
-    <section th:if="${walletExists}" class="panel card-controls">
+    <section th:if="${walletExists}" id="diseno-seguridad" class="panel card-controls">
         <div class="section-heading">
             <div>
                 <p class="eyebrow">PERSONALIZACIÓN</p>
@@ -91,7 +103,7 @@
         </div>
     </section>
 
-    <section th:unless="${walletExists}" class="panel">
+    <section th:unless="${walletExists}" id="activar-tarjeta" class="panel">
         <h2>Tu tarjeta universal no está activa</h2>
         <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si ya tenías una tarjeta generada, conservaremos su saldo y movimientos. Si la habías desactivado, emitiremos un número nuevo y mantendremos tu saldo. No se activará hasta que confirmes.</p>
         <div class="activation-step">
@@ -115,7 +127,7 @@
         </p>
     </section>
 
-    <section th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" class="panel">
+    <section th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" id="cargar-saldo" class="panel">
         <div class="section-heading">
             <div>
                 <p class="eyebrow">FONDOS</p>
@@ -179,7 +191,7 @@
         </form>
     </section>
 
-    <section th:if="${walletExists}" class="panel history-panel">
+    <section th:if="${walletExists}" id="movimientos" class="panel history-panel">
         <div class="section-heading">
             <div>
                 <p class="eyebrow">ACTIVIDAD</p>

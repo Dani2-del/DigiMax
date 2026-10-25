@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Reportes Excel | Billetera Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-15)}">
+</head>
+<body>
+<main class="wallet-page admin-page wallet-admin-nav-page">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
+    <header class="page-header admin-header">
+        <div>
+            <p class="eyebrow">EXPORTACIÓN DE DATOS · BILLETERA</p>
+            <h1>Reportes Excel</h1>
+            <p class="welcome">Elige las columnas y los filtros para generar el historial de movimientos.</p>
+        </div>
+        <a class="back-link" th:href="@{/admin/dashboard}">Volver al panel</a>
+    </header>
+
+    <section class="wallet-admin-report panel">
+        <div class="admin-directory-heading">
+            <div>
+                <p class="eyebrow">REPORTE DE MOVIMIENTOS</p>
+                <h2>Configurar reporte</h2>
+                <p class="muted">Selecciona al menos una columna. Si dejas los filtros vacíos, se incluyen todos los movimientos.</p>
+            </div>
+        </div>
+        <form method="get" th:action="@{/admin/reporte/excel}" class="wallet-admin-report-form">
+            <fieldset class="wallet-report-columns">
+                <legend>Columnas incluidas</legend>
+                <label><input type="checkbox" name="columnas" value="usuario" checked> Usuario (ID)</label>
+                <label><input type="checkbox" name="columnas" value="operacion" checked> Operación</label>
+                <label><input type="checkbox" name="columnas" value="tipo" checked> Tipo</label>
+                <label><input type="checkbox" name="columnas" value="descripcion" checked> Descripción</label>
+                <label><input type="checkbox" name="columnas" value="servicio" checked> Servicio</label>
+                <label><input type="checkbox" name="columnas" value="monto" checked> Monto</label>
+                <label><input type="checkbox" name="columnas" value="fecha" checked> Fecha</label>
+            </fieldset>
+            <div class="wallet-admin-report-filters">
+                <label>Tipo
+                    <select name="tipo">
+                        <option value="">Todos</option>
+                        <option th:each="option : ${tipos}" th:value="${option}" th:text="${option}">ABONO</option>
+                    </select>
+                </label>
+                <label>Servicio
+                    <select name="servicio">
+                        <option value="">Todos</option>
+                        <option th:each="option : ${servicios}" th:value="${option}" th:text="${option}">Billetera</option>
+                    </select>
+                </label>
+                <label>Desde
+                    <input type="date" name="desde">
+                </label>
+                <label>Hasta
+                    <input type="date" name="hasta">
+                </label>
+            </div>
+            <div class="wallet-admin-report-actions">
+                <button type="submit">Descargar Excel (.xlsx)</button>
+            </div>
+        </form>
+    </section>
+</main>
+</body>
+</html>

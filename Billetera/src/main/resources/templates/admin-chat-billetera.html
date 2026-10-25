@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Chat administrativo | Billetera Digitrans</title>
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-15)}">
+</head>
+<body>
+<main class="wallet-page admin-page wallet-admin-nav-page">
+    <nav th:replace="~{fragments/admin-wallet-nav :: sectionNav}"></nav>
+    <header class="page-header admin-header">
+        <div>
+            <p class="eyebrow">COORDINACIÓN INTERNA · BILLETERA</p>
+            <h1>Chat administrativo</h1>
+            <p class="welcome">Espacio compartido para administradores y moderadores de Billetera.</p>
+        </div>
+        <a class="back-link" th:href="@{/admin/dashboard}">Volver al panel</a>
+    </header>
+
+    <section class="wallet-admin-chat panel" aria-label="Conversación administrativa">
+        <div class="wallet-admin-chat-heading">
+            <div>
+                <h2>Equipo de Billetera</h2>
+                <p class="muted">Actualización automática · Últimos 100 mensajes</p>
+            </div>
+            <span class="wallet-admin-chat-current-user"
+                  th:text="${identity.name() != null and !identity.name().isBlank() ? identity.name() : identity.email()}">Usuario</span>
+        </div>
+        <div id="walletAdminChatMessages" class="wallet-admin-chat-messages" aria-live="polite"
+             th:data-messages-url="@{/admin/chat/mensajes}"
+             th:data-author-id="${identity.id()}">
+            <p class="muted">Cargando conversación...</p>
+        </div>
+        <p id="walletAdminChatError" class="notice error wallet-admin-chat-error" role="alert" hidden></p>
+        <form id="walletAdminChatForm" class="wallet-admin-chat-compose"
+              th:action="@{/admin/chat/mensajes}" method="post">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <label for="walletAdminChatText">Escribe un mensaje</label>
+            <textarea id="walletAdminChatText" name="texto" rows="3" maxlength="1000"
+                      placeholder="Escribe un mensaje para el equipo..." required></textarea>
+            <div class="wallet-admin-chat-compose-footer">
+                <span class="muted">Máximo 1000 caracteres</span>
+                <button id="walletAdminChatSubmit" type="submit">Enviar mensaje</button>
+            </div>
+        </form>
+    </section>
+</main>
+<script th:src="@{/js/admin-chat-billetera.js(v=20261025-1)}" defer></script>
+</body>
+</html>

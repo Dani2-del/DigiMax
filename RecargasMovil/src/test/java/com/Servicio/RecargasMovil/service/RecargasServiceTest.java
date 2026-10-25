@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -133,35 +134,72 @@ class RecargasServiceTest {
     }
 
     @Test
-    void simulatesExitoMoneyRechargeAndDebitsTheChosenAmount() {
-        OperadorMovil exito = operator("exito-1");
-        exito.setNombre("Móvil Éxito");
-        LineaMovil line = line("line-1", "user-1", "exito-1");
+    void simulatesMoneyRechargeForAnyActiveOperatorAndDebitsTheChosenAmount() {
+        OperadorMovil claro = operator("claro-1");
+        claro.setNombre("Claro");
+        LineaMovil line = line("line-1", "user-1", "claro-1");
         when(recargas.findById("operation-2")).thenReturn(Optional.empty());
-        when(operadores.findById("exito-1")).thenReturn(Optional.of(exito));
+        when(operadores.findById("claro-1")).thenReturn(Optional.of(claro));
         when(lineas.findById("line-1")).thenReturn(Optional.of(line));
         when(recargas.insert(any(RecargaMovil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         when(walletClient.debit("token", "operation-2", new BigDecimal("25000.00"),
-                "Paquete Móvil Éxito para ****4567"))
+                "Recarga de saldo Claro para ****4567"))
                 .thenReturn(new WalletClient.Wallet("user-1", "UNI-123", new BigDecimal("10000")));
         when(recargas.save(any(RecargaMovil.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
         RecargaMovil result = service.solicitarRecargaDinero(
-                "user-1", "exito-1", "line-1", new BigDecimal("25000"), "operation-2", "token");
+                "user-1", "line-1", new BigDecimal("25000"), "operation-2", "token");
 
         assertThat(result.getEstado()).isEqualTo(RecargaMovil.STATUS_SIMULATED);
         assertThat(result.getMonto()).isEqualByComparingTo("25000");
         assertThat(result.getPaquete()).isEqualTo("Recarga de saldo $25000");
         verify(walletClient).debit("token", "operation-2", new BigDecimal("25000.00"),
-                "Paquete Móvil Éxito para ****4567");
+                "Recarga de saldo Claro para ****4567");
+    }
+
+    @Test
+    void rejectsAnotherUsersLineForMoneyRecharge() {
+        LineaMovil otherUsersLine = line("line-1", "other-user", "claro-1");
+        when(recargas.findById("operation-2")).thenReturn(Optional.empty());
+        when(lineas.findById("line-1")).thenReturn(Optional.of(otherUsersLine));
+
+        assertThatThrownBy(() -> service.solicitarRecargaDinero(
+                "user-1", "line-1", new BigDecimal("25000"), "operation-2", "token"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Selecciona una línea tuya.");
+
+        verify(walletClient, never()).debit(any(), any(), any(), any());
+        verify(recargas, never()).insert(any(RecargaMovil.class));
+    }
+
+    @Test
+    void excludesLegacyMoneyRechargeDenominationsFromPackageCatalog() {
+        OperadorMovil claro = operator("claro-1");
+        PaqueteMovil dataPackage = mobilePackage("package-1", "claro-1", "Datos");
+        PaqueteMovil oldRechargeDenomination = mobilePackage("recharge-1", "claro-1", "Recarga de $1.000");
+        oldRechargeDenomination.setCategoria(CategoriaPaquete.RECARGA_DINERO);
+        when(operadores.findByActivoTrueOrderByNombreAsc()).thenReturn(List.of(claro));
+        when(paquetes.findByOperadorIdAndActivoTrueOrderByPrecioAsc("claro-1"))
+                .thenReturn(List.of(oldRechargeDenomination, dataPackage));
+
+        assertThat(service.paquetesActivos()).containsExactly(dataPackage);
+    }
+
+    @Test
+    void returnsCompleteUserRechargeHistoryInRepositoryOrder() {
+        List<RecargaMovil> history = List.of(new RecargaMovil(), new RecargaMovil());
+        when(recargas.findByUsuarioIdOrderByFechaDesc("user-1")).thenReturn(history);
+
+        assertThat(service.historialDelUsuario("user-1")).containsExactlyElementsOf(history);
+        verify(recargas).findByUsuarioIdOrderByFechaDesc("user-1");
     }
 
     @Test
     void rejectsInvalidCustomRechargeAmountsBeforeDebitingWallet() {
         assertThatThrownBy(() -> service.solicitarRecargaDinero(
-                "user-1", "exito-1", "line-1", new BigDecimal("1500"), "operation-3", "token"))
+                "user-1", "line-1", new BigDecimal("1500"), "operation-3", "token"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("incrementos de $1.000");
 

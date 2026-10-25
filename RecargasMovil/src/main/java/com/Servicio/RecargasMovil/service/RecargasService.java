@@ -54,6 +54,7 @@ public class RecargasService {
         return operadoresActivos().stream()
                 .flatMap(operator -> paquetes
                         .findByOperadorIdAndActivoTrueOrderByPrecioAsc(operator.getId()).stream())
+                .filter(mobilePackage -> mobilePackage.getCategoria() != CategoriaPaquete.RECARGA_DINERO)
                 .toList();
     }
 
@@ -62,7 +63,7 @@ public class RecargasService {
     }
 
     public List<RecargaMovil> historialDelUsuario(String usuarioId) {
-        return recargas.findTop20ByUsuarioIdOrderByFechaDesc(usuarioId);
+        return recargas.findByUsuarioIdOrderByFechaDesc(usuarioId);
     }
 
     public OperadorMovil crearOperador(String nombre) {
@@ -82,9 +83,53 @@ public class RecargasService {
 
     public PaqueteMovil crearPaquete(
             String operadorId, String nombre, String descripcion, BigDecimal precio) {
+        return crearPaquete(operadorId, nombre, descripcion, precio, CategoriaPaquete.PAQUETE);
+    }
+
+    public PaqueteMovil crearPaquete(
+            String operadorId,
+            String nombre,
+            String descripcion,
+            BigDecimal precio,
+            CategoriaPaquete categoria) {
         OperadorMovil operator = operadores.findById(operadorId)
                 .filter(OperadorMovil::isActivo)
                 .orElseThrow(() -> new IllegalArgumentException("Selecciona un operador activo."));
+        PackageDetails details = validatePackageDetails(nombre, descripcion, precio, categoria);
+        PaqueteMovil mobilePackage = new PaqueteMovil();
+        mobilePackage.setOperadorId(operator.getId());
+        mobilePackage.setNombre(details.name());
+        mobilePackage.setDescripcion(details.description());
+        mobilePackage.setPrecio(details.price());
+        mobilePackage.setCategoria(details.category());
+        mobilePackage.setActivo(true);
+        return paquetes.save(mobilePackage);
+    }
+
+    public PaqueteMovil actualizarPaquete(
+            String paqueteId,
+            String operadorId,
+            String nombre,
+            String descripcion,
+            BigDecimal precio,
+            CategoriaPaquete categoria) {
+        PaqueteMovil mobilePackage = paquetes.findById(paqueteId)
+                .orElseThrow(() -> new IllegalArgumentException("No se encontró el paquete seleccionado."));
+        OperadorMovil operator = operadores.findById(operadorId)
+                .filter(OperadorMovil::isActivo)
+                .orElseThrow(() -> new IllegalArgumentException("Selecciona un operador activo."));
+        PackageDetails details = validatePackageDetails(nombre, descripcion, precio, categoria);
+
+        mobilePackage.setOperadorId(operator.getId());
+        mobilePackage.setNombre(details.name());
+        mobilePackage.setDescripcion(details.description());
+        mobilePackage.setPrecio(details.price());
+        mobilePackage.setCategoria(details.category());
+        return paquetes.save(mobilePackage);
+    }
+
+    private static PackageDetails validatePackageDetails(
+            String nombre, String descripcion, BigDecimal precio, CategoriaPaquete categoria) {
         String normalizedName = requiredText(nombre, "El nombre del paquete es obligatorio.", 80);
         String normalizedDescription = descripcion == null ? "" : descripcion.trim();
         if (normalizedDescription.length() > 200) {
@@ -94,13 +139,14 @@ public class RecargasService {
                 || precio.compareTo(MAX_PACKAGE_PRICE) > 0) {
             throw new IllegalArgumentException("El precio debe ser mayor que cero y no superar $1.000.000 COP.");
         }
-        PaqueteMovil mobilePackage = new PaqueteMovil();
-        mobilePackage.setOperadorId(operator.getId());
-        mobilePackage.setNombre(normalizedName);
-        mobilePackage.setDescripcion(normalizedDescription);
-        mobilePackage.setPrecio(precio.setScale(2, java.math.RoundingMode.HALF_UP));
-        mobilePackage.setActivo(true);
-        return paquetes.save(mobilePackage);
+        if (categoria == null || categoria == CategoriaPaquete.RECARGA_DINERO) {
+            throw new IllegalArgumentException("Selecciona una categoría de paquete válida.");
+        }
+        return new PackageDetails(
+                normalizedName,
+                normalizedDescription,
+                precio.setScale(2, java.math.RoundingMode.HALF_UP),
+                categoria);
     }
 
     public LineaMovil guardarLinea(
@@ -174,7 +220,6 @@ public class RecargasService {
 
     public RecargaMovil solicitarRecargaDinero(
             String usuarioId,
-            String operadorId,
             String lineaId,
             BigDecimal monto,
             String operacionId,
@@ -199,14 +244,13 @@ public class RecargasService {
                     "El monto debe estar entre $1.000 y $100.000 COP, en incrementos de $1.000.");
         }
 
-        OperadorMovil operator = operadores.findById(operadorId)
-                .filter(OperadorMovil::isActivo)
-                .filter(item -> "Móvil Éxito".equalsIgnoreCase(item.getNombre()))
-                .orElseThrow(() -> new IllegalArgumentException("Selecciona Móvil Éxito para esta recarga."));
         LineaMovil line = lineas.findById(lineaId)
                 .filter(storedLine -> usuarioId.equals(storedLine.getUsuarioId()))
-                .filter(storedLine -> operator.getId().equals(storedLine.getOperadorId()))
-                .orElseThrow(() -> new IllegalArgumentException("Selecciona una línea tuya de Móvil Éxito."));
+                .orElseThrow(() -> new IllegalArgumentException("Selecciona una línea tuya."));
+        OperadorMovil operator = operadores.findById(line.getOperadorId())
+                .filter(OperadorMovil::isActivo)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "El operador de la línea ya no está disponible."));
 
         RecargaMovil recharge = new RecargaMovil();
         recharge.setOperacionId(operationKey);
@@ -241,8 +285,11 @@ public class RecargasService {
 
     private RecargaMovil procesar(RecargaMovil recharge, String token) {
         try {
+            String transactionType = recharge.getPaquete().startsWith("Recarga de saldo")
+                    ? "Recarga de saldo "
+                    : "Paquete ";
             Wallet wallet = walletClient.debit(token, recharge.getOperacionId(),
-                    recharge.getMonto(), "Paquete " + recharge.getOperador() + " para "
+                    recharge.getMonto(), transactionType + recharge.getOperador() + " para "
                             + ocultarTelefono(recharge.getTelefono()));
             if (wallet == null) {
                 throw new IllegalStateException("Billetera no devolvió el resultado del débito.");
@@ -268,5 +315,8 @@ public class RecargasService {
             return "****";
         }
         return "****" + telefono.substring(telefono.length() - 4);
+    }
+
+    private record PackageDetails(String name, String description, BigDecimal price, CategoriaPaquete category) {
     }
 }

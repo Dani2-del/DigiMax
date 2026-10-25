@@ -1479,3 +1479,11 @@ body[data-sistema="TRANSMETRO"] .module-unavailable .admin-module-link {
   .excel-modal-box { width: calc(100% - 32px); padding: 22px; }
   .granularity-tabs { flex-wrap: wrap; }
 }
+
+body[data-sistema="TRANSMETRO"]::before {
+  background-image: url("/images/fondo_transmetro.jpg");
+}
+
+body[data-sistema="TRANSMILENIO"]::before {
+  background-image: url("/images/fondo_transmilenio.jpg");
+}
