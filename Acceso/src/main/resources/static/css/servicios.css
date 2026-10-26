@@ -4,15 +4,16 @@ body.services-page {
   --services-line: #e5ebf1;
   min-height: 100vh;
   align-items: stretch;
-  background:
-    radial-gradient(ellipse at 12% 8%, rgba(255, 138, 31, 0.13), transparent 28rem),
-    radial-gradient(ellipse at 92% 88%, rgba(17, 133, 157, 0.1), transparent 30rem),
-    #f4f7fb;
+  background: #f4f7fb;
 }
 
 body.services-page::before {
-  opacity: 0.035;
-  filter: grayscale(1);
+  display: block;
+  background-image: url("/images/digitrans_bg_naranja.jpg");
+  background-position: center, center;
+  background-size: cover, cover;
+  filter: none;
+  opacity: 1;
 }
 
 .services-page-shell {
@@ -246,13 +247,13 @@ body.services-page::before {
 }
 
 .service-choice-recharge {
-  --service-color: #16899a;
-  --service-tint: #e6f6f7;
+  --service-color: #7350d6;
+  --service-tint: #f0ebff;
 }
 
 .service-choice-wallet {
-  --service-color: #5b68b4;
-  --service-tint: #eef0ff;
+  --service-color: #0b7f88;
+  --service-tint: #e4f3f3;
 }
 
 .service-icon {
@@ -386,9 +387,13 @@ body.services-page::before {
 .services-page .footer {
   max-width: 1020px;
   margin: 0 auto 18px;
-  border-color: rgba(219, 227, 236, 0.8);
-  background: rgba(255, 255, 255, 0.72);
-  box-shadow: 0 6px 18px rgba(16, 35, 56, 0.035);
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: rgba(255, 255, 255, 0.88);
 }
 
 .services-page :focus-visible {

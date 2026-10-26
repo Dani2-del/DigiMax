@@ -110,23 +110,22 @@ select {
     align-items: center;
     justify-content: center;
     padding: 10px 15px;
-    border: 1px solid #cfe1e4;
+    border: 1px solid #087c86;
     border-radius: 11px;
-    color: #087c86;
+    color: #fff;
     font-size: .9rem;
     font-weight: 700;
     text-decoration: none;
     white-space: nowrap;
-    background: #fff;
+    background: #087c86;
     transition: color .15s ease, background .15s ease, border-color .15s ease, transform .15s ease;
 }
 
 .back-link:hover,
 .back-link:focus-visible {
-    color: #075d68;
-    border-color: #9bc9ca;
-    background: #eff9f8;
-    text-decoration: underline;
+    color: #fff;
+    border-color: #076b76;
+    background: #076b76;
     transform: translateY(-2px);
 }
 
@@ -221,6 +220,55 @@ select {
 
 .status-congelada { color: #442f10; background: #ffe5a3; }
 
+.card-controls {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+.card-settings {
+    width: 100%;
+}
+
+.card-settings-toggle {
+    display: flex;
+    width: fit-content;
+    min-height: 48px;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+    padding: 10px 15px;
+    border: 1px solid #cfe1e4;
+    border-radius: 13px;
+    color: #08727c;
+    background: #fff;
+    font-weight: 750;
+    list-style: none;
+    cursor: pointer;
+    transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+.card-settings-toggle::-webkit-details-marker { display: none; }
+.card-settings-toggle::marker { content: ""; }
+.card-settings-toggle:hover,
+.card-settings[open] > .card-settings-toggle {
+    border-color: #087c86;
+    color: #fff;
+    background: #087c86;
+    transform: translateY(-1px);
+}
+.card-settings-toggle svg { width: 20px; height: 20px; }
+.card-settings[open] > .card-settings-toggle svg { transform: rotate(35deg); }
+
+.card-settings-content {
+    margin-top: 14px;
+    padding: 25px;
+    border: 1px solid #e7edf3;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 10px 30px #17324d0b;
+}
+
 .card-actions {
     display: flex;
     flex-wrap: wrap;
@@ -228,12 +276,37 @@ select {
     margin-top: 18px;
 }
 
-.card-actions form { flex: 1 1 200px; }
-.design-form { display: grid; grid-template-columns: 1fr auto; align-items: end; }
+.card-actions form { flex: 0 1 auto; }
+.card-actions button { min-height: 40px; padding: 9px 13px; }
+.design-form { display: grid; grid-template-columns: minmax(0, 1fr); align-items: end; }
 .design-form label { grid-column: 1 / -1; }
+.design-form select,
+.design-form .design-submit { width: 100%; }
 .confirmation-actions { display: flex; align-items: stretch; gap: 12px; }
 .confirmation-actions form { flex: 1; }
 .confirmation-actions > button { flex: 0 0 auto; }
+.card-verification-form {
+    display: grid;
+    max-width: 520px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 9px 12px;
+    margin-top: 18px;
+}
+.card-verification-form label { grid-column: 1 / -1; font-weight: 700; }
+.card-verification-form input {
+    min-width: 0;
+    min-height: 46px;
+    padding: 10px 13px;
+    border: 1px solid #cfd9e3;
+    border-radius: 10px;
+    color: #17324d;
+    letter-spacing: .16em;
+}
+.card-verification-form input:focus {
+    border-color: #087c86;
+    outline: 3px solid #087c8626;
+}
+.resend-card-code { margin-top: 12px; }
 .button-secondary { color: #17324d; background: #e8eef5; }
 .button-secondary:hover { background: #dce6ef; }
 .button-danger { background: #a63838; }
@@ -1729,6 +1802,18 @@ legend {
 
     .confirmation-actions {
         flex-direction: column;
+    }
+
+    .card-settings-content {
+        padding: 20px 16px;
+    }
+
+    .card-verification-form {
+        grid-template-columns: 1fr;
+    }
+
+    .card-verification-form label {
+        grid-column: auto;
     }
 
     .history-filters,

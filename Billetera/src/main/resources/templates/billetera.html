@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjeta universal | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261025-1)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261026-3)}">
 </head>
 <body>
 <nav class="wallet-section-nav" aria-label="Navegación de tu Billetera">
@@ -34,6 +34,35 @@
     <p th:if="${mensaje}" class="notice" th:text="${mensaje}" role="status"></p>
     <p th:if="${error}" class="notice error" th:text="${error}" role="alert"></p>
 
+    <section th:if="${verificacionPendiente != null}" class="panel card-verification">
+        <p class="eyebrow">VERIFICACIÓN DE SEGURIDAD</p>
+        <h2 th:text="${creacionPendiente ? 'Verifica tu nueva tarjeta'
+                : (congelacionPendiente ? 'Confirma la congelación'
+                : (descongelacionPendiente ? 'Confirma la activación' : 'Confirma la desactivación'))}">
+            Verifica tu tarjeta
+        </h2>
+        <p class="muted">
+            <span th:if="${congelacionPendiente}">Ingresa el código enviado a tu correo para congelar tu tarjeta.</span>
+            <span th:if="${descongelacionPendiente}">Ingresa el código enviado a tu correo para volver a activar tu tarjeta.</span>
+            <span th:if="${creacionPendiente or (!congelacionPendiente and !descongelacionPendiente)}">
+                Ingresa el código de 6 dígitos que enviamos al correo asociado a tu cuenta.
+            </span>
+            El código vence en 10 minutos.
+        </p>
+        <form th:action="@{/tarjeta/verificar}" method="post" class="card-verification-form">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <label for="codigo-tarjeta">Código de verificación</label>
+            <input id="codigo-tarjeta" name="codigo" type="text" inputmode="numeric"
+                   autocomplete="one-time-code" pattern="[0-9]{6}" minlength="6" maxlength="6"
+                   placeholder="000000" required>
+            <button type="submit">Verificar código</button>
+        </form>
+        <form th:action="@{/tarjeta/verificacion/reenviar}" method="post" class="resend-card-code">
+            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button type="submit" class="button-secondary">Enviar otro código</button>
+        </form>
+    </section>
+
     <section th:if="${walletExists}" id="mi-tarjeta" class="universal-card"
              th:classappend="${'theme-' + wallet.diseno.name().toLowerCase()}"
              aria-label="Tarjeta universal Digitrans">
@@ -57,65 +86,78 @@
         </div>
     </section>
 
-    <section th:if="${walletExists}" id="diseno-seguridad" class="panel card-controls">
-        <div class="section-heading">
-            <div>
-                <p class="eyebrow">PERSONALIZACIÓN</p>
-                <h2>Diseño y seguridad</h2>
-            </div>
-        </div>
-        <form th:action="@{/tarjeta/diseno}" method="post" class="design-form">
-            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <label for="diseno">Color de tarjeta</label>
-            <select id="diseno" name="diseno">
-                <option th:each="diseno : ${disenos}" th:value="${diseno}"
-                        th:selected="${diseno == wallet.diseno}" th:text="${diseno.nombre}"></option>
-            </select>
-            <button type="submit" class="button-secondary">Guardar diseño</button>
-        </form>
-        <p class="muted" th:if="${wallet.estado.name() == 'CONGELADA'}">
-            La tarjeta está congelada: puedes verla y cambiar su diseño, pero no hacer pagos ni recargas.
-        </p>
-        <div class="card-actions">
-            <form th:if="${wallet.estado.name() == 'ACTIVA'}" th:action="@{/tarjeta/congelar}" method="post">
-                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <button type="submit" class="button-secondary">Congelar tarjeta</button>
-            </form>
-            <form th:if="${wallet.estado.name() == 'CONGELADA'}" th:action="@{/tarjeta/descongelar}" method="post">
-                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <button type="submit" class="button-secondary">Descongelar tarjeta</button>
-            </form>
-            <button type="button" class="button-danger" data-deactivate-first>Desactivar tarjeta</button>
-        </div>
-        <div data-deactivate-final hidden>
-            <p class="notice demo-warning">
-                Primera confirmación registrada. Al continuar, esta tarjeta dejará de aparecer para ti.
-                El saldo no se pierde ni se duplica: quedará resguardado y pasará a tu próxima tarjeta Digitrans.
-            </p>
-            <div class="confirmation-actions">
-                <form th:action="@{/tarjeta/desactivar}" method="post">
+    <section th:if="${walletExists}" id="diseno-seguridad" class="card-controls">
+        <details class="card-settings">
+            <summary class="card-settings-toggle" aria-label="Abrir ajustes de la tarjeta"
+                     title="Ajustes de la tarjeta">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"
+                          stroke="currentColor" stroke-width="1.8"/>
+                    <path d="m19.4 15 .1.1a1.8 1.8 0 1 1-2.5 2.5l-.1-.1a1.8 1.8 0 0 0-3 .9v.2a1.8 1.8 0 1 1-3.6 0v-.2a1.8 1.8 0 0 0-3-.9l-.1.1a1.8 1.8 0 1 1-2.5-2.5l.1-.1a1.8 1.8 0 0 0-.9-3H3.7a1.8 1.8 0 1 1 0-3.6h.2a1.8 1.8 0 0 0 .9-3l-.1-.1a1.8 1.8 0 1 1 2.5-2.5l.1.1a1.8 1.8 0 0 0 3-.9v-.2a1.8 1.8 0 1 1 3.6 0v.2a1.8 1.8 0 0 0 3 .9l.1-.1a1.8 1.8 0 1 1 2.5 2.5l-.1.1a1.8 1.8 0 0 0 .9 3h.2a1.8 1.8 0 1 1 0 3.6h-.2a1.8 1.8 0 0 0-.9 3Z"
+                          stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+                <span>Ajustes de tarjeta</span>
+            </summary>
+            <div class="card-settings-content">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">PERSONALIZACIÓN</p>
+                        <h2>Diseño y seguridad</h2>
+                    </div>
+                </div>
+                <form th:action="@{/tarjeta/diseno}" method="post" class="design-form">
                     <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                    <input type="hidden" name="confirmacionFinal" value="true">
-                    <button type="submit" class="button-danger">Confirmar y desactivar</button>
+                    <label for="diseno">Color de tarjeta</label>
+                    <select id="diseno" name="diseno">
+                        <option th:each="diseno : ${disenos}" th:value="${diseno}"
+                                th:selected="${diseno == wallet.diseno}" th:text="${diseno.nombre}"></option>
+                    </select>
+                    <button type="submit" class="design-submit">Cambiar diseño</button>
                 </form>
-                <button type="button" class="button-secondary" data-deactivate-cancel>Cancelar</button>
+                <p class="muted" th:if="${wallet.estado.name() == 'CONGELADA'}">
+                    La tarjeta está congelada: puedes verla y cambiar su diseño, pero no hacer pagos ni recargas.
+                </p>
+                <div class="card-actions">
+                    <form th:if="${wallet.estado.name() == 'ACTIVA'}" th:action="@{/tarjeta/congelar}" method="post">
+                        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="button-secondary">Congelar tarjeta</button>
+                    </form>
+                    <form th:if="${wallet.estado.name() == 'CONGELADA'}" th:action="@{/tarjeta/descongelar}" method="post">
+                        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <button type="submit" class="button-secondary">Descongelar tarjeta</button>
+                    </form>
+                    <button type="button" class="button-danger" data-deactivate-first>Desactivar tarjeta</button>
+                </div>
+                <div data-deactivate-final hidden>
+                    <p class="notice demo-warning">
+                        Al continuar enviaremos un código a tu correo. La tarjeta solo se desactivará al verificarlo;
+                        el saldo y el historial se conservarán para tu próxima tarjeta Digitrans.
+                    </p>
+                    <div class="confirmation-actions">
+                        <form th:action="@{/tarjeta/desactivar}" method="post">
+                            <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                            <button type="submit" class="button-danger">Enviar código y continuar</button>
+                        </form>
+                        <button type="button" class="button-secondary" data-deactivate-cancel>Cancelar</button>
+                    </div>
+                </div>
             </div>
-        </div>
+        </details>
     </section>
 
-    <section th:unless="${walletExists}" id="activar-tarjeta" class="panel">
+    <section th:if="${!walletExists and !creacionPendiente}" id="activar-tarjeta" class="panel">
         <h2>Tu tarjeta universal no está activa</h2>
-        <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si ya tenías una tarjeta generada, conservaremos su saldo y movimientos. Si la habías desactivado, emitiremos un número nuevo y mantendremos tu saldo. No se activará hasta que confirmes.</p>
+        <p class="muted">¿Quieres activar tu tarjeta Digitrans para compartir saldo entre servicios? Si ya tenías una tarjeta generada, conservaremos su saldo y movimientos. Si la habías desactivado, emitiremos un número nuevo y mantendremos tu saldo. La tarjeta se activará cuando verifiques el código enviado a tu correo.</p>
         <div class="activation-step">
             <button type="button" class="button-secondary" data-activation-first>
                 Sí, quiero activar mi tarjeta
             </button>
         </div>
         <div class="activation-step" data-activation-final hidden>
-            <p role="status"><strong>Segunda confirmación:</strong> al continuar se activará tu tarjeta Digitrans.</p>
+            <p role="status"><strong>Verificación por correo:</strong> enviaremos un código de 6 dígitos para activar tu tarjeta.</p>
             <form th:action="@{/tarjeta/crear}" method="post">
                 <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <button type="submit">Confirmar y activar mi tarjeta Digitrans</button>
+                <button type="submit">Enviar código de activación</button>
             </form>
         </div>
         <p><a th:href="${accesoUrl + '/servicios'}">Ahora no, volver a servicios</a></p>

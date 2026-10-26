@@ -2237,6 +2237,90 @@ body.registration-page::after {
   text-align: left;
 }
 
+.login-page .registration-art {
+  background:
+    linear-gradient(145deg, rgba(13, 24, 42, 0.94), rgba(20, 36, 58, 0.9)),
+    url("/images/digitrans_bg_naranja.jpg") center / cover;
+}
+
+.login-page .login-layout {
+  border: 0;
+  border-radius: 40px;
+  box-shadow: 0 30px 90px rgba(6, 15, 29, 0.3);
+}
+
+.login-page .registration-brand {
+  gap: 11px;
+  color: #fff;
+  font-size: 1.25rem;
+  letter-spacing: -0.035em;
+}
+
+.login-page .registration-brand::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fb8500;
+  box-shadow: 0 0 0 5px rgba(251, 133, 0, 0.14), 0 0 18px rgba(251, 133, 0, 0.48);
+  content: "";
+}
+
+.login-page .registration-art::after {
+  background:
+    linear-gradient(0deg, rgba(8, 15, 28, 0.58), transparent 58%),
+    linear-gradient(90deg, rgba(8, 15, 28, 0.12), transparent 70%);
+}
+
+.login-page .registration-panel {
+  background: linear-gradient(145deg, #fff 0%, #fffefa 100%);
+}
+
+.login-page .registration-art-copy h2 {
+  max-width: 410px;
+  font-size: clamp(2.2rem, 4vw, 3.55rem);
+  letter-spacing: -0.045em;
+}
+
+.login-page .registration-card h1 {
+  letter-spacing: -0.045em;
+}
+
+.login-page .registration-card .form input[type="text"],
+.login-page .registration-card .form input[type="password"] {
+  border-color: #d9e0e8;
+  background: #f8fafc;
+  border-radius: 13px;
+  box-shadow: inset 0 1px 2px rgba(16, 35, 56, 0.025);
+}
+
+.login-page .registration-card .form input[type="text"]:-webkit-autofill,
+.login-page .registration-card .form input[type="password"]:-webkit-autofill {
+  -webkit-box-shadow: inset 0 0 0 1000px #f8fafc;
+  -webkit-text-fill-color: var(--tinta);
+}
+
+.login-page .registration-card .form input:focus {
+  border-color: #d97706;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.login-page .registration-card .form input:-webkit-autofill:focus {
+  -webkit-box-shadow: inset 0 0 0 1000px #fff, 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.login-page .registration-card .form .primary {
+  background: #e87500 !important;
+  color: #fff !important;
+  border-radius: 13px;
+  box-shadow: 0 9px 20px rgba(232, 117, 0, 0.2) !important;
+}
+
+.login-page .registration-card .form .primary:hover {
+  background: #cf6500 !important;
+  box-shadow: 0 12px 24px rgba(207, 101, 0, 0.25) !important;
+}
+
 .login-page .forgot-password {
   margin: -2px 0 0;
 }
@@ -2333,6 +2417,15 @@ body.registration-page::after {
   animation: registration-field-enter 0.45s 0.72s both;
 }
 
+.login-page-shell > footer .footer {
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
 @keyframes registration-card-enter {
   from { opacity: 0; transform: translateY(18px) scale(0.985); }
   to { opacity: 1; transform: translateY(0) scale(1); }
@@ -2392,6 +2485,10 @@ body.registration-page::after {
     min-height: 0;
     margin: 0 auto;
     border-radius: 18px;
+  }
+
+  .login-page .login-layout {
+    border-radius: 28px;
   }
 
   .registration-art {
@@ -2456,6 +2553,12 @@ body.login-page::after {
 body.identity-page::before {
   background-image: url("/images/digitrans_bg_naranja.jpg");
   filter: none;
+  opacity: 1;
+}
+
+body.login-screen::before {
+  background-image: url("/images/digitrans_bg_naranja.jpg");
+  filter: brightness(0.58);
   opacity: 1;
 }
 

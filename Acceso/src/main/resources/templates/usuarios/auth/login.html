@@ -3,16 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261025-2)}" />
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261026-10)}" />
   <title>Iniciar sesión - Digitrans</title>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body class="login-page identity-page">
+<body class="login-page identity-page login-screen">
   <div class="page registration-page-shell login-page-shell">
     <main class="registration-layout login-layout">
       <aside class="registration-art">
         <a class="registration-brand" th:href="@{/}" aria-label="Volver al inicio de Digitrans">
-          <img th:src="@{/images/digitrans-mark.svg}" alt="">
           <span>Digitrans</span>
         </a>
         <div class="registration-art-copy">

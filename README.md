@@ -18,7 +18,7 @@ Desarrollado en la **Fundación Universitaria Tecnológico Comfenalco** por:
 | --- | ---: | --- |
 | `Acceso` | 8080 | Registro, inicio de sesión, identidad central, JWT, inicio de sesión con Google y consola global con usuarios, transacciones, analítica, chats y reportes Excel. |
 | `Transporte` | 8081 | Experiencia de transporte público, perfiles SITM, tarjetas de transporte, rutas y funciones administrativas. |
-| `Billetera` | 8082 | Tarjeta universal, saldo compartido, movimientos, personalización y herramientas de moderación. |
+| `Billetera` | 8082 | Tarjeta universal, saldo compartido, movimientos, ajustes de diseño y seguridad con códigos de verificación por correo, y herramientas de moderación. |
 | `RecargasMovil` | 8083 | Catálogos, líneas y compras simuladas de paquetes y recargas móviles. |
 | `Correo` | 8084 | API interna para el envío de correo mediante SMTP. |
 
@@ -41,7 +41,7 @@ Configura estas variables de entorno para tu usuario o para las terminales donde
 | Variable | Uso |
 | --- | --- |
 | `APP_JWT_SECRET` | Clave de firma JWT de Acceso; los demás módulos validan la identidad con Acceso. Debe tener al menos 32 bytes. |
-| `MAIL_SERVICE_API_KEY` | Clave compartida entre Correo, Acceso y Transporte para proteger la API interna de correo. |
+| `MAIL_SERVICE_API_KEY` | Clave compartida entre Correo, Acceso, Transporte y Billetera para proteger la API interna de correo. |
 | `GOOGLE_CLIENT_ID` | ID OAuth del cliente de Google usado por Acceso. |
 | `GOOGLE_CLIENT_SECRET` | Secreto OAuth del cliente de Google usado por Acceso. |
 | `SMTP_USERNAME` | Cuenta remitente SMTP configurada en Correo. |
@@ -54,7 +54,7 @@ En Google Cloud Console, registra este URI de redirección para el cliente OAuth
 http://localhost:8080/login/oauth2/code/google
 ```
 
-`APP_JWT_SECRET` es necesaria para iniciar Acceso. Como Google OAuth está habilitado por defecto, también debes configurar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. `MAIL_SERVICE_API_KEY` debe configurarse con el mismo valor en Correo, Acceso y Transporte. El script para iniciar todo el proyecto comprueba las variables JWT y de correo; configura también las credenciales de Google antes de usarlo. Las credenciales SMTP son necesarias para entregar correos; sin ellas, la integración de correo no podrá enviar mensajes.
+`APP_JWT_SECRET` es necesaria para iniciar Acceso. Como Google OAuth está habilitado por defecto, también debes configurar `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`. `MAIL_SERVICE_API_KEY` debe configurarse con el mismo valor en Correo, Acceso, Transporte y Billetera. El script para iniciar todo el proyecto comprueba las variables JWT y de correo; configura también las credenciales de Google antes de usarlo. Las credenciales SMTP son necesarias para entregar correos; sin ellas, la integración de correo no podrá enviar mensajes. Billetera requiere que Correo esté disponible para enviar los códigos de activación, congelación, descongelación y desactivación de tarjetas.
 
 Para desarrollo local, `APP_COOKIE_SECURE` usa `false`. En un entorno HTTPS de producción debe configurarse como `true`. No reutilices claves locales en producción.
 
