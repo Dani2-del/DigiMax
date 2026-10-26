@@ -2565,3 +2565,243 @@ body.login-screen::before {
 body.identity-page::after {
   display: none;
 }
+
+body.registration-page {
+  height: auto;
+  min-height: 100vh;
+  overflow-y: auto;
+  background: #F3F4F6;
+}
+
+body.registration-page::before {
+  background-image: url("/images/digitrans_bg_naranja.jpg");
+  filter: brightness(0.58);
+  opacity: 1;
+}
+
+.page.registration-page-shell {
+  flex: 1 0 auto;
+}
+
+.registration-page .registration-layout {
+  min-height: max(700px, min(760px, calc(100svh - 120px)));
+  border: 0;
+  border-radius: 40px;
+  box-shadow: 0 30px 90px rgba(6, 15, 29, 0.3);
+}
+
+.registration-page .registration-art {
+  background:
+    linear-gradient(145deg, rgba(13, 24, 42, 0.94), rgba(20, 36, 58, 0.9)),
+    url("/images/digitrans_bg_naranja.jpg") center / cover;
+}
+
+.registration-page .registration-brand {
+  gap: 11px;
+  color: #fff;
+  font-size: 1.25rem;
+  letter-spacing: -0.035em;
+}
+
+.registration-page .registration-brand::before {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fb8500;
+  box-shadow: 0 0 0 5px rgba(251, 133, 0, 0.14), 0 0 18px rgba(251, 133, 0, 0.48);
+  content: "";
+}
+
+.registration-page .registration-art::after {
+  background:
+    linear-gradient(0deg, rgba(8, 15, 28, 0.58), transparent 58%),
+    linear-gradient(90deg, rgba(8, 15, 28, 0.12), transparent 70%);
+}
+
+.registration-page .registration-panel {
+  background: linear-gradient(145deg, #fff 0%, #fffefa 100%);
+}
+
+.registration-page .registration-art-copy h2,
+.registration-page .registration-card h1 {
+  letter-spacing: -0.045em;
+}
+
+.registration-page .registration-art-copy h2 {
+  max-width: 410px;
+  font-size: clamp(2.2rem, 4vw, 3.55rem);
+}
+
+.registration-page .registration-card .form input[type="text"],
+.registration-page .registration-card .form input[type="password"],
+.registration-page .registration-card .form input[type="email"] {
+  border-color: #d9e0e8;
+  background: #f8fafc;
+  border-radius: 13px;
+  box-shadow: inset 0 1px 2px rgba(16, 35, 56, 0.025);
+}
+
+.registration-page .registration-card .form input[type="text"]:-webkit-autofill,
+.registration-page .registration-card .form input[type="password"]:-webkit-autofill,
+.registration-page .registration-card .form input[type="email"]:-webkit-autofill {
+  -webkit-box-shadow: inset 0 0 0 1000px #f8fafc;
+  -webkit-text-fill-color: var(--tinta);
+}
+
+.registration-page .registration-card .form input:focus {
+  border-color: #d97706;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.registration-page .registration-card .form input:-webkit-autofill:focus {
+  -webkit-box-shadow: inset 0 0 0 1000px #fff, 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.registration-page .registration-card .form .primary {
+  background: #e87500 !important;
+  color: #fff !important;
+  border-radius: 13px;
+  box-shadow: 0 9px 20px rgba(232, 117, 0, 0.2) !important;
+}
+
+.registration-page .registration-card .form .primary:hover {
+  background: #cf6500 !important;
+  box-shadow: 0 12px 24px rgba(207, 101, 0, 0.25) !important;
+}
+
+.registration-page .registration-login-link {
+  color: #172235;
+}
+
+.verification-card .registration-intro {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.verification-email {
+  color: #172235;
+  overflow-wrap: anywhere;
+}
+
+.verification-card .otp-input {
+  width: 100%;
+  min-height: 68px;
+  margin: 0;
+  border: 1px solid #d9e0e8 !important;
+  border-radius: 13px;
+  background: #f8fafc;
+  color: #172235;
+  font-size: 1.8rem;
+  letter-spacing: .45em;
+}
+
+.registration-page .verification-card .form .primary {
+  min-height: 50px;
+}
+
+.resend-code-section {
+  margin-top: 22px;
+}
+
+.resend-code-section > p {
+  margin: 0;
+  color: #536174;
+  font-size: .9rem;
+  font-weight: 600;
+}
+
+.registration-page .resend-code-form {
+  margin-top: 10px;
+  border-color: #e3e8ee;
+  border-radius: 13px;
+  background: #fff;
+}
+
+.registration-page .resend-code-form input[type="email"] {
+  border-color: #d9e0e8;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.registration-page .resend-code-form input[type="email"]:focus {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.14);
+}
+
+.registration-page .resend-code-form .link-button {
+  justify-self: center;
+  color: #172235;
+  font-weight: 600;
+}
+
+.verification-login-row {
+  justify-content: center;
+  text-align: center;
+}
+
+.verification-success-card {
+  max-width: 500px;
+  text-align: center;
+}
+
+.verification-success-icon {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  margin: 24px auto 16px;
+  place-items: center;
+  border: 1px solid #f4c27e;
+  border-radius: 50%;
+  color: #c66a0a;
+  background: #fff8ed;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
+.verification-success-card h1 {
+  font-size: clamp(1.8rem, 3vw, 2.4rem);
+}
+
+.verification-success-card .registration-intro {
+  margin: 10px 0 24px;
+}
+
+.verification-enter-button {
+  width: 100%;
+  min-height: 50px;
+  border-radius: 13px;
+  color: #fff !important;
+  text-decoration: none;
+  box-shadow: 0 9px 20px rgba(232, 117, 0, 0.2) !important;
+}
+
+.verification-enter-button:hover {
+  color: #fff !important;
+  background: #cf6500 !important;
+  box-shadow: 0 12px 24px rgba(207, 101, 0, 0.25) !important;
+}
+
+@media (max-width: 620px) {
+  .registration-page .registration-layout {
+    min-height: 0;
+  }
+
+  .verification-card .otp-input {
+    font-size: 1.5rem;
+    letter-spacing: .35em;
+  }
+}

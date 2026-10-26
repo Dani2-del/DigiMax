@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261026-13)}">
+    <title>Cuenta verificada - Digitrans</title>
+    <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="registration-page identity-page">
+    <div class="page registration-page-shell">
+        <main class="registration-layout">
+            <aside class="registration-art">
+                <a class="registration-brand" th:href="@{/}" aria-label="Volver al inicio de Digitrans">
+                    <span>Digitrans</span>
+                </a>
+                <div class="registration-art-copy">
+                    <span>DIGITRANS · CARTAGENA</span>
+                    <h2>Tu ciudad, a tu alcance.</h2>
+                    <p>Tu cuenta está lista. Disfruta transporte, recargas y más servicios desde un solo lugar.</p>
+                </div>
+            </aside>
+
+            <section class="registration-panel" aria-labelledby="verifiedTitle">
+                <div class="registration-card verification-success-card">
+                    <span class="registration-kicker">VERIFICACIÓN COMPLETADA</span>
+                    <div class="verification-success-icon" aria-hidden="true">✓</div>
+                    <h1 id="verifiedTitle">¡Cuenta verificada!</h1>
+                    <p class="registration-intro">
+                        Su cuenta Digitrans se ha verificado correctamente.
+                    </p>
+                    <a class="primary verification-enter-button" th:href="@{/servicios}">Entrar</a>
+                </div>
+            </section>
+        </main>
+
+        <div th:replace="~{fragments/footer :: footer}"></div>
+    </div>
+    <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+</body>
+</html>

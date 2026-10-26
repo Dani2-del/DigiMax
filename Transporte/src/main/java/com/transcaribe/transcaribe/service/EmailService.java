@@ -224,16 +224,55 @@ public class EmailService {
     }
 
     private void send(List<String> recipients, String subject, String html, List<EmailAttachment> attachments) {
+        EmailContent content = crearContenido(subject, html);
         try {
             restClient.post()
                     .uri("/api/emails")
                     .header("X-Mail-Service-Key", apiKey)
-                    .body(new SendEmailRequest(recipients, subject, null, html, attachments))
+                    .body(new SendEmailRequest(
+                            recipients, subject, content.text(), content.html(), attachments))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientException exception) {
             throw new IllegalStateException("No se pudo enviar el correo solicitado.", exception);
         }
+    }
+
+    static EmailContent crearContenido(String subject, String bodyHtml) {
+        String text = HtmlUtils.htmlUnescape(bodyHtml
+                .replaceAll("(?i)<br\\s*/?>|</(?:p|div|h[1-6]|tr|td)>", "\n")
+                .replaceAll("<[^>]+>", "")
+                .replace("&nbsp;", " "))
+                .replaceAll("\\n{3,}", "\n\n")
+                .trim();
+        String html = """
+                <!doctype html>
+                <html lang="es">
+                <body style="margin:0;padding:32px 12px;background:#eef1f5;font-family:Arial,Helvetica,sans-serif;color:#172235;">
+                  <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                    <tr><td align="center">
+                      <table role="presentation" width="100%%" cellspacing="0" cellpadding="0" style="max-width:620px;border:1px solid #e3eaf0;border-radius:20px;background:#ffffff;overflow:hidden;">
+                        <tr><td style="padding:25px 32px;background:#172235;border-bottom:4px solid #f59a23;color:#ffffff;">
+                          <p style="margin:0;color:#f59a23;font-size:12px;font-weight:bold;letter-spacing:2px;">DIGITRANS</p>
+                          <p style="margin:7px 0 0;color:#d9e2ef;font-size:12px;letter-spacing:1px;">TU CIUDAD, A TU ALCANCE</p>
+                          <h1 style="margin:12px 0 0;font-size:21px;line-height:1.35;color:#ffffff;">%s</h1>
+                        </td></tr>
+                        <tr><td style="padding:28px 32px;color:#455267;line-height:1.65;">
+                          %s
+                        </td></tr>
+                        <tr><td style="padding:16px 32px;border-top:1px solid #edf1f4;color:#8490a0;font-size:12px;line-height:1.5;">
+                          Mensaje automático · Digitrans · Cartagena de Indias, Colombia
+                        </td></tr>
+                      </table>
+                    </td></tr>
+                  </table>
+                </body>
+                </html>
+                """.formatted(HtmlUtils.htmlEscape(subject), bodyHtml);
+        return new EmailContent(text, html);
+    }
+
+    record EmailContent(String text, String html) {
     }
 
     private record EmailAttachment(String fileName, String contentType, String contentBase64, String contentId) {

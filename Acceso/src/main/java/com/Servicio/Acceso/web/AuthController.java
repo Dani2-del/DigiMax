@@ -1,8 +1,16 @@
 package com.Servicio.Acceso.web;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -12,18 +20,34 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.dao.DuplicateKeyException;
 
+import com.Servicio.Acceso.security.JwtCookieService;
+import com.Servicio.Acceso.security.JwtService;
 import com.Servicio.Acceso.service.AccountService;
 import com.Servicio.Acceso.service.MailDeliveryException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 @Controller
 public class AuthController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AuthController.class);
+
     private final AccountService accountService;
+    private final UserDetailsService userDetailsService;
+    private final JwtService jwtService;
+    private final JwtCookieService jwtCookieService;
     private final boolean googleOAuthEnabled;
 
     public AuthController(AccountService accountService,
+            UserDetailsService userDetailsService,
+            JwtService jwtService,
+            JwtCookieService jwtCookieService,
             @Value("${app.oauth.google.enabled:false}") boolean googleOAuthEnabled) {
         this.accountService = accountService;
+        this.userDetailsService = userDetailsService;
+        this.jwtService = jwtService;
+        this.jwtCookieService = jwtCookieService;
         this.googleOAuthEnabled = googleOAuthEnabled;
     }
 
@@ -74,7 +98,11 @@ public class AuthController {
             return registrationError(model, "Ese correo ya está registrado.");
         } catch (MailDeliveryException exception) {
             redirectAttributes.addFlashAttribute("error",
-                    "La cuenta se creó, pero no pudimos enviar el código. Puedes solicitarlo nuevamente.");
+                    "Tu cuenta quedó pendiente de verificación, pero no pudimos enviar el código. Revisa que el "
+                            + "correo esté escrito correctamente y vuelve a enviarlo. Si vuelve a fallar, contacta "
+                            + "al administrador.");
+            LOGGER.warn("No se pudo enviar el código de verificación para el registro: {}",
+                    causaCorreo(exception));
             return "redirect:/verificar-otp?correo=" + encode(correo);
         }
     }
@@ -88,16 +116,24 @@ public class AuthController {
 
     @PostMapping("/verificar-otp")
     public String verificarOtp(@RequestParam String correo, @RequestParam String codigo,
-            Model model, RedirectAttributes redirectAttributes) {
+            Model model, RedirectAttributes redirectAttributes,
+            HttpServletRequest request, HttpServletResponse response) {
         AccountService.VerificationResult result = accountService.verifyAccount(correo, codigo);
         if (result == AccountService.VerificationResult.VERIFIED) {
-            redirectAttributes.addFlashAttribute("mensaje", "Cuenta activada. Ya puedes iniciar sesión.");
-            return "redirect:/login";
+            autenticarCuentaVerificada(correo, request, response);
+            return "redirect:/registro/verificado";
         }
         model.addAttribute("correo", correo);
         model.addAttribute("correoNuevo", correo);
         model.addAttribute("error", "El código es incorrecto o ya venció. Solicita uno nuevo.");
         return "usuarios/auth/verificar-codigo";
+    }
+
+    @GetMapping("/registro/verificado")
+    public String registroVerificado(Authentication authentication) {
+        return isAuthenticated(authentication)
+                ? "usuarios/auth/registro-verificado"
+                : "redirect:/login";
     }
 
     @PostMapping("/verificar-otp/reenviar")
@@ -119,7 +155,9 @@ public class AuthController {
                         model.addAttribute("error", "No encontramos una cuenta pendiente de verificación.");
             }
         } catch (MailDeliveryException exception) {
-            model.addAttribute("error", "No se pudo enviar el correo. Inténtalo de nuevo más tarde.");
+            model.addAttribute("error",
+                    "No pudimos enviar el código. Revisa la dirección de correo e inténtalo otra vez.");
+            LOGGER.warn("No se pudo reenviar el código de verificación: {}", causaCorreo(exception));
         }
         return "usuarios/auth/verificar-codigo";
     }
@@ -131,6 +169,25 @@ public class AuthController {
 
     private String encode(String value) {
         return java.net.URLEncoder.encode(value, java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private String causaCorreo(MailDeliveryException exception) {
+        Throwable cause = exception.getCause();
+        return cause == null
+                ? exception.getClass().getSimpleName()
+                : cause.getClass().getSimpleName() + ": " + cause.getMessage();
+    }
+
+    private void autenticarCuentaVerificada(
+            String correo, HttpServletRequest request, HttpServletResponse response) {
+        UserDetails userDetails = userDetailsService.loadUserByUsername(correo);
+        Authentication authentication = new UsernamePasswordAuthenticationToken(
+                userDetails, null, userDetails.getAuthorities());
+        SecurityContext context = SecurityContextHolder.createEmptyContext();
+        context.setAuthentication(authentication);
+        SecurityContextHolder.setContext(context);
+        new HttpSessionSecurityContextRepository().saveContext(context, request, response);
+        jwtCookieService.addJwtCookie(response, jwtService.generateToken(userDetails));
     }
 
     private boolean isAuthenticated(Authentication authentication) {

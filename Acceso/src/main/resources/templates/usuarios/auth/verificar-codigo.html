@@ -1,66 +1,87 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261025-2)}" />
     <meta charset="UTF-8">
-    <title>Verificar Registro - Digitrans</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261026-12)}">
+    <title>Verifica tu correo - Digitrans</title>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body class="identity-page">
-    <div class="page">
-        <main class="center-card">
-            <div class="card">
-                <h1 class="title">Verifica tu correo</h1>
-                
-                <p class="info-text">
-                    Ingresa el código de 6 dígitos que enviamos a:<br>
-                    <strong th:text="${correo}">usuario@correo.com</strong>
-                </p>
-
-                <form th:action="@{/verificar-otp}" method="post" class="form">
-                    <input type="hidden" 
-                           th:if="${_csrf}" 
-                           th:name="${_csrf.parameterName}" 
-                           th:value="${_csrf.token}" />
-
-                    <input type="hidden" name="correo" th:value="${correo}" />
-
-                    <input type="text" 
-                           name="codigo" 
-                           placeholder="000000" 
-                           class="otp-input" 
-                           maxlength="6" 
-                           required 
-                           pattern="\d{6}" 
-                           title="Deben ser 6 números"
-                           autocomplete="off" />
-
-                    <button class="primary" type="submit">Confirmar Registro</button>
-                </form>
-
-                <div class="row small">
-                    <span>¿No te llegó?</span>
+<body class="registration-page identity-page">
+    <div class="page registration-page-shell">
+        <main class="registration-layout">
+            <aside class="registration-art">
+                <a class="registration-brand" th:href="@{/}" aria-label="Volver al inicio de Digitrans">
+                    <span>Digitrans</span>
+                </a>
+                <div class="registration-art-copy">
+                    <span>DIGITRANS · CARTAGENA</span>
+                    <h2>Tu ciudad, a tu alcance.</h2>
+                    <p>Un último paso para activar tu cuenta y disfrutar los servicios Digitrans.</p>
                 </div>
+            </aside>
 
-                <form th:action="@{/verificar-otp/reenviar}" method="post" class="form resend-code-form">
-                    <input type="hidden"
-                           th:if="${_csrf}"
-                           th:name="${_csrf.parameterName}"
-                           th:value="${_csrf.token}" />
-                    <input type="hidden" name="correoActual" th:value="${correo}" />
-                    <label for="correoNuevo">Corrige tu correo si es necesario y te enviaremos otro código:</label>
-                    <input type="email"
-                           id="correoNuevo"
-                           name="correoNuevo"
-                           th:value="${correoNuevo != null ? correoNuevo : correo}"
-                           autocomplete="email"
-                           required />
-                    <button type="submit" class="link-button">Volver a intentar y reenviar código</button>
-                </form>
+            <section class="registration-panel" aria-labelledby="verificationTitle">
+                <div class="registration-card verification-card">
+                    <span class="registration-kicker">VERIFICACIÓN DE CUENTA</span>
+                    <h1 id="verificationTitle">Verifica tu correo</h1>
+                    <p class="registration-intro">
+                        Ingresa el código de 6 dígitos enviado a
+                        <strong class="verification-email" th:text="${correo}">usuario@correo.com</strong>.
+                    </p>
 
-                <p class="success" th:if="${mensaje}" th:text="${mensaje}" style="margin-top: 15px;"></p>
-                <p class="error" th:if="${error}" th:text="${error}" style="margin-top: 15px;"></p>
-            </div>
+                    <form th:action="@{/verificar-otp}" method="post" class="form">
+                        <input type="hidden"
+                               th:if="${_csrf}"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}">
+                        <input type="hidden" name="correo" th:value="${correo}">
+                        <label class="visually-hidden" for="codigoRegistro">Código de verificación</label>
+                        <input id="codigoRegistro"
+                               type="text"
+                               name="codigo"
+                               placeholder="000000"
+                               class="otp-input"
+                               inputmode="numeric"
+                               maxlength="6"
+                               minlength="6"
+                               required
+                               pattern="[0-9]{6}"
+                               title="Ingresa los 6 números del código"
+                               autocomplete="one-time-code">
+                        <button class="primary" type="submit">Confirmar registro</button>
+                    </form>
+
+                    <div class="resend-code-section">
+                        <p>¿No recibiste el código?</p>
+                        <form th:action="@{/verificar-otp/reenviar}" method="post" class="form resend-code-form">
+                            <input type="hidden"
+                                   th:if="${_csrf}"
+                                   th:name="${_csrf.parameterName}"
+                                   th:value="${_csrf.token}">
+                            <input type="hidden" name="correoActual" th:value="${correo}">
+                            <label for="correoNuevo">Revisa o corrige tu correo y te enviaremos otro código:</label>
+                            <input type="email"
+                                   id="correoNuevo"
+                                   name="correoNuevo"
+                                   th:value="${correoNuevo != null ? correoNuevo : correo}"
+                                   autocomplete="email"
+                                   required>
+                            <button type="submit" class="link-button">Reenviar código</button>
+                        </form>
+                    </div>
+
+                    <div class="registration-feedback messages" aria-live="polite">
+                        <p class="error" th:if="${error}" th:text="${error}"></p>
+                        <p class="success" th:if="${mensaje}" th:text="${mensaje}"></p>
+                    </div>
+
+                    <div class="register-row verification-login-row">
+                        <span>¿Ya verificaste tu cuenta?</span>
+                        <a th:href="@{/login}" class="registration-login-link">Inicia sesión</a>
+                    </div>
+                </div>
+            </section>
         </main>
 
         <div th:replace="~{fragments/footer :: footer}"></div>

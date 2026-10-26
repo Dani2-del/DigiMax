@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261025-2)}" />
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261026-12)}" />
   <title>Registro - Digitrans</title>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
@@ -34,8 +34,8 @@
 
             <input type="password" id="password" name="password" placeholder="Contraseña" autocomplete="new-password" required minlength="8" />
 
-            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirmar contraseña" autocomplete="new-password" required />
-            <p id="passwordMessage" class="match-error">Las contraseñas no coinciden</p>
+            <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Confirmar contraseña" autocomplete="new-password" required aria-describedby="passwordMessage" />
+            <p id="passwordMessage" class="match-error" aria-live="polite">Las contraseñas no coinciden</p>
 
             <button class="primary" type="submit" id="btnRegistrar">Crear mi cuenta</button>
           </form>
@@ -60,35 +60,23 @@
     const password = document.getElementById('password');
     const confirmPassword = document.getElementById('confirmPassword');
     const message = document.getElementById('passwordMessage');
-    const btn = document.getElementById('btnRegistrar');
 
     function validarPassword() {
-      if (confirmPassword.value === "") {
-        message.style.display = 'none';
-        return;
-      }
+      const passwordTooShort = password.value.length > 0 && password.value.length < 8;
+      const passwordsMismatch = confirmPassword.value.length > 0
+        && password.value !== confirmPassword.value;
 
-      if (password.value.length < 8) {
-        message.textContent = "La contraseña debe tener mínimo 8 caracteres";
-        message.style.display = 'block';
-        btn.disabled = true;
-        btn.style.opacity = "0.5";
-      } else if (password.value !== confirmPassword.value) {
-        message.textContent = "Las contraseñas no coinciden";
-        confirmPassword.classList.add('no-match');
-        message.style.display = 'block';
-        btn.disabled = true;
-        btn.style.opacity = "0.5";
-      } else {
-        confirmPassword.classList.remove('no-match');
-        message.style.display = 'none';
-        btn.disabled = false;
-        btn.style.opacity = "1";
-      }
+      confirmPassword.setCustomValidity(passwordsMismatch ? "Las contraseñas no coinciden." : "");
+      confirmPassword.classList.toggle('no-match', passwordsMismatch);
+      message.textContent = passwordTooShort
+        ? "La contraseña debe tener mínimo 8 caracteres"
+        : "Las contraseñas no coinciden";
+      message.style.display = passwordTooShort || passwordsMismatch ? 'block' : 'none';
     }
 
-    password.addEventListener('change', validarPassword);
-    confirmPassword.addEventListener('keyup', validarPassword);
+    password.addEventListener('input', validarPassword);
+    confirmPassword.addEventListener('input', validarPassword);
+    validarPassword();
   </script>
     <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
 </body>
