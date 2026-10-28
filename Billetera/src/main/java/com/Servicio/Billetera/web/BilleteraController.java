@@ -14,12 +14,15 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.AccionVerificacionTarjeta;
@@ -82,6 +85,7 @@ public class BilleteraController {
                                 Comparator.nullsLast(Comparator.reverseOrder())))
                         .toList())
                 .orElse(List.of()));
+        model.addAttribute("cargaOperationId", UUID.randomUUID().toString());
         model.addAttribute("accesoUrl", accesoUrl);
         model.addAttribute("adminUrl", "/admin/dashboard");
         return "billetera";
@@ -220,13 +224,12 @@ public class BilleteraController {
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             @RequestParam @NotNull @DecimalMin("1.00") @DecimalMax("1000000.00") BigDecimal monto,
             @RequestParam String metodoPago,
+            @RequestParam @NotBlank @Size(max = 100) String operationId,
             RedirectAttributes redirectAttributes) {
         try {
-            billeteraService.abonarSimulado(
-                    identity.id(), monto, UUID.randomUUID().toString(), metodoPago);
-            redirectAttributes.addFlashAttribute("mensaje",
-                    "Carga simulada con " + metodoPagoLegible(metodoPago)
-                            + " completada. No se realizó ningún pago real.");
+            BilleteraUniversal wallet = billeteraService.iniciarCargaSimulada(
+                    identity.id(), identity.email(), monto, operationId, metodoPago);
+            redirectAttributes.addFlashAttribute("mensaje", mensajeCarga(wallet, operationId));
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (BilleteraService.WalletNotFoundException exception) {
@@ -234,15 +237,54 @@ public class BilleteraController {
                     "Activa tu tarjeta Digitrans antes de cargar saldo.");
         } catch (BilleteraService.WalletFrozenException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Pagos no está disponible. La solicitud quedó guardada; vuelve a revisar la carga desde los movimientos.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Pagos respondió con un error (HTTP "
+                    + exception.getStatusCode().value()
+                    + "). Si la solicitud quedó pendiente, revísala desde los movimientos.");
         }
         return "redirect:/";
     }
 
-    private static String metodoPagoLegible(String metodoPago) {
-        return switch (metodoPago) {
-            case "TARJETA_DEBITO" -> "tarjeta débito";
-            case "TARJETA_CREDITO_DEBITO" -> "tarjeta crédito/débito";
-            default -> "PSE";
+    @PostMapping("/saldo/{operationId}/revisar")
+    public String reviewSimulatedBalance(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @PathVariable String operationId,
+            RedirectAttributes redirectAttributes) {
+        try {
+            BilleteraUniversal wallet = billeteraService.revisarCarga(
+                    identity.id(), operationId, identity.email());
+            redirectAttributes.addFlashAttribute("mensaje", mensajeCarga(wallet, operationId));
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Activa tu tarjeta Digitrans antes de revisar la carga.");
+        } catch (BilleteraService.WalletFrozenException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo consultar Pagos. La carga conserva su estado actual; inténtalo más tarde.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Pagos respondió con un error (HTTP "
+                    + exception.getStatusCode().value() + ").");
+        }
+        return "redirect:/";
+    }
+
+    private static String mensajeCarga(BilleteraUniversal wallet, String operationId) {
+        MovimientoBilletera movement = wallet.getMovimientos().stream()
+                .filter(item -> operationId.equals(item.getOperacionId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException(
+                        "No se encontró el movimiento de carga después de procesarlo."));
+        return switch (movement.getEstadoPago() == null ? "" : movement.getEstadoPago()) {
+            case "APROBADO" -> "Pago simulado aprobado. El saldo se agregó a tu tarjeta Digitrans.";
+            case "RECHAZADO" -> "El pago simulado fue rechazado. No se agregó saldo.";
+            case "CANCELADO" -> "El pago simulado fue cancelado. No se agregó saldo.";
+            default -> "";
         };
     }
 
@@ -417,10 +459,18 @@ public class BilleteraController {
     }
 
     public record MovementResponse(
-            String operationId, String type, String description, BigDecimal amount, java.time.LocalDateTime date) {
+            String operationId,
+            String type,
+            String description,
+            BigDecimal amount,
+            java.time.LocalDateTime date,
+            String paymentId,
+            String paymentStatus,
+            String paymentMethod) {
         private static MovementResponse from(MovimientoBilletera movement) {
             return new MovementResponse(movement.getOperacionId(), movement.getTipo(),
-                    movement.getDescripcion(), movement.getMonto(), movement.getFecha());
+                    movement.getDescripcion(), movement.getMonto(), movement.getFecha(),
+                    movement.getIdPagoProveedor(), movement.getEstadoPago(), movement.getMetodoPago());
         }
     }
 

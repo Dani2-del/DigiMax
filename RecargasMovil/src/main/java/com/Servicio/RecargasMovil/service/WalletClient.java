@@ -41,30 +41,6 @@ public class WalletClient {
         return wallet;
     }
 
-    public Wallet debit(String token, String operationId, BigDecimal amount, String description) {
-        try {
-            Wallet wallet = restClient.post()
-                    .uri(billeteraUrl + "/api/wallet/me/debits")
-                    .header(HttpHeaders.AUTHORIZATION, bearer(token))
-                    .body(new DebitRequest(operationId, amount, description))
-                    .retrieve()
-                    .body(Wallet.class);
-            if (wallet == null) {
-                throw new IllegalStateException("Billetera no devolvió el saldo actualizado.");
-            }
-            return wallet;
-        } catch (HttpClientErrorException.Conflict exception) {
-            throw new InsufficientWalletBalanceException();
-        } catch (HttpClientErrorException.NotFound exception) {
-            throw new WalletNotFoundException();
-        } catch (HttpClientErrorException exception) {
-            if (exception.getStatusCode().value() == 423) {
-                throw new WalletFrozenException();
-            }
-            throw exception;
-        }
-    }
-
     private static String bearer(String token) {
         if (token == null || token.isBlank()) {
             throw new IllegalStateException("No se encontró el token de Acceso para usar la tarjeta universal.");
@@ -83,18 +59,10 @@ public class WalletClient {
         }
     }
 
-    private record DebitRequest(String operationId, BigDecimal amount, String description) {
-    }
-
     public static class WalletNotFoundException extends RuntimeException {
         public WalletNotFoundException() {
             super("No tienes una tarjeta Digitrans creada.");
         }
     }
 
-    public static class WalletFrozenException extends RuntimeException {
-        public WalletFrozenException() {
-            super("Tu tarjeta Digitrans está congelada. Descongélala desde Billetera para poder comprar.");
-        }
-    }
 }

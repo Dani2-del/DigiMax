@@ -37,6 +37,7 @@ public class SecurityConfig {
     CsrfTokenRepository csrfTokenRepository(
             @Value("${app.cookie.secure:false}") boolean secureCookie) {
         CookieCsrfTokenRepository repository = new CookieCsrfTokenRepository();
+        repository.setCookieName("RECARGAS_XSRF-TOKEN");
         repository.setCookieCustomizer(cookie -> cookie
                 .path("/")
                 .secure(secureCookie)

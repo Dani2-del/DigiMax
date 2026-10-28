@@ -114,7 +114,7 @@ public class AdminCatalogController {
         boolean invalidDateRange = desde != null && hasta != null && desde.isAfter(hasta);
         boolean invalidStatus = !estado.isBlank()
                 && !Set.of(RecargaMovil.STATUS_PROCESSING, RecargaMovil.STATUS_SIMULATED,
-                        RecargaMovil.STATUS_REJECTED).contains(estado);
+                        RecargaMovil.STATUS_REJECTED, RecargaMovil.STATUS_PAYMENT_PENDING).contains(estado);
         boolean invalidType = !tipo.isBlank() && !Set.of("saldo", "paquete").contains(tipo);
         boolean invalidOperator = !operadorId.isBlank()
                 && allOperators.stream().noneMatch(operator -> operadorId.equals(operator.getId()));
@@ -165,7 +165,7 @@ public class AdminCatalogController {
         boolean invalidDates = desde != null && hasta != null && desde.isAfter(hasta);
         boolean invalidStatus = !estado.isBlank()
                 && !Set.of(RecargaMovil.STATUS_PROCESSING, RecargaMovil.STATUS_SIMULATED,
-                        RecargaMovil.STATUS_REJECTED).contains(estado);
+                        RecargaMovil.STATUS_REJECTED, RecargaMovil.STATUS_PAYMENT_PENDING).contains(estado);
         boolean invalidType = !tipo.isBlank() && !Set.of("saldo", "paquete").contains(tipo);
         boolean invalidOperator = !operadorId.isBlank()
                 && allOperators.stream().noneMatch(operator -> operadorId.equals(operator.getId()));
@@ -318,6 +318,8 @@ public class AdminCatalogController {
         var allPackages = paquetes.findAllByOrderByNombreAsc();
         model.addAttribute("totalRecargas", recargas.count());
         model.addAttribute("recargasProcesando", recargas.countByEstado(RecargaMovil.STATUS_PROCESSING));
+        model.addAttribute("recargasPagoPendiente",
+                recargas.countByEstado(RecargaMovil.STATUS_PAYMENT_PENDING));
         model.addAttribute("recargasSimuladas", recargas.countByEstado(RecargaMovil.STATUS_SIMULATED));
         model.addAttribute("recargasRechazadas", recargas.countByEstado(RecargaMovil.STATUS_REJECTED));
         model.addAttribute("totalOperadores", operadores.count());
@@ -360,7 +362,8 @@ public class AdminCatalogController {
                     Criteria.where("usuarioId").regex(searchPattern),
                     Criteria.where("telefono").regex(searchPattern),
                     Criteria.where("operador").regex(searchPattern),
-                    Criteria.where("paquete").regex(searchPattern)));
+                    Criteria.where("paquete").regex(searchPattern),
+                    Criteria.where("idPagoProveedor").regex(searchPattern)));
         }
         if (!estado.isBlank()) {
             filters.add(Criteria.where("estado").is(estado));

@@ -34,6 +34,13 @@ class GlobalOperationsServiceTest {
                 .containsExactly(first, second);
     }
 
+    @Test
+    void excludesPendingAndRejectedWalletTopUpsFromCompletedTransactions() {
+        assertThat(GlobalOperationsService.isTopUpAttempt("ABONO_PENDIENTE")).isTrue();
+        assertThat(GlobalOperationsService.isTopUpAttempt("ABONO_RECHAZADO")).isTrue();
+        assertThat(GlobalOperationsService.isTopUpAttempt("ABONO")).isFalse();
+    }
+
     private static GlobalTransaction transaction(String operationId, String service, String source) {
         return new GlobalTransaction(operationId, service, "CONSUMO", "Test",
                 "user-1", "", "", new BigDecimal("100"), "COMPLETADA",

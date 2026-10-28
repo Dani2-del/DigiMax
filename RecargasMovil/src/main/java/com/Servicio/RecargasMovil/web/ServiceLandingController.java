@@ -6,21 +6,23 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestAttribute;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.RecargasMovil.model.OperadorMovil;
 import com.Servicio.RecargasMovil.model.PaqueteMovil;
+import com.Servicio.RecargasMovil.model.RecargaMovil;
 import com.Servicio.RecargasMovil.security.AuthenticatedIdentity;
 import com.Servicio.RecargasMovil.security.RemoteAccessAuthenticationFilter;
-import com.Servicio.RecargasMovil.service.InsufficientWalletBalanceException;
 import com.Servicio.RecargasMovil.service.RecargasService;
 import com.Servicio.RecargasMovil.service.WalletClient;
 
@@ -48,8 +50,11 @@ public class ServiceLandingController {
     @GetMapping("/")
     public String index(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @RequestAttribute("_csrf") CsrfToken csrfToken,
             HttpServletRequest request,
             Model model) {
+        csrfToken.getToken();
+        model.addAttribute("_csrf", csrfToken);
         model.addAttribute("identity", identity);
         var operators = recargasService.operadoresActivos();
         var packages = recargasService.paquetesActivos();
@@ -83,10 +88,10 @@ public class ServiceLandingController {
         } catch (ResourceAccessException exception) {
             model.addAttribute("walletError", true);
             model.addAttribute("error",
-                    "La billetera universal no está disponible. No se puede solicitar una recarga ahora.");
+                    "No se pudo cargar el saldo de Billetera. Puedes continuar con el pago simulado de una recarga.");
         } catch (RestClientResponseException exception) {
             model.addAttribute("walletError", true);
-            model.addAttribute("error", "Billetera respondió con un error (HTTP "
+            model.addAttribute("error", "No se pudo consultar Billetera (HTTP "
                     + exception.getStatusCode().value() + ").");
         } catch (IllegalStateException exception) {
             model.addAttribute("walletError", true);
@@ -121,33 +126,25 @@ public class ServiceLandingController {
     @PostMapping("/recargar")
     public String recharge(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
-            HttpServletRequest request,
             @RequestParam String lineaId,
             @RequestParam String paqueteId,
             @RequestParam String operationId,
             RedirectAttributes redirectAttributes) {
         try {
             var recharge = recargasService.solicitarRecarga(
-                    identity.id(), lineaId, paqueteId, operationId, token(request));
-            redirectAttributes.addFlashAttribute("mensaje",
-                    recharge.getEstado().equals("SIMULADA")
-                            ? "Recarga simulada completada. El costo se descontó de tu tarjeta universal."
-                            : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
-        } catch (InsufficientWalletBalanceException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletNotFoundException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletFrozenException exception) {
+                    identity.id(), lineaId, paqueteId, operationId, identity.email());
+            mostrarResultadoPago(recharge, redirectAttributes);
+        } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (ResourceAccessException exception) {
             redirectAttributes.addFlashAttribute("error",
-                    "No se pudo confirmar la respuesta de Billetera. La operación sigue pendiente; vuelve a revisar su estado.");
+                    "Pagos no está disponible. La operación queda pendiente y puedes revisar su estado sin crear otro pago.");
         } catch (RestClientResponseException exception) {
-            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+            redirectAttributes.addFlashAttribute("error", "Pagos respondió con un error (HTTP "
                     + exception.getStatusCode().value()
-                    + "). La operación sigue pendiente; vuelve a revisar su estado.");
+                    + "). La operación queda pendiente; vuelve a revisar su estado.");
         }
         return "redirect:/";
     }
@@ -155,33 +152,25 @@ public class ServiceLandingController {
     @PostMapping("/recargar/saldo")
     public String rechargeBalance(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
-            HttpServletRequest request,
             @RequestParam String lineaId,
             @RequestParam BigDecimal monto,
             @RequestParam String operationId,
             RedirectAttributes redirectAttributes) {
         try {
             var recharge = recargasService.solicitarRecargaDinero(
-                    identity.id(), lineaId, monto, operationId, token(request));
-            redirectAttributes.addFlashAttribute("mensaje",
-                    recharge.getEstado().equals("SIMULADA")
-                            ? "Recarga simulada: el importe se descontó de tu tarjeta universal, pero no se envió saldo al operador."
-                            : "La operación no se completó. Revisa su estado antes de volver a intentarlo.");
-        } catch (InsufficientWalletBalanceException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletNotFoundException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletFrozenException exception) {
+                    identity.id(), lineaId, monto, operationId, identity.email());
+            mostrarResultadoPago(recharge, redirectAttributes);
+        } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (ResourceAccessException exception) {
             redirectAttributes.addFlashAttribute("error",
-                    "No se pudo confirmar la respuesta de Billetera. La operación sigue pendiente; revisa su estado antes de reintentar.");
+                    "Pagos no está disponible. La operación queda pendiente y puedes revisar su estado sin crear otro pago.");
         } catch (RestClientResponseException exception) {
-            redirectAttributes.addFlashAttribute("error", "Billetera respondió con un error (HTTP "
+            redirectAttributes.addFlashAttribute("error", "Pagos respondió con un error (HTTP "
                     + exception.getStatusCode().value()
-                    + "). La operación sigue pendiente; revisa su estado antes de reintentar.");
+                    + "). La operación queda pendiente; revisa su estado antes de reintentar.");
         }
         return "redirect:/";
     }
@@ -189,22 +178,37 @@ public class ServiceLandingController {
     @PostMapping("/recargar/{operationId}/reintentar")
     public String retryRecharge(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
-            HttpServletRequest request,
             @PathVariable String operationId,
             RedirectAttributes redirectAttributes) {
         try {
-            var recharge = recargasService.reintentarRecarga(identity.id(), operationId, token(request));
-            redirectAttributes.addFlashAttribute("mensaje", "Estado de recarga: " + recharge.getEstado());
-        } catch (InsufficientWalletBalanceException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletNotFoundException exception) {
-            redirectAttributes.addFlashAttribute("error", exception.getMessage());
-        } catch (WalletClient.WalletFrozenException exception) {
+            var recharge = recargasService.reintentarRecarga(identity.id(), operationId, identity.email());
+            mostrarResultadoPago(recharge, redirectAttributes);
+        } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (ResourceAccessException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo consultar Pagos. La operación conserva su estado actual; inténtalo más tarde.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "Pagos respondió con un error (HTTP "
+                    + exception.getStatusCode().value() + ").");
         }
         return "redirect:/";
+    }
+
+    private static void mostrarResultadoPago(
+            RecargaMovil recharge, RedirectAttributes redirectAttributes) {
+        String message = switch (recharge.getEstado()) {
+            case RecargaMovil.STATUS_SIMULATED ->
+                "Pago simulado aprobado. La recarga quedó registrada, pero no se envió al operador.";
+            case RecargaMovil.STATUS_PAYMENT_PENDING ->
+                "Pago creado y pendiente. Finalízalo desde Pagos y después revisa el estado en el historial.";
+            case RecargaMovil.STATUS_REJECTED ->
+                "El pago fue rechazado o cancelado. La recarga no se completó.";
+            default -> "La operación sigue pendiente. Revisa su estado desde el historial.";
+        };
+        redirectAttributes.addFlashAttribute("mensaje", message);
     }
 
     private static String token(HttpServletRequest request) {

@@ -10,6 +10,8 @@ import org.springframework.data.mongodb.core.mapping.Document;
 public class RecargaMovil {
 
     public static final String STATUS_PROCESSING = "PROCESANDO";
+    public static final String STATUS_PAYMENT_PENDING = "PAGO_PENDIENTE";
+    public static final String PAYMENT_INITIATING = "INICIANDO";
     public static final String STATUS_SIMULATED = "SIMULADA";
     public static final String STATUS_REJECTED = "RECHAZADA";
 
@@ -23,6 +25,9 @@ public class RecargaMovil {
     private String paquete;
     private BigDecimal monto;
     private String estado = STATUS_PROCESSING;
+    private String idPagoProveedor;
+    private String estadoPago;
+    private String pagador;
     private LocalDateTime fecha = LocalDateTime.now();
 
     public String getOperacionId() { return operacionId; }
@@ -48,6 +53,15 @@ public class RecargaMovil {
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
+
+    public String getIdPagoProveedor() { return idPagoProveedor; }
+    public void setIdPagoProveedor(String idPagoProveedor) { this.idPagoProveedor = idPagoProveedor; }
+
+    public String getEstadoPago() { return estadoPago; }
+    public void setEstadoPago(String estadoPago) { this.estadoPago = estadoPago; }
+
+    public String getPagador() { return pagador; }
+    public void setPagador(String pagador) { this.pagador = pagador; }
 
     public LocalDateTime getFecha() { return fecha; }
     public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }

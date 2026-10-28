@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Tarjeta universal | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261026-3)}">
+    <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261027-1)}">
 </head>
 <body>
 <nav class="wallet-section-nav" aria-label="Navegación de tu Billetera">
@@ -177,59 +177,58 @@
             </div>
             <span class="section-icon" aria-hidden="true">＋</span>
         </div>
-        <p class="muted">Esta es una demostración: no se realizará ningún pago real.</p>
+        <p class="muted">El saldo solo se acredita cuando el pago simulado quede aprobado.</p>
         <p class="notice demo-warning" role="note">
-            Usa únicamente datos ficticios. No ingreses tu contraseña real de PSE ni datos reales de tarjeta.
-            Estos campos son solo visuales y no se envían ni se guardan.
+            Usa únicamente datos ficticios de prueba. Los campos inferiores se validan en tu navegador
+            y nunca se envían al servidor ni se guardan.
         </p>
-        <form th:action="@{/saldo/abonar}" method="post">
+        <form th:action="@{/saldo/abonar}" method="post" data-payment-form>
             <label for="monto">Monto (COP)</label>
             <input id="monto" name="monto" type="number" min="1" max="1000000"
                    step="1" required>
+            <input type="hidden" name="operationId" th:value="${cargaOperationId}">
             <fieldset style="border:0;padding:0;margin:0">
-                <legend>Método de pago (simulación)</legend>
+                <legend>Método de pago simulado</legend>
                 <div class="payment-methods">
                     <label class="payment-method">
-                        <input type="radio" name="metodoPago" value="PSE" checked required data-payment-method>
+                        <input type="radio" name="metodoPago" value="PSE" checked required>
                         PSE
                     </label>
                     <label class="payment-method">
-                        <input type="radio" name="metodoPago" value="TARJETA_CREDITO_DEBITO" required data-payment-method>
+                        <input type="radio" name="metodoPago" value="TARJETA_CREDITO_DEBITO" required>
                         Tarjeta de crédito/débito
                     </label>
                 </div>
             </fieldset>
-            <div class="payment-details" data-payment-details="PSE">
-                <div class="payment-fields">
-                    <label for="pse-email">Correo PSE de prueba
-                        <input id="pse-email" type="email" placeholder="correo@ejemplo.com"
-                               autocomplete="off" data-demo-field>
-                    </label>
-                    <label for="pse-password">Contraseña ficticia
-                        <input id="pse-password" type="password" placeholder="Solo para la demostración"
-                               autocomplete="new-password" data-demo-field>
-                    </label>
-                </div>
+            <div class="payment-fields" data-pse-fields>
+                <label for="pseCorreo">Correo PSE ficticio</label>
+                <input id="pseCorreo" type="email" autocomplete="off" placeholder="prueba@example.com"
+                       required data-demo-field>
+                <label for="pseClave">Contraseña PSE ficticia</label>
+                <input id="pseClave" type="password" minlength="4" maxlength="20" autocomplete="off"
+                       placeholder="Solo datos de prueba" required data-demo-field>
             </div>
-            <div class="payment-details" data-payment-details="TARJETA_CREDITO_DEBITO" hidden>
-                <div class="payment-fields">
-                    <label for="card-number">Número de tarjeta ficticio
-                        <input id="card-number" type="text" inputmode="numeric" maxlength="19"
-                               placeholder="1234 5678 9012 3456" autocomplete="off" disabled data-demo-field>
-                    </label>
-                    <div class="payment-fields two-columns">
-                        <label for="card-expiry">Vencimiento (MM/AA)
-                            <input id="card-expiry" type="text" inputmode="numeric" maxlength="5"
-                                   placeholder="MM/AA" autocomplete="off" disabled data-demo-field>
-                        </label>
-                        <label for="card-cvv">CVV ficticio
-                            <input id="card-cvv" type="password" inputmode="numeric" maxlength="4"
-                                   placeholder="123" autocomplete="off" disabled data-demo-field>
-                        </label>
+            <div class="payment-fields" data-card-fields hidden>
+                <label for="numeroTarjeta">Número de tarjeta ficticio</label>
+                <input id="numeroTarjeta" type="text" inputmode="numeric" autocomplete="off"
+                       pattern="[0-9 ]{15,19}" minlength="15" maxlength="19"
+                       placeholder="0000 0000 0000 0000" required disabled data-demo-field>
+                <div class="payment-fields two-columns">
+                    <div>
+                        <label for="fechaVencimiento">Fecha de vencimiento ficticia</label>
+                        <input id="fechaVencimiento" type="month" min="2026-10" autocomplete="off"
+                               required disabled data-demo-field>
+                    </div>
+                    <div>
+                        <label for="cvvTarjeta">CVV ficticio</label>
+                        <input id="cvvTarjeta" type="password" inputmode="numeric" autocomplete="off"
+                               pattern="[0-9]{3,4}" maxlength="4" placeholder="000"
+                               required disabled data-demo-field>
                     </div>
                 </div>
+                <small class="muted">Ejemplo seguro: usa 0000 0000 0000 0000, una fecha futura y 000. No ingreses una tarjeta real.</small>
             </div>
-            <button type="submit">Simular carga de saldo</button>
+            <button type="submit">Iniciar pago simulado</button>
         </form>
     </section>
 
@@ -268,28 +267,48 @@
                     <select id="type-filter" data-type-filter>
                         <option value="">Todos los tipos</option>
                         <option value="RECARGA">Recargas</option>
+                        <option value="PENDIENTE">Pendientes</option>
+                        <option value="RECHAZADA">Rechazadas</option>
                         <option value="PAGO">Pagos</option>
                     </select>
                 </label>
             </div>
             <div class="table-wrap">
                 <table class="movement-table">
-                    <thead><tr><th>Movimiento</th><th>Servicio</th><th>Fecha</th><th class="amount-heading">Valor</th></tr></thead>
+                    <thead><tr><th>Movimiento</th><th>Servicio</th><th>Fecha</th><th>Pago simulado</th><th class="amount-heading">Valor</th><th></th></tr></thead>
                     <tbody data-movement-list>
                     <tr th:each="movimiento : ${movimientos}"
                         th:attr="data-service=${movimiento.servicio},data-type=${movimiento.categoria}">
                         <td>
                             <span class="movement-kind"
-                                  th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : ' is-debit'"
-                                  th:text="${movimiento.categoria == 'RECARGA' ? 'Recarga' : 'Pago'}"></span>
+                                  th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : (${movimiento.categoria == 'PENDIENTE'} ? ' is-pending' : (${movimiento.categoria == 'RECHAZADA'} ? ' is-rejected' : ' is-debit'))"
+                                  th:text="${movimiento.categoria == 'RECARGA' ? 'Recarga' : (movimiento.categoria == 'PENDIENTE' ? 'Pendiente' : (movimiento.categoria == 'RECHAZADA' ? 'Rechazada' : 'Pago'))}"></span>
                             <span class="movement-description" th:text="${movimiento.descripcion}"></span>
                         </td>
                         <td><span class="service-pill" th:text="${movimiento.servicio}"></span></td>
                         <td class="movement-date"
                             th:text="${movimiento.fecha != null ? #temporals.format(movimiento.fecha, 'dd/MM/yyyy HH:mm') : '-'}"></td>
+                        <td>
+                            <span th:if="${movimiento.estadoPago != null}"
+                                  th:text="${movimiento.estadoPago + (movimiento.metodoPago != null ? ' · ' + movimiento.metodoPago : '')}"></span>
+                            <span th:if="${movimiento.idPagoProveedor != null}"
+                                  class="movement-description"
+                                  th:text="|ID: ${movimiento.idPagoProveedor}|"></span>
+                            <span th:if="${movimiento.estadoPago == null}">—</span>
+                        </td>
                         <td class="movement-amount"
-                            th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : ' is-debit'"
-                            th:text="${(movimiento.categoria == 'RECARGA' ? '+' : '−') + '$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')}"></td>
+                            th:classappend="${movimiento.categoria == 'RECARGA'} ? ' is-credit' : (${movimiento.categoria == 'PENDIENTE'} ? ' is-pending' : (${movimiento.categoria == 'RECHAZADA'} ? ' is-rejected' : ' is-debit'))"
+                            th:text="${(movimiento.categoria == 'RECARGA' ? '+' : (movimiento.categoria == 'PENDIENTE' or movimiento.categoria == 'RECHAZADA' ? '' : '−')) + '$ ' + #numbers.formatDecimal(movimiento.monto, 0, 'COMMA', 2, 'POINT')}"></td>
+                        <td>
+                            <form th:if="${movimiento.tipo == 'ABONO_PENDIENTE'}"
+                                  th:action="@{'/saldo/' + ${movimiento.operacionId} + '/revisar'}"
+                                  method="post" data-auto-review-form>
+                                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                                <button type="submit" class="button-secondary">
+                                    <span data-auto-review-label>Revisar pago automáticamente</span>
+                                </button>
+                            </form>
+                        </td>
                     </tr>
                     </tbody>
                 </table>
@@ -304,29 +323,11 @@
     <footer class="page-footer">DIGITRANS · Tu movilidad, en un solo lugar</footer>
 </main>
 <script>
-    const paymentMethods = document.querySelectorAll("[data-payment-method]");
-    const paymentDetails = document.querySelectorAll("[data-payment-details]");
     const activationFirst = document.querySelector("[data-activation-first]");
     const activationFinal = document.querySelector("[data-activation-final]");
     const deactivateFirst = document.querySelector("[data-deactivate-first]");
     const deactivateFinal = document.querySelector("[data-deactivate-final]");
     const deactivateCancel = document.querySelector("[data-deactivate-cancel]");
-
-    function updatePaymentDetails() {
-        const selectedMethod = document.querySelector("[data-payment-method]:checked")?.value;
-        paymentDetails.forEach((section) => {
-            const isSelected = section.dataset.paymentDetails === selectedMethod;
-            section.hidden = !isSelected;
-            section.querySelectorAll("[data-demo-field]").forEach((field) => {
-                field.disabled = !isSelected;
-                field.required = isSelected;
-                if (!isSelected) field.value = "";
-            });
-        });
-    }
-
-    paymentMethods.forEach((method) => method.addEventListener("change", updatePaymentDetails));
-    updatePaymentDetails();
 
     activationFirst?.addEventListener("click", () => {
         activationFirst.disabled = true;
@@ -347,6 +348,52 @@
         deactivateFirst.disabled = false;
         deactivateFirst.textContent = "Desactivar tarjeta";
         deactivateFirst.focus();
+    });
+
+    const paymentForm = document.querySelector("[data-payment-form]");
+    const paymentMethods = [...document.querySelectorAll('input[name="metodoPago"]')];
+    const pseFields = document.querySelector("[data-pse-fields]");
+    const cardFields = document.querySelector("[data-card-fields]");
+    const expirationField = document.querySelector("#fechaVencimiento");
+    const expirationNow = new Date();
+
+    expirationField.min = `${expirationNow.getFullYear()}-${String(expirationNow.getMonth() + 1).padStart(2, "0")}`;
+
+    function updatePaymentFields() {
+        const selectedMethod = paymentMethods.find((input) => input.checked)?.value;
+        const pseActive = selectedMethod === "PSE";
+        pseFields.hidden = !pseActive;
+        cardFields.hidden = pseActive;
+        pseFields.querySelectorAll("[data-demo-field]").forEach((field) => {
+            field.disabled = !pseActive;
+        });
+        cardFields.querySelectorAll("[data-demo-field]").forEach((field) => {
+            field.disabled = pseActive;
+        });
+    }
+
+    paymentMethods.forEach((input) => input.addEventListener("change", updatePaymentFields));
+    paymentForm?.addEventListener("submit", () => {
+        paymentForm.querySelectorAll("[data-demo-field]").forEach((field) => {
+            field.value = "";
+        });
+    });
+    updatePaymentFields();
+
+    const autoReviewForms = [...document.querySelectorAll("[data-auto-review-form]")];
+    autoReviewForms.forEach((form) => {
+        const label = form.querySelector("[data-auto-review-label]");
+        let remainingSeconds = 12;
+        const counter = window.setInterval(() => {
+            remainingSeconds -= 1;
+            label.textContent = `Revisión automática en ${remainingSeconds}s`;
+            if (remainingSeconds <= 0) {
+                window.clearInterval(counter);
+                label.textContent = "Revisando pago...";
+                form.querySelector("button").disabled = true;
+                form.submit();
+            }
+        }, 1000);
     });
 
     const historyToggle = document.querySelector("[data-history-toggle]");

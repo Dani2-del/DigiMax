@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.ui.ConcurrentModel;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.http.HttpStatus;
@@ -41,13 +42,18 @@ class ServiceLandingControllerTest {
         when(walletClient.getWallet("token"))
                 .thenThrow(new WalletClient.WalletNotFoundException());
         ConcurrentModel model = new ConcurrentModel();
+        MockHttpServletRequest request = requestWithToken();
+        CsrfToken csrfToken = mock(CsrfToken.class);
+        when(csrfToken.getToken()).thenReturn("csrf-token");
+        request.setAttribute("_csrf", csrfToken);
 
-        String view = controller.index(identity(), requestWithToken(), model);
+        String view = controller.index(identity(), csrfToken, request, model);
 
         assertThat(view).isEqualTo("servicio-recargas");
         assertThat(model.getAttribute("walletMissing")).isEqualTo(true);
         assertThat(model.getAttribute("walletError")).isEqualTo(false);
         assertThat(model.getAttribute("billeteraUrl")).isEqualTo("http://localhost:8082");
+        assertThat(model.getAttribute("_csrf")).isSameAs(csrfToken);
     }
 
     @Test
@@ -56,8 +62,12 @@ class ServiceLandingControllerTest {
                 .thenThrow(HttpClientErrorException.create(
                         HttpStatus.SERVICE_UNAVAILABLE, "Unavailable", null, null, null));
         ConcurrentModel model = new ConcurrentModel();
+        MockHttpServletRequest request = requestWithToken();
+        CsrfToken csrfToken = mock(CsrfToken.class);
+        when(csrfToken.getToken()).thenReturn("csrf-token");
+        request.setAttribute("_csrf", csrfToken);
 
-        controller.index(identity(), requestWithToken(), model);
+        controller.index(identity(), csrfToken, request, model);
 
         assertThat(model.getAttribute("walletMissing")).isEqualTo(false);
         assertThat(model.getAttribute("walletError")).isEqualTo(true);

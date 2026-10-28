@@ -11,6 +11,10 @@ public class MovimientoBilletera {
     private String servicio;
     private BigDecimal monto;
     private LocalDateTime fecha;
+    private String idPagoProveedor;
+    private String estadoPago;
+    private String metodoPago;
+    private String correoPagador;
 
     public MovimientoBilletera() {
     }
@@ -43,7 +47,8 @@ public class MovimientoBilletera {
         if (detalle.contains("transmetro")) return "Transmetro";
         if (detalle.contains("paquete")) return "Paquetes y recargas";
         if (detalle.contains("pasaje")) return "Transporte";
-        if ("ABONO".equalsIgnoreCase(tipo)) return "Billetera";
+        if ("ABONO".equalsIgnoreCase(tipo) || "ABONO_PENDIENTE".equalsIgnoreCase(tipo)
+                || "ABONO_RECHAZADO".equalsIgnoreCase(tipo)) return "Billetera";
         if ("AJUSTE_ADMIN".equalsIgnoreCase(tipo) || "RETIRO_ADMIN".equalsIgnoreCase(tipo)
                 || "CAMBIO_ESTADO".equalsIgnoreCase(tipo)) return "Soporte Billetera";
         return "Otros";
@@ -52,6 +57,8 @@ public class MovimientoBilletera {
 
     public String getCategoria() {
         if ("ABONO".equalsIgnoreCase(tipo)) return "RECARGA";
+        if ("ABONO_PENDIENTE".equalsIgnoreCase(tipo)) return "PENDIENTE";
+        if ("ABONO_RECHAZADO".equalsIgnoreCase(tipo)) return "RECHAZADA";
         if ("AJUSTE_ADMIN".equalsIgnoreCase(tipo)) return "AJUSTE";
         if ("RETIRO_ADMIN".equalsIgnoreCase(tipo)) return "AJUSTE";
         if ("CAMBIO_ESTADO".equalsIgnoreCase(tipo)) return "SOPORTE";
@@ -64,4 +71,16 @@ public class MovimientoBilletera {
 
     public LocalDateTime getFecha() { return fecha; }
     public void setFecha(LocalDateTime fecha) { this.fecha = fecha; }
+
+    public String getIdPagoProveedor() { return idPagoProveedor; }
+    public void setIdPagoProveedor(String idPagoProveedor) { this.idPagoProveedor = idPagoProveedor; }
+
+    public String getEstadoPago() { return estadoPago; }
+    public void setEstadoPago(String estadoPago) { this.estadoPago = estadoPago; }
+
+    public String getMetodoPago() { return metodoPago; }
+    public void setMetodoPago(String metodoPago) { this.metodoPago = metodoPago; }
+
+    public String getCorreoPagador() { return correoPagador; }
+    public void setCorreoPagador(String correoPagador) { this.correoPagador = correoPagador; }
 }

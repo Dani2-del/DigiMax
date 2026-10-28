@@ -126,6 +126,9 @@ public class GlobalOperationsService {
                         if (!(movements.get(index) instanceof Document movement)) {
                             continue;
                         }
+                        if (isTopUpAttempt(text(first(movement, "tipo", "type")))) {
+                            continue;
+                        }
                         String service = normalizeWalletService(first(movement, "servicio", "service"),
                                 first(movement, "tipo", "type"), first(movement, "descripcion", "description"));
                         if (!services.contains(service)) {
@@ -149,6 +152,10 @@ public class GlobalOperationsService {
                                 "Billetera"));
                     }
                 });
+    }
+
+    static boolean isTopUpAttempt(String type) {
+        return "ABONO_PENDIENTE".equals(type) || "ABONO_RECHAZADO".equals(type);
     }
 
     private void readMobileRecharges(List<GlobalTransaction> output, Map<String, String> unavailable,

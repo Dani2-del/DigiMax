@@ -18,11 +18,12 @@ Desarrollado en la **Fundación Universitaria Tecnológico Comfenalco** por:
 | --- | ---: | --- |
 | `Acceso` | 8080 | Registro, inicio de sesión, identidad central, JWT, inicio de sesión con Google y consola global con usuarios, transacciones, analítica, chats y reportes Excel. |
 | `Transporte` | 8081 | Experiencia de transporte público, perfiles SITM, tarjetas de transporte, rutas y funciones administrativas. |
-| `Billetera` | 8082 | Tarjeta universal, saldo compartido, movimientos, ajustes de diseño y seguridad con códigos de verificación por correo, y herramientas de moderación. |
-| `RecargasMovil` | 8083 | Catálogos, líneas y compras simuladas de paquetes y recargas móviles. |
+| `Billetera` | 8082 | Tarjeta universal, saldo compartido y cargas simuladas mediante Pagos, con movimientos y herramientas de moderación. |
+| `RecargasMovil` | 8083 | Catálogos, líneas y recargas simuladas; inicia pagos en Pagos y conserva su resultado en el historial. |
 | `Correo` | 8084 | API interna para el envío de correo mediante SMTP. |
+| `Pagos` | 8085 | API de prueba para iniciar y consultar pagos simulados en memoria; RecargasMovil la usa como medio de pago. |
 
-Acceso centraliza la identidad. Los demás módulos validan la sesión mediante el token JWT; Billetera comparte el saldo con Transporte y RecargasMovil. Las operaciones de carga, pagos y recargas son **simuladas**: no se conectan a medios de pago ni a operadores móviles reales.
+Acceso centraliza la identidad. Los demás módulos validan la sesión mediante el token JWT; Billetera comparte el saldo con Transporte. Billetera y RecargasMovil se comunican con Pagos por HTTP y guardan el ID y estado del pago en sus movimientos. Las cargas y recargas son **simuladas**: no se conectan a medios de pago ni a operadores móviles reales; el saldo de Billetera solo aumenta cuando Pagos informa `APROBADO`, mientras RecargasMovil no descuenta saldo de Billetera.
 
 ## Requisitos
 
@@ -71,7 +72,7 @@ Cada módulo persistente usa una base MongoDB independiente:
 
 MongoDB crea cada base cuando el módulo realiza su primera escritura. `Correo` no necesita base de datos. La base antigua `Digitrans_Max` no se modifica ni migra automáticamente.
 
-Las direcciones de los servicios pueden personalizarse con `ACCESO_BASE_URL`, `BILLETERA_BASE_URL`, `TRANSPORTE_URL`, `RECARGAS_URL` y `MAIL_SERVICE_URL`; sus valores locales predeterminados apuntan a los puertos indicados arriba.
+Las direcciones de los servicios pueden personalizarse con `ACCESO_BASE_URL`, `BILLETERA_BASE_URL`, `PAGOS_BASE_URL`, `TRANSPORTE_URL`, `RECARGAS_URL` y `MAIL_SERVICE_URL`; sus valores locales predeterminados apuntan a los puertos indicados arriba.
 
 La consola global de Acceso consulta las bases de Transporte, Billetera y Recargas para consolidar transacciones. Usa las URI de MongoDB de cada módulo indicadas en la tabla; si personalizas una base, configura la misma URI en la variable correspondiente para que la consola pueda leer sus datos. El total global consolida operaciones por ID cuando los módulos comparten la misma referencia. Los reportes Excel permiten escoger conjuntos de datos, servicios y fechas.
 
@@ -92,7 +93,13 @@ Set-Location .\Acceso
 .\gradlew.bat bootRun
 ```
 
-Otros ejemplos: ejecuta `.\gradlew.bat bootRun` desde `Billetera`, `RecargasMovil` o `Correo`; para Transporte, ejecuta `.\mvnw.cmd spring-boot:run` desde `Transporte`.
+Otros ejemplos: ejecuta `.\gradlew.bat bootRun` desde `Billetera`, `RecargasMovil` o `Correo`; para Transporte, ejecuta `.\mvnw.cmd spring-boot:run` desde `Transporte`; para Pagos, ejecuta `.\Transporte\mvnw.cmd -f .\Pagos\pom.xml spring-boot:run` desde la raíz.
+
+RecargasMovil inicia un pago en Pagos y deja la recarga en `PAGO_PENDIENTE`. Por ahora, Pagos aprueba automáticamente los pagos simulados después de 10 segundos; luego usa **Revisar pago** en RecargasMovil. Para probar otros resultados, puedes usar `POST http://localhost:8085/api/pagos/{idProveedor}/rechazar` o `/cancelar` antes de la aprobación automática. Solo cuando Pagos responde `APROBADO` la recarga pasa a `SIMULADA`; un pago rechazado o cancelado deja la recarga en `RECHAZADA`. Este flujo no descuenta de Billetera ni envía saldo al operador.
+
+La carga de Billetera permite seleccionar PSE con correo y contraseña ficticios, o tarjeta de débito con número ficticio. Billetera revisa automáticamente las cargas pendientes vencidas sin depender de que el usuario deje la página abierta. Esos campos solo se validan en el navegador y no se envían ni almacenan; el sistema conserva únicamente el método elegido. Las cargas quedan pendientes hasta que Pagos las apruebe automáticamente después de 10 segundos. Luego pulsa **Revisar pago** en Billetera. Para probar otros resultados, puedes llamar a `POST http://localhost:8085/api/pagos/{idProveedor}/rechazar` o `/cancelar` antes de la aprobación automática. El saldo se acredita de forma atómica una sola vez cuando el pago queda `APROBADO`; el historial conserva método, ID y resultado. No ingreses contraseñas PSE ni datos de tarjeta. Reintentar una misma carga usa la referencia original y no crea un segundo pago.
+
+Pagos también expone `POST http://localhost:8085/api/pagos` para iniciar pagos y `GET http://localhost:8085/api/pagos/{idProveedor}` para consultar su estado. Reutilizar la misma referencia con los mismos datos devuelve el pago original; usarla con datos distintos responde `409`. Las acciones manuales de aprobar, rechazar y cancelar son para pruebas locales, no deben exponerse sin protección en producción. La demora automática se configura con `pagos.simulacion.aprobacion-automatica-segundos` en `Pagos/src/main/resources/application.yml`. Los pagos se guardan en memoria y se pierden al reiniciar Pagos.
 
 Con todos los módulos activos, la página principal está en <http://localhost:8080>.
 
@@ -106,6 +113,7 @@ Ejecuta las pruebas desde la raíz del repositorio con PowerShell:
 .\RecargasMovil\gradlew.bat -p RecargasMovil test
 .\Correo\gradlew.bat -p Correo test
 .\Transporte\mvnw.cmd -f Transporte\pom.xml test
+.\Transporte\mvnw.cmd -f Pagos\pom.xml test
 ```
 
 Para correr una clase específica en Gradle, añade `--tests nombre.completo.DeLaPrueba` antes de `test`, por ejemplo:

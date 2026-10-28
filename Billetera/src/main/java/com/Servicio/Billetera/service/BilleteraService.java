@@ -1,6 +1,7 @@
 package com.Servicio.Billetera.service;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -20,6 +21,7 @@ import com.Servicio.Billetera.model.DisenoTarjeta;
 import com.Servicio.Billetera.model.EstadoTarjeta;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.repository.BilleteraUniversalRepository;
+import com.Servicio.Billetera.service.PagosClient.ResultadoPago;
 
 @Service
 public class BilleteraService {
@@ -27,15 +29,21 @@ public class BilleteraService {
     private static final int MAX_MOVIMIENTOS_GUARDADOS = 500;
     private static final int MAX_INTENTOS_NUMERO_TARJETA = 3;
     private static final BigDecimal MONTO_MAXIMO_SIMULADO = new BigDecimal("1000000");
+    private static final String TOP_UP_PENDING = "ABONO_PENDIENTE";
+    private static final String TOP_UP_REJECTED = "ABONO_RECHAZADO";
+    private static final String PAYMENT_INITIATING = "INICIANDO";
 
     private final BilleteraUniversalRepository billeteras;
     private final MongoOperations mongoOperations;
+    private final PagosClient pagosClient;
 
     public BilleteraService(
             BilleteraUniversalRepository billeteras,
-            MongoOperations mongoOperations) {
+            MongoOperations mongoOperations,
+            PagosClient pagosClient) {
         this.billeteras = billeteras;
         this.mongoOperations = mongoOperations;
+        this.pagosClient = pagosClient;
     }
 
     public BilleteraUniversal obtener(String usuarioId) {
@@ -316,16 +324,98 @@ public class BilleteraService {
         throw new WalletNotFoundException();
     }
 
-    public BilleteraUniversal abonarSimulado(
-            String usuarioId, BigDecimal monto, String operacionId, String metodoPago) {
+    public BilleteraUniversal iniciarCargaSimulada(
+            String usuarioId,
+            String correo,
+            BigDecimal monto,
+            String operacionId,
+            String metodoPago) {
         validarMovimiento(monto, operacionId);
-        String descripcion = switch (metodoPago == null ? "" : metodoPago) {
-            case "PSE" -> "Carga simulada con PSE";
-            case "TARJETA_DEBITO" -> "Carga simulada con tarjeta débito";
-            case "TARJETA_CREDITO_DEBITO" -> "Carga simulada con tarjeta crédito/débito";
-            default -> throw new IllegalArgumentException("Selecciona PSE o tarjeta crédito/débito.");
-        };
-        return aplicarMovimiento(usuarioId, monto, operacionId, "ABONO", descripcion, "Billetera", false);
+        validarMontoCarga(monto);
+        String payer = validarCorreoPagador(correo);
+        String method = validarMetodoPago(metodoPago);
+        BilleteraUniversal wallet = obtener(usuarioId);
+        if (wallet.getEstado() == EstadoTarjeta.CONGELADA) {
+            throw new WalletFrozenException();
+        }
+
+        MovimientoBilletera previous = movimiento(wallet, operacionId);
+        if (previous != null) {
+            validarCargaExistente(previous, monto, method);
+            return TOP_UP_PENDING.equals(previous.getTipo())
+                    ? procesarPagoCarga(usuarioId, previous, payer)
+                    : wallet;
+        }
+
+        MovimientoBilletera pending = new MovimientoBilletera(
+                operacionId.trim(), TOP_UP_PENDING, descripcionCarga(method), monto, LocalDateTime.now());
+        pending.setServicio("Billetera");
+        pending.setEstadoPago(PAYMENT_INITIATING);
+        pending.setMetodoPago(method);
+        pending.setCorreoPagador(payer);
+        Criteria criteria = Criteria.where("_id").is(usuarioId)
+                .and("activadaPorUsuario").is(true)
+                .and("movimientos.operacionId").ne(pending.getOperacionId())
+                .and("estado").is(EstadoTarjeta.ACTIVA.name());
+        BilleteraUniversal reserved = mongoOperations.findAndModify(
+                Query.query(criteria),
+                new Update().push("movimientos")
+                        .atPosition(0).slice(MAX_MOVIMIENTOS_GUARDADOS).each(pending),
+                FindAndModifyOptions.options().returnNew(true),
+                BilleteraUniversal.class);
+        if (reserved == null) {
+            BilleteraUniversal current = billeteras.findById(usuarioId)
+                    .orElseThrow(WalletNotFoundException::new);
+            if (current.getEstado() == EstadoTarjeta.CONGELADA) {
+                throw new WalletFrozenException();
+            }
+            MovimientoBilletera existing = movimiento(current, operacionId);
+            if (existing == null) {
+                throw new IllegalStateException("No se pudo reservar la carga de saldo.");
+            }
+            validarCargaExistente(existing, monto, method);
+            return TOP_UP_PENDING.equals(existing.getTipo())
+                    ? procesarPagoCarga(usuarioId, existing, payer)
+                    : current;
+        }
+        return procesarPagoCarga(usuarioId, pending, payer);
+    }
+
+    public void revisarCargasPendientesVencidas() {
+        LocalDateTime eligibleSince = LocalDateTime.now().minusSeconds(12);
+        Query query = Query.query(Criteria.where("movimientos").elemMatch(
+                        Criteria.where("tipo").is(TOP_UP_PENDING)
+                                .and("fecha").lte(eligibleSince)));
+        for (BilleteraUniversal wallet : mongoOperations.find(query, BilleteraUniversal.class)) {
+            for (MovimientoBilletera movement : wallet.getMovimientos()) {
+                if (!TOP_UP_PENDING.equals(movement.getTipo())
+                        || movement.getFecha() == null
+                        || movement.getFecha().isAfter(eligibleSince)
+                        || movement.getIdPagoProveedor() == null
+                        || movement.getIdPagoProveedor().isBlank()) {
+                    continue;
+                }
+                try {
+                    procesarPagoCarga(wallet.getUsuarioId(), movement, "");
+                } catch (RuntimeException ignored) {
+                    // Se volverá a intentar en el siguiente ciclo de conciliación.
+                }
+            }
+        }
+    }
+
+    public BilleteraUniversal revisarCarga(String usuarioId, String operacionId, String correo) {
+        String operationKey = validarOperacionId(operacionId);
+        String payer = validarCorreoPagador(correo);
+        BilleteraUniversal wallet = obtener(usuarioId);
+        MovimientoBilletera movement = movimiento(wallet, operationKey);
+        if (movement == null) {
+            throw new IllegalArgumentException("No se encontró esa carga de saldo.");
+        }
+        if (!TOP_UP_PENDING.equals(movement.getTipo())) {
+            return wallet;
+        }
+        return procesarPagoCarga(usuarioId, movement, payer);
     }
 
     public BilleteraUniversal debitar(
@@ -428,6 +518,156 @@ public class BilleteraService {
             throw new SaldoInsuficienteException();
         }
         throw new IllegalStateException("No se pudo actualizar el saldo de la tarjeta universal.");
+    }
+
+    private BilleteraUniversal procesarPagoCarga(
+            String usuarioId, MovimientoBilletera movement, String correo) {
+        ResultadoPago payment;
+        if (movement.getIdPagoProveedor() == null
+                || movement.getIdPagoProveedor().isBlank()) {
+            payment = iniciarPagoRecuperado(usuarioId, movement, correo);
+        } else {
+            try {
+                payment = pagosClient.consultar(movement.getIdPagoProveedor());
+            } catch (org.springframework.web.client.RestClientResponseException exception) {
+                if (exception.getStatusCode().value() != 404) {
+                    throw exception;
+                }
+                payment = iniciarPagoRecuperado(usuarioId, movement, correo);
+            }
+        }
+        return aplicarResultadoPago(usuarioId, movement, payment);
+    }
+
+    private ResultadoPago iniciarPagoRecuperado(
+            String usuarioId, MovimientoBilletera movement, String correo) {
+        String pagador = correo != null && !correo.isBlank()
+                ? validarCorreoPagador(correo)
+                : validarCorreoPagador(movement.getCorreoPagador());
+        return pagosClient.iniciar(
+                referenciaPago(usuarioId, movement.getOperacionId()),
+                movement.getMonto(), movement.getDescripcion(), pagador);
+    }
+
+    private BilleteraUniversal aplicarResultadoPago(
+            String usuarioId, MovimientoBilletera movement, ResultadoPago payment) {
+        String state = payment.estado();
+        if ("PENDIENTE".equals(state)) {
+            Query query = Query.query(Criteria.where("_id").is(usuarioId)
+                    .and("movimientos").elemMatch(Criteria.where("operacionId")
+                            .is(movement.getOperacionId()).and("tipo").is(TOP_UP_PENDING)));
+            BilleteraUniversal updated = mongoOperations.findAndModify(
+                    query,
+                    new Update().set("movimientos.$.idPagoProveedor", payment.idProveedor())
+                            .set("movimientos.$.estadoPago", state),
+                    FindAndModifyOptions.options().returnNew(true),
+                    BilleteraUniversal.class);
+            if (updated != null) {
+                return updated;
+            }
+            return currentAfterPaymentRace(usuarioId, movement, payment);
+        }
+
+        if (!"APROBADO".equals(state) && !"RECHAZADO".equals(state) && !"CANCELADO".equals(state)) {
+            throw new IllegalStateException("Pagos devolvió un estado no reconocido: " + state);
+        }
+
+        Criteria criteria = Criteria.where("_id").is(usuarioId)
+                .and("activadaPorUsuario").is(true)
+                .and("movimientos").elemMatch(Criteria.where("operacionId")
+                        .is(movement.getOperacionId()).and("tipo").is(TOP_UP_PENDING));
+        if ("APROBADO".equals(state)) {
+            criteria.and("estado").is(EstadoTarjeta.ACTIVA.name());
+        }
+        Update update = new Update()
+                .set("movimientos.$.idPagoProveedor", payment.idProveedor())
+                .set("movimientos.$.estadoPago", state)
+                .set("movimientos.$.tipo", "APROBADO".equals(state) ? "ABONO" : TOP_UP_REJECTED);
+        if ("APROBADO".equals(state)) {
+            update.inc("saldo", movement.getMonto());
+        }
+        BilleteraUniversal updated = mongoOperations.findAndModify(
+                Query.query(criteria), update, FindAndModifyOptions.options().returnNew(true),
+                BilleteraUniversal.class);
+        if (updated != null) {
+            return updated;
+        }
+        return currentAfterPaymentRace(usuarioId, movement, payment);
+    }
+
+    private BilleteraUniversal currentAfterPaymentRace(
+            String usuarioId, MovimientoBilletera original, ResultadoPago payment) {
+        BilleteraUniversal current = billeteras.findById(usuarioId)
+                .orElseThrow(WalletNotFoundException::new);
+        MovimientoBilletera latest = movimiento(current, original.getOperacionId());
+        if (latest != null && payment.idProveedor().equals(latest.getIdPagoProveedor())) {
+            if (latest.getMonto().compareTo(original.getMonto()) == 0
+                    && ("ABONO".equals(latest.getTipo()) && "APROBADO".equals(latest.getEstadoPago())
+                            || TOP_UP_REJECTED.equals(latest.getTipo())
+                                    && payment.estado().equals(latest.getEstadoPago())
+                            || TOP_UP_PENDING.equals(latest.getTipo())
+                                    && payment.estado().equals(latest.getEstadoPago()))) {
+                return current;
+            }
+        }
+        if ("APROBADO".equals(payment.estado())
+                && current.getEstado() == EstadoTarjeta.CONGELADA) {
+            throw new WalletFrozenException();
+        }
+        if (latest != null && !TOP_UP_PENDING.equals(latest.getTipo())) {
+            throw new IllegalArgumentException(
+                    "El identificador de operación ya se finalizó con otros datos.");
+        }
+        throw new IllegalStateException("No se pudo actualizar el estado de la carga de saldo.");
+    }
+
+    private static MovimientoBilletera movimiento(BilleteraUniversal wallet, String operacionId) {
+        return wallet.getMovimientos().stream()
+                .filter(item -> operacionId.equals(item.getOperacionId()))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private static void validarCargaExistente(
+            MovimientoBilletera movement, BigDecimal monto, String metodoPago) {
+        if (!(TOP_UP_PENDING.equals(movement.getTipo())
+                || "ABONO".equals(movement.getTipo())
+                || TOP_UP_REJECTED.equals(movement.getTipo()))
+                || movement.getMonto().compareTo(monto) != 0
+                || !metodoPago.equals(movement.getMetodoPago())) {
+            throw new IllegalArgumentException("El identificador de operación ya se usó con otros datos.");
+        }
+    }
+
+    private static String validarMetodoPago(String metodoPago) {
+        if ("PSE".equals(metodoPago) || "TARJETA_CREDITO_DEBITO".equals(metodoPago)) {
+            return metodoPago;
+        }
+        throw new IllegalArgumentException("Selecciona PSE o tarjeta crédito/débito.");
+    }
+
+    private static String validarCorreoPagador(String correo) {
+        if (correo == null || correo.isBlank() || correo.trim().length() > 254
+                || !correo.trim().matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$")) {
+            throw new IllegalArgumentException("No se encontró un correo válido para iniciar el pago.");
+        }
+        return correo.trim();
+    }
+
+    private static void validarMontoCarga(BigDecimal monto) {
+        if (monto.scale() > 2) {
+            throw new IllegalArgumentException("El monto debe tener máximo dos decimales.");
+        }
+    }
+
+    private static String descripcionCarga(String metodoPago) {
+        return "Carga simulada de saldo con "
+                + ("PSE".equals(metodoPago) ? "PSE" : "tarjeta crédito/débito");
+    }
+
+    private static String referenciaPago(String usuarioId, String operacionId) {
+        return UUID.nameUUIDFromBytes((usuarioId + ":" + operacionId)
+                .getBytes(StandardCharsets.UTF_8)).toString();
     }
 
     private static void validarMovimiento(BigDecimal monto, String operacionId) {

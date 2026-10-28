@@ -496,6 +496,11 @@ legend {
 .payment-fields {
     display: grid;
     gap: 12px;
+   margin-top: 12px;
+}
+
+.payment-fields[hidden] {
+   display: none;
 }
 
 .payment-fields.two-columns {
@@ -591,6 +596,24 @@ legend {
 .movement-kind.is-debit {
     color: #a64b38;
     background: #fff0ea;
+}
+
+.movement-kind.is-pending {
+    color: #8a6413;
+    background: #fff5d9;
+}
+
+.movement-amount.is-pending {
+    color: #8a6413;
+}
+
+.movement-kind.is-rejected {
+    color: #a64b38;
+    background: #fff0ea;
+}
+
+.movement-amount.is-rejected {
+    color: #a64b38;
 }
 
 .movement-description {

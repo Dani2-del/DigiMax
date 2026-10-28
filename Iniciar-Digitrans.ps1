@@ -9,6 +9,13 @@ $services = @(
         Command = '.\gradlew.bat --no-daemon bootRun'
     },
     @{
+        Name = 'Pagos'
+        Port = 8085
+        MainClass = 'com.Servicio.Pagos.PagosApplication'
+        Folder = 'Pagos'
+        Command = '..\Transporte\mvnw.cmd -f ..\Pagos\pom.xml spring-boot:run'
+    },
+    @{
         Name = 'Billetera'
         Port = 8082
         MainClass = 'com.Servicio.Billetera.BilleteraApplication'
@@ -121,7 +128,7 @@ try {
         Write-Host "$($service.Name) está escuchando en el puerto $($service.Port)."
     }
 
-    Write-Host 'Los cinco módulos están iniciados.'
+    Write-Host 'Los seis módulos están iniciados.'
 }
 catch {
     Write-Error $_

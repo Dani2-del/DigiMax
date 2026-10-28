@@ -21,6 +21,7 @@
           <select name="estado">
             <option value="">Todos</option>
             <option value="SIMULADA" th:selected="${filtroEstado == 'SIMULADA'}">Simulada</option>
+            <option value="PAGO_PENDIENTE" th:selected="${filtroEstado == 'PAGO_PENDIENTE'}">Pago pendiente</option>
             <option value="PROCESANDO" th:selected="${filtroEstado == 'PROCESANDO'}">Procesando</option>
             <option value="RECHAZADA" th:selected="${filtroEstado == 'RECHAZADA'}">Rechazada</option>
           </select>
@@ -49,7 +50,7 @@
       <div th:if="${recargasPage.content.isEmpty()}" class="empty-state">No hay operaciones que coincidan con los filtros.</div>
       <div th:unless="${recargasPage.content.isEmpty()}" class="table-wrap">
         <table>
-          <thead><tr><th>Operación</th><th>Usuario</th><th>Operador / línea</th><th>Concepto</th><th>Importe</th><th>Estado</th><th>Fecha</th></tr></thead>
+          <thead><tr><th>Operación</th><th>Usuario</th><th>Operador / línea</th><th>Concepto</th><th>Importe</th><th>Estado</th><th>Pago simulado</th><th>Fecha</th></tr></thead>
           <tbody>
             <tr th:each="recarga : ${recargasPage.content}">
               <td class="mono" th:text="${recarga.operacionId}">id</td>
@@ -58,6 +59,11 @@
               <td th:text="${recarga.paquete}">Concepto</td>
               <td th:text="${recarga.monto != null ? '$' + #numbers.formatDecimal(recarga.monto, 1, 2) : '—'}">—</td>
               <td><span class="status" th:classappend="| status-${#strings.toLowerCase(recarga.estado)}|" th:text="${recarga.estado}">Estado</span></td>
+              <td>
+                <span th:text="${recarga.estadoPago != null ? recarga.estadoPago : '—'}"></span>
+                <span class="subtext" th:if="${recarga.idPagoProveedor != null}"
+                      th:text="|ID: ${recarga.idPagoProveedor}|"></span>
+              </td>
               <td th:text="${recarga.fecha != null ? #temporals.format(recarga.fecha, 'dd/MM/yyyy HH:mm') : '—'}">fecha</td>
             </tr>
           </tbody>

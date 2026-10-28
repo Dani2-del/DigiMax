@@ -19,7 +19,7 @@ import com.Servicio.RecargasMovil.repository.LineaMovilRepository;
 import com.Servicio.RecargasMovil.repository.OperadorMovilRepository;
 import com.Servicio.RecargasMovil.repository.PaqueteMovilRepository;
 import com.Servicio.RecargasMovil.repository.RecargaMovilRepository;
-import com.Servicio.RecargasMovil.service.WalletClient.Wallet;
+import com.Servicio.RecargasMovil.service.PagosClient.ResultadoPago;
 
 @Service
 public class RecargasService {
@@ -31,19 +31,19 @@ public class RecargasService {
     private final PaqueteMovilRepository paquetes;
     private final LineaMovilRepository lineas;
     private final RecargaMovilRepository recargas;
-    private final WalletClient walletClient;
+    private final PagosClient pagosClient;
 
     public RecargasService(
             OperadorMovilRepository operadores,
             PaqueteMovilRepository paquetes,
             LineaMovilRepository lineas,
             RecargaMovilRepository recargas,
-            WalletClient walletClient) {
+            PagosClient pagosClient) {
         this.operadores = operadores;
         this.paquetes = paquetes;
         this.lineas = lineas;
         this.recargas = recargas;
-        this.walletClient = walletClient;
+        this.pagosClient = pagosClient;
     }
 
     public List<OperadorMovil> operadoresActivos() {
@@ -171,17 +171,17 @@ public class RecargasService {
     }
 
     public RecargaMovil solicitarRecarga(
-            String usuarioId, String lineaId, String paqueteId, String operacionId, String token) {
+            String usuarioId, String lineaId, String paqueteId, String operacionId, String pagador) {
         String operationKey = requiredText(operacionId, "Identificador de operación inválido.", 100);
         RecargaMovil previous = recargas.findById(operationKey).orElse(null);
         if (previous != null) {
             if (!usuarioId.equals(previous.getUsuarioId())) {
                 throw new IllegalArgumentException("La operación no pertenece a tu cuenta.");
             }
-            if (!RecargaMovil.STATUS_PROCESSING.equals(previous.getEstado())) {
+            if (!requiereRevision(previous)) {
                 return previous;
             }
-            return procesar(previous, token);
+            return procesar(previous, pagador);
         }
 
         LineaMovil line = lineas.findById(lineaId)
@@ -206,6 +206,8 @@ public class RecargasService {
         recharge.setPaquete(mobilePackage.getNombre());
         recharge.setMonto(mobilePackage.getPrecio());
         recharge.setEstado(RecargaMovil.STATUS_PROCESSING);
+        recharge.setEstadoPago(RecargaMovil.PAYMENT_INITIATING);
+        recharge.setPagador(requiredText(pagador, "El correo del pagador no es válido.", 254));
         recharge.setFecha(LocalDateTime.now());
         try {
             recargas.insert(recharge);
@@ -213,9 +215,9 @@ public class RecargasService {
             RecargaMovil existing = recargas.findById(operationKey)
                     .filter(item -> usuarioId.equals(item.getUsuarioId()))
                     .orElseThrow(() -> exception);
-            return procesar(existing, token);
+            return procesar(existing, pagador);
         }
-        return procesar(recharge, token);
+        return procesar(recharge, pagador);
     }
 
     public RecargaMovil solicitarRecargaDinero(
@@ -223,17 +225,17 @@ public class RecargasService {
             String lineaId,
             BigDecimal monto,
             String operacionId,
-            String token) {
+            String pagador) {
         String operationKey = requiredText(operacionId, "Identificador de operación inválido.", 100);
         RecargaMovil previous = recargas.findById(operationKey).orElse(null);
         if (previous != null) {
             if (!usuarioId.equals(previous.getUsuarioId())) {
                 throw new IllegalArgumentException("La operación no pertenece a tu cuenta.");
             }
-            if (!RecargaMovil.STATUS_PROCESSING.equals(previous.getEstado())) {
+            if (!requiereRevision(previous)) {
                 return previous;
             }
-            return procesar(previous, token);
+            return procesar(previous, pagador);
         }
 
         if (monto == null || monto.scale() > 0
@@ -261,6 +263,8 @@ public class RecargasService {
         recharge.setPaquete("Recarga de saldo $" + monto.toPlainString());
         recharge.setMonto(monto.setScale(2, java.math.RoundingMode.UNNECESSARY));
         recharge.setEstado(RecargaMovil.STATUS_PROCESSING);
+        recharge.setEstadoPago(RecargaMovil.PAYMENT_INITIATING);
+        recharge.setPagador(requiredText(pagador, "El correo del pagador no es válido.", 254));
         recharge.setFecha(LocalDateTime.now());
         try {
             recargas.insert(recharge);
@@ -268,39 +272,56 @@ public class RecargasService {
             RecargaMovil existing = recargas.findById(operationKey)
                     .filter(item -> usuarioId.equals(item.getUsuarioId()))
                     .orElseThrow(() -> exception);
-            return procesar(existing, token);
+            return procesar(existing, pagador);
         }
-        return procesar(recharge, token);
+        return procesar(recharge, pagador);
     }
 
-    public RecargaMovil reintentarRecarga(String usuarioId, String operationId, String token) {
+    public RecargaMovil reintentarRecarga(String usuarioId, String operationId, String pagador) {
         RecargaMovil recharge = recargas.findById(operationId)
                 .filter(item -> usuarioId.equals(item.getUsuarioId()))
                 .orElseThrow(() -> new IllegalArgumentException("No se encontró esa recarga."));
-        if (!RecargaMovil.STATUS_PROCESSING.equals(recharge.getEstado())) {
+        if (!requiereRevision(recharge)) {
             return recharge;
         }
-        return procesar(recharge, token);
+        return procesar(recharge, pagador);
     }
 
-    private RecargaMovil procesar(RecargaMovil recharge, String token) {
-        try {
-            String transactionType = recharge.getPaquete().startsWith("Recarga de saldo")
-                    ? "Recarga de saldo "
-                    : "Paquete ";
-            Wallet wallet = walletClient.debit(token, recharge.getOperacionId(),
-                    recharge.getMonto(), transactionType + recharge.getOperador() + " para "
-                            + ocultarTelefono(recharge.getTelefono()));
-            if (wallet == null) {
-                throw new IllegalStateException("Billetera no devolvió el resultado del débito.");
-            }
-            recharge.setEstado(RecargaMovil.STATUS_SIMULATED);
-            return recargas.save(recharge);
-        } catch (InsufficientWalletBalanceException exception) {
-            recharge.setEstado(RecargaMovil.STATUS_REJECTED);
-            recargas.save(recharge);
-            throw exception;
+    private RecargaMovil procesar(RecargaMovil recharge, String pagador) {
+        if (!StringUtils.hasText(recharge.getPagador())) {
+            recharge.setPagador(requiredText(pagador, "El correo del pagador no es válido.", 254));
         }
+        if (!StringUtils.hasText(recharge.getIdPagoProveedor())
+                && !RecargaMovil.PAYMENT_INITIATING.equals(recharge.getEstadoPago())) {
+            throw new OperacionPendienteAnteriorException();
+        }
+        ResultadoPago resultado = StringUtils.hasText(recharge.getIdPagoProveedor())
+                ? pagosClient.consultar(recharge.getIdPagoProveedor())
+                : pagosClient.iniciar(
+                        recharge.getOperacionId(),
+                        recharge.getMonto(),
+                        descripcionPago(recharge),
+                        recharge.getPagador());
+        recharge.setIdPagoProveedor(resultado.idProveedor());
+        recharge.setEstadoPago(resultado.estado());
+        recharge.setEstado(switch (resultado.estado()) {
+            case "PENDIENTE" -> RecargaMovil.STATUS_PAYMENT_PENDING;
+            case "APROBADO" -> RecargaMovil.STATUS_SIMULATED;
+            case "RECHAZADO", "CANCELADO" -> RecargaMovil.STATUS_REJECTED;
+            default -> throw new IllegalStateException(
+                    "Pagos devolvió un estado de pago no reconocido: " + resultado.estado());
+        });
+        return recargas.save(recharge);
+    }
+
+    private static boolean requiereRevision(RecargaMovil recharge) {
+        return RecargaMovil.STATUS_PROCESSING.equals(recharge.getEstado())
+                || RecargaMovil.STATUS_PAYMENT_PENDING.equals(recharge.getEstado());
+    }
+
+    private static String descripcionPago(RecargaMovil recharge) {
+        return "Recarga móvil " + recharge.getPaquete() + " · " + recharge.getOperador()
+                + " para " + ocultarTelefono(recharge.getTelefono());
     }
 
     private static String requiredText(String value, String error, int maxLength) {
@@ -315,6 +336,15 @@ public class RecargasService {
             return "****";
         }
         return "****" + telefono.substring(telefono.length() - 4);
+    }
+
+    public static class OperacionPendienteAnteriorException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        public OperacionPendienteAnteriorException() {
+            super("Esta operación pendiente pertenece al flujo anterior de Billetera. "
+                    + "Verifica su movimiento antes de iniciar otro pago.");
+        }
     }
 
     private record PackageDetails(String name, String description, BigDecimal price, CategoriaPaquete category) {

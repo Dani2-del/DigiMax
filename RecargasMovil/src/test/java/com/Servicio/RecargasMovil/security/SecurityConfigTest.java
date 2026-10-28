@@ -24,7 +24,7 @@ class SecurityConfigTest {
         repository.saveToken(token, request, response);
 
         assertThat(request.getSession(false)).isNull();
-        Cookie savedCookie = response.getCookie("XSRF-TOKEN");
+        Cookie savedCookie = response.getCookie("RECARGAS_XSRF-TOKEN");
         assertThat(savedCookie).isNotNull();
         assertThat(savedCookie.getValue()).isEqualTo(token.getToken());
         assertThat(savedCookie.getPath()).isEqualTo("/");
@@ -32,7 +32,7 @@ class SecurityConfigTest {
         assertThat(savedCookie.getSecure()).isFalse();
         assertThat(savedCookie.getAttribute("SameSite")).isEqualTo("Lax");
 
-        request.setCookies(new Cookie("XSRF-TOKEN", token.getToken()));
+        request.setCookies(new Cookie("RECARGAS_XSRF-TOKEN", token.getToken()));
         assertThat(repository.loadToken(request)).isNotNull()
                 .extracting(CsrfToken::getToken)
                 .isEqualTo(token.getToken());
@@ -47,6 +47,6 @@ class SecurityConfigTest {
 
         repository.saveToken(repository.generateToken(request), request, response);
 
-        assertThat(response.getCookie("XSRF-TOKEN").getSecure()).isTrue();
+        assertThat(response.getCookie("RECARGAS_XSRF-TOKEN").getSecure()).isTrue();
     }
 }

@@ -3,12 +3,15 @@ package com.Servicio.Billetera.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DuplicateKeyException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Query;
@@ -41,11 +45,14 @@ class BilleteraServiceTest {
     @Mock
     private MongoOperations mongoOperations;
 
+    @Mock
+    private PagosClient pagosClient;
+
     private BilleteraService service;
 
     @BeforeEach
     void setUp() {
-        service = new BilleteraService(billeteras, mongoOperations);
+        service = new BilleteraService(billeteras, mongoOperations, pagosClient);
     }
 
     @Test
@@ -64,6 +71,10 @@ class BilleteraServiceTest {
 
         assertThat(movement.getServicio()).isEqualTo("Billetera");
         assertThat(movement.getCategoria()).isEqualTo("RECARGA");
+
+        MovimientoBilletera pending = topUpMovement("operation-2", "ABONO_PENDIENTE", "PENDIENTE");
+        assertThat(pending.getCategoria()).isEqualTo("PENDIENTE");
+        assertThat(pending.getServicio()).isEqualTo("Billetera");
     }
 
     @Test
@@ -237,9 +248,10 @@ class BilleteraServiceTest {
         assertThatThrownBy(() -> service.debitar(
                 "user-1", new BigDecimal("100"), "operation-1", "Pasaje"))
                 .isInstanceOf(BilleteraService.WalletFrozenException.class);
-        assertThatThrownBy(() -> service.abonarSimulado(
-                "user-1", new BigDecimal("100"), "operation-2", "PSE"))
+        assertThatThrownBy(() -> service.iniciarCargaSimulada(
+                "user-1", "persona@example.com", new BigDecimal("100"), "operation-2", "PSE"))
                 .isInstanceOf(BilleteraService.WalletFrozenException.class);
+        verify(pagosClient, never()).iniciar(anyString(), any(), anyString(), anyString());
         verify(mongoOperations, times(0)).findAndModify(any(Query.class), any(Update.class),
                 any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
     }
@@ -309,50 +321,171 @@ class BilleteraServiceTest {
     }
 
     @Test
-    void simulatedTopUpAcceptsPse() {
+    void simulatedTopUpStartsAsPendingWithoutIncreasingBalance() {
         when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "2500")));
-        BilleteraUniversal updated = wallet("user-1", "22500");
+        BilleteraUniversal reserved = wallet("user-1", "2500");
+        reserved.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "INICIANDO")));
+        BilleteraUniversal pending = wallet("user-1", "2500");
+        pending.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "payment-1")));
         when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
-                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(updated);
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class)))
+                .thenReturn(reserved)
+                .thenReturn(pending);
+        when(pagosClient.iniciar(anyString(), eq(new BigDecimal("20000.00")),
+                anyString(), eq("persona@example.com")))
+                .thenReturn(new PagosClient.ResultadoPago("payment-1", "PENDIENTE", null));
 
-        BilleteraUniversal result = service.abonarSimulado(
-                "user-1", new BigDecimal("20000"), "operation-1", "PSE");
+        BilleteraUniversal result = service.iniciarCargaSimulada(
+                "user-1", "persona@example.com", new BigDecimal("20000.00"),
+                "operation-1", "PSE");
 
-        assertThat(result.getSaldo()).isEqualByComparingTo("22500");
+        assertThat(result.getSaldo()).isEqualByComparingTo("2500");
+        assertThat(result.getMovimientos()).singleElement()
+                .satisfies(movement -> {
+                    assertThat(movement.getTipo()).isEqualTo("ABONO_PENDIENTE");
+                    assertThat(movement.getIdPagoProveedor()).isEqualTo("payment-1");
+                    assertThat(movement.getEstadoPago()).isEqualTo("PENDIENTE");
+                    assertThat(movement.getMetodoPago()).isEqualTo("PSE");
+                });
+        verify(pagosClient).iniciar(anyString(), eq(new BigDecimal("20000.00")),
+                anyString(), eq("persona@example.com"));
     }
 
     @Test
-    void simulatedTopUpAcceptsDebitCard() {
-        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "2500")));
-        BilleteraUniversal updated = wallet("user-1", "22500");
+    void creditsBalanceOnlyAfterPaymentIsApprovedAndDoesItAtomically() {
+        BilleteraUniversal pending = wallet("user-1", "2500");
+        pending.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "payment-1")));
+        BilleteraUniversal approved = wallet("user-1", "22500");
+        approved.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO", "APROBADO", "payment-1")));
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(pending));
+        when(pagosClient.consultar("payment-1"))
+                .thenReturn(new PagosClient.ResultadoPago("payment-1", "APROBADO", null));
         when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
-                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(updated);
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(approved);
 
-        BilleteraUniversal result = service.abonarSimulado(
-                "user-1", new BigDecimal("20000"), "operation-1", "TARJETA_DEBITO");
+        BilleteraUniversal result = service.revisarCarga(
+                "user-1", "operation-1", "persona@example.com");
 
         assertThat(result.getSaldo()).isEqualByComparingTo("22500");
+        assertThat(result.getMovimientos()).singleElement()
+                .satisfies(movement -> {
+                    assertThat(movement.getTipo()).isEqualTo("ABONO");
+                    assertThat(movement.getEstadoPago()).isEqualTo("APROBADO");
+                });
+        ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+        verify(mongoOperations).findAndModify(any(Query.class), update.capture(),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+        assertThat(update.getValue().getUpdateObject().get("$inc", Document.class)
+                .get("saldo", BigDecimal.class)).isEqualByComparingTo("20000.00");
     }
 
     @Test
-    void simulatedTopUpAcceptsCreditOrDebitCard() {
-        when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet("user-1", "2500")));
-        BilleteraUniversal updated = wallet("user-1", "22500");
+    void rejectedPaymentDoesNotIncreaseBalance() {
+        BilleteraUniversal pending = wallet("user-1", "2500");
+        pending.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "payment-1")));
+        BilleteraUniversal rejected = wallet("user-1", "2500");
+        rejected.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO_RECHAZADO", "RECHAZADO", "payment-1")));
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(pending));
+        when(pagosClient.consultar("payment-1"))
+                .thenReturn(new PagosClient.ResultadoPago("payment-1", "RECHAZADO", null));
         when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
-                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(updated);
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(rejected);
 
-        BilleteraUniversal result = service.abonarSimulado(
-                "user-1", new BigDecimal("20000"), "operation-1", "TARJETA_CREDITO_DEBITO");
+        BilleteraUniversal result = service.revisarCarga(
+                "user-1", "operation-1", "persona@example.com");
 
-        assertThat(result.getSaldo()).isEqualByComparingTo("22500");
+        assertThat(result.getSaldo()).isEqualByComparingTo("2500");
+        assertThat(result.getMovimientos()).singleElement()
+                .satisfies(movement -> assertThat(movement.getTipo()).isEqualTo("ABONO_RECHAZADO"));
+        ArgumentCaptor<Update> update = ArgumentCaptor.forClass(Update.class);
+        verify(mongoOperations).findAndModify(any(Query.class), update.capture(),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+        assertThat(update.getValue().getUpdateObject()).doesNotContainKey("$inc");
+    }
+
+    @Test
+    void reconcilesAnOldPendingLoadWithoutBrowserInteraction() {
+        BilleteraUniversal pending = wallet("user-1", "2500");
+        MovimientoBilletera movement = topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "payment-1");
+        movement.setFecha(LocalDateTime.now().minusSeconds(20));
+        pending.setMovimientos(List.of(movement));
+        BilleteraUniversal approved = wallet("user-1", "22500");
+        approved.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO", "APROBADO", "payment-1")));
+        when(mongoOperations.find(any(Query.class), eq(BilleteraUniversal.class)))
+                .thenReturn(List.of(pending));
+        when(pagosClient.consultar("payment-1"))
+                .thenReturn(new PagosClient.ResultadoPago("payment-1", "APROBADO", null));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(approved);
+
+        service.revisarCargasPendientesVencidas();
+
+        verify(pagosClient).consultar("payment-1");
+        verify(mongoOperations).findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
+    }
+
+    @Test
+    void replacesProviderPaymentLostAfterPagosRestart() {
+        BilleteraUniversal pending = wallet("user-1", "2500");
+        MovimientoBilletera movement = topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "old-payment");
+        movement.setCorreoPagador("persona@example.com");
+        pending.setMovimientos(List.of(movement));
+        BilleteraUniversal refreshed = wallet("user-1", "2500");
+        MovimientoBilletera newMovement = topUpMovement(
+                "operation-1", "ABONO_PENDIENTE", "PENDIENTE", "new-payment");
+        refreshed.setMovimientos(List.of(newMovement));
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(pending));
+        when(pagosClient.consultar("old-payment")).thenThrow(new RestClientResponseException(
+                "missing", 404, "Not Found", null, null, null));
+        when(pagosClient.iniciar(anyString(), any(), anyString(),
+                eq("persona@example.com"))).thenReturn(
+                        new PagosClient.ResultadoPago("new-payment", "PENDIENTE", null));
+        when(mongoOperations.findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class))).thenReturn(refreshed);
+
+        BilleteraUniversal result = service.revisarCarga(
+                "user-1", "operation-1", "persona@example.com");
+
+        assertThat(result).isSameAs(refreshed);
+        verify(pagosClient).iniciar(anyString(), any(), anyString(),
+                eq("persona@example.com"));
+    }
+
+    @Test
+    void retryingTheSameApprovedLoadDoesNotCreditTwice() {
+        BilleteraUniversal approved = wallet("user-1", "22500");
+        approved.setMovimientos(List.of(topUpMovement(
+                "operation-1", "ABONO", "APROBADO", "payment-1")));
+        when(billeteras.findById("user-1")).thenReturn(Optional.of(approved));
+
+        BilleteraUniversal result = service.iniciarCargaSimulada(
+                "user-1", "persona@example.com", new BigDecimal("20000.00"),
+                "operation-1", "PSE");
+
+        assertThat(result).isSameAs(approved);
+        verify(pagosClient, never()).iniciar(anyString(), any(), anyString(), anyString());
+        verify(pagosClient, never()).consultar(anyString());
+        verify(mongoOperations, never()).findAndModify(any(Query.class), any(Update.class),
+                any(FindAndModifyOptions.class), eq(BilleteraUniversal.class));
     }
 
     @Test
     void rejectsUnsupportedSimulatedTopUpMethod() {
-        assertThatThrownBy(() -> service.abonarSimulado(
-                "user-1", new BigDecimal("20000"), "operation-1", "TRANSFERENCIA"))
+        assertThatThrownBy(() -> service.iniciarCargaSimulada(
+                "user-1", "persona@example.com", new BigDecimal("20000"), "operation-1", "TRANSFERENCIA"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Selecciona PSE o tarjeta crédito/débito.");
+        verify(pagosClient, never()).iniciar(anyString(), any(), anyString(), anyString());
     }
 
     @Test
@@ -394,6 +527,23 @@ class BilleteraServiceTest {
                 "user-1", new BigDecimal("2000"), "operation-1", "Paquete móvil");
 
         assertThat(result).isSameAs(wallet);
+    }
+
+    private static MovimientoBilletera topUpMovement(
+            String operationId, String type, String paymentState) {
+        return topUpMovement(operationId, type, paymentState, null);
+    }
+
+    private static MovimientoBilletera topUpMovement(
+            String operationId, String type, String paymentState, String paymentId) {
+        MovimientoBilletera movement = new MovimientoBilletera(
+                operationId, type, "Carga simulada de saldo con PSE",
+                new BigDecimal("20000.00"), null);
+        movement.setServicio("Billetera");
+        movement.setMetodoPago("PSE");
+        movement.setEstadoPago(paymentState);
+        movement.setIdPagoProveedor(paymentId);
+        return movement;
     }
 
     private static BilleteraUniversal wallet(String userId, String balance) {

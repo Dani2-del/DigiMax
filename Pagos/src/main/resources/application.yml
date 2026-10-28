@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: pagos
+
+server:
+  port: 8085
+
+pagos:
+  proveedor: simulado
+  simulacion:
+    aprobacion-automatica-segundos: 10

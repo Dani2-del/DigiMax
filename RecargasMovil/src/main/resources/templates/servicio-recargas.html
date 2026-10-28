@@ -194,8 +194,8 @@
 
   <section th:if="${walletMissing}" class="wallet-missing" aria-labelledby="wallet-missing-title">
     <h2 id="wallet-missing-title">Aún no tienes una tarjeta Digitrans</h2>
-    <p>Para recargar saldo o comprar paquetes necesitas una tarjeta universal. Continúa a Billetera para crearla.
-      Si desactivaste una tarjeta anterior, su saldo se conservará en la nueva.</p>
+    <p>Las recargas ahora usan el proveedor simulado de Pagos y no requieren una tarjeta universal.
+      Puedes crear una en Billetera para otros servicios.</p>
     <a class="wallet-link" th:href="${billeteraUrl}">Ir a Billetera y crear mi tarjeta</a>
   </section>
 
@@ -225,8 +225,8 @@
     </div>
   </section>
   <p th:if="${walletFrozen}" class="notice error" role="status">
-    Tu tarjeta está congelada. Puedes consultar el saldo, pero no realizar recargas ni comprar paquetes hasta descongelarla en
-    <a th:href="${billeteraUrl}">Billetera</a>.
+    Tu tarjeta está congelada. Las recargas de esta pantalla se pagan mediante Pagos simulado y no usan el saldo de Billetera.
+    Puedes administrar tu tarjeta en <a th:href="${billeteraUrl}">Billetera</a>.
   </p>
 
   <section class="user-guide" aria-label="Guía rápida para empezar">
@@ -286,8 +286,8 @@
       <div><p class="eyebrow">Paso 2 · Saldo a tu SIM</p><h2>Recargar saldo</h2><p>Elige una de tus líneas y el monto que quieres agregar a su saldo prepago.</p></div>
     </div>
     <p class="simulation-warning" role="note">
-      Esta operación es una simulación: el valor se descontará de tu tarjeta universal, pero el saldo no se enviará
-      a la SIM hasta que DigiTrans tenga integración con el operador.
+      El pago comienza pendiente y se simula desde Pagos. No se descuenta de Billetera ni se envía saldo a la SIM;
+      aprueba o rechaza el pago en Pagos y después revisa el resultado en el historial.
     </p>
     <form th:action="@{/recargar/saldo}" method="post" class="grid">
       <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
@@ -306,7 +306,7 @@
       </label>
       <div>
         <button type="submit"
-                th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineasRecargables)}">
+                th:disabled="${#lists.isEmpty(lineasRecargables)}">
           Simular recarga
         </button>
         <p th:if="${#lists.isEmpty(lineasRecargables)}" class="muted">
@@ -321,9 +321,9 @@
       <div><p class="eyebrow">Paso 2 · Oferta de tu operador</p><h2>Comprar paquetes</h2><p>Selecciona el operador y la categoría para comparar sus opciones.</p></div>
     </div>
     <p class="simulation-warning" role="note">
-      Importante: estos paquetes se muestran como catálogo informativo. La compra en DigiTrans es una simulación:
-      el importe sí se descuenta de tu tarjeta universal, pero no se envía al operador ni se activa el paquete.
-      Verifica los precios y condiciones vigentes con tu operador.
+      Importante: estos paquetes se muestran como catálogo informativo. El pago es una simulación y comienza pendiente;
+      no se descuenta de Billetera, no se envía al operador ni se activa el paquete. Para completar la prueba,
+      aprueba o rechaza el pago en Pagos y luego revisa su estado en el historial.
     </p>
     <p th:if="${#lists.isEmpty(paquetes)}" class="muted">No hay paquetes activos por ahora.</p>
     <div th:unless="${#lists.isEmpty(paquetes)}">
@@ -392,8 +392,7 @@
               </select>
             </label>
             <button type="submit"
-                    th:disabled="${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
-                    th:attr="data-wallet-blocked=${walletError or walletMissing or walletFrozen or #lists.isEmpty(lineas)}"
+                    th:disabled="${#lists.isEmpty(lineas)}"
                     disabled>Simular compra</button>
           </form>
         </div>
@@ -428,6 +427,7 @@
         <select id="history-status">
           <option value="">Todos</option>
           <option value="SIMULADA">Simulada</option>
+          <option value="PAGO_PENDIENTE">Pago pendiente</option>
           <option value="PROCESANDO">Procesando</option>
           <option value="RECHAZADA">Rechazada</option>
         </select>
@@ -450,10 +450,10 @@
     <p id="history-no-results" class="history-empty" hidden>No hay recargas que coincidan con esos filtros.</p>
     <div style="overflow-x:auto">
     <table id="history-table">
-      <thead><tr><th>Fecha</th><th>Línea</th><th>Paquete</th><th>Monto</th><th>Estado</th><th></th></tr></thead>
+      <thead><tr><th>Fecha</th><th>Línea</th><th>Paquete</th><th>Monto</th><th>Estado de recarga</th><th>Pago simulado</th><th></th></tr></thead>
       <tbody>
       <tr th:each="recarga : ${recargas}" data-history-row
-          th:attr="data-search=${recarga.operador + ' ' + recarga.telefono + ' ' + recarga.paquete + ' ' + recarga.operacionId},
+          th:attr="data-search=${recarga.operador + ' ' + recarga.telefono + ' ' + recarga.paquete + ' ' + recarga.operacionId + ' ' + recarga.idPagoProveedor},
                    data-operator=${recarga.operador},
                    data-status=${recarga.estado},
                    data-type=${#strings.startsWith(recarga.paquete, 'Recarga de saldo') ? 'saldo' : 'paquete'},
@@ -464,10 +464,15 @@
         <td th:text="${'$ ' + #numbers.formatDecimal(recarga.monto, 0, 'COMMA', 0, 'POINT')}"></td>
         <td th:text="${recarga.estado}"></td>
         <td>
-          <form th:if="${recarga.estado == 'PROCESANDO'}"
+          <span th:text="${recarga.estadoPago != null ? recarga.estadoPago : '—'}"></span>
+          <small th:if="${recarga.idPagoProveedor != null}"
+                 th:text="|ID: ${recarga.idPagoProveedor}|"></small>
+        </td>
+        <td>
+          <form th:if="${recarga.estado == 'PROCESANDO' or recarga.estado == 'PAGO_PENDIENTE'}"
                 th:action="@{'/recargar/' + ${recarga.operacionId} + '/reintentar'}" method="post">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <button type="submit" class="secondary">Revisar estado</button>
+            <button type="submit" class="secondary">Revisar pago</button>
           </form>
         </td>
       </tr>
