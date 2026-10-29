@@ -193,8 +193,8 @@ public class AdminController {
             filtrosValidos = false;
         }
 
-        Set<String> rolesValidos = Set.of("", Usuario.ROLE_USER, Usuario.ROLE_CONDUCTOR,
-                Usuario.ROLE_MODERATOR, Usuario.ROLE_ADMIN);
+        Set<String> rolesValidos = Set.of(
+                "", Usuario.ROLE_USER, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
         if (!rolesValidos.contains(role)) {
             model.addAttribute("errorFiltro", "El rol seleccionado no es válido.");
             filtrosValidos = false;
@@ -209,9 +209,12 @@ public class AdminController {
         }
 
         String busquedaNormalizada = busqueda.toLowerCase(Locale.ROOT);
+        List<Usuario> usuariosSistema = usuarioRepository.findAll().stream()
+                .filter(AdminController::esPersonalTransporte)
+                .filter(usuario -> perteneceASistema(usuario, sistemaActual))
+                .toList();
         List<Usuario> usuariosFiltrados = filtrosValidos
-                ? usuarioRepository.findAll().stream()
-                        .filter(usuario -> perteneceASistema(usuario, sistemaActual))
+                ? usuariosSistema.stream()
                         .filter(usuario -> busquedaNormalizada.isBlank()
                                 || contieneIgnoreCase(usuario.getNombre(), busquedaNormalizada)
                                 || contieneIgnoreCase(usuario.getCorreo(), busquedaNormalizada))
@@ -238,10 +241,14 @@ public class AdminController {
         model.addAttribute("usuarios", usuarios);
         model.addAttribute("currentPage", paginaSegura);
         model.addAttribute("totalPages", totalPaginas);
-        model.addAttribute("totalUsuarios", contarUsuariosSistema(sistemaActual));
+        model.addAttribute("totalUsuarios", usuariosSistema.size());
         model.addAttribute("sistemaActual", sistemaActual);
-        model.addAttribute("esAdministradorGlobal", authentication.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority())));
+        boolean administradorGlobal = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        boolean moderadorTransporte = authentication.getAuthorities().stream()
+                .anyMatch(authority -> "ROLE_MODERATOR".equals(authority.getAuthority()));
+        model.addAttribute("esAdministradorGlobal", administradorGlobal);
+        model.addAttribute("puedeGestionarRoles", administradorGlobal || moderadorTransporte);
         model.addAttribute("sistemasTransporte", SistemaTransporte.disponibles());
         model.addAttribute("totalFiltrado", totalFiltrado);
         model.addAttribute("search", search != null ? search : "");
@@ -258,8 +265,14 @@ public class AdminController {
 
     private long contarUsuariosSistema(SistemaTransporte sistemaActual) {
         try (var usuarios = usuarioRepository.streamBySistemaTransporte(sistemaActual)) {
-            return usuarios.count();
+            return usuarios.filter(AdminController::esPersonalTransporte).count();
         }
+    }
+
+    private static boolean esPersonalTransporte(Usuario usuario) {
+        return Usuario.ROLE_USER.equals(usuario.getRole())
+                || Usuario.ROLE_MODERATOR.equals(usuario.getRole())
+                || Usuario.ROLE_CONDUCTOR.equals(usuario.getRole());
     }
 
     private Criteria criterioSistemaUsuario(SistemaTransporte sistemaActual) {
@@ -512,8 +525,10 @@ public class AdminController {
                     SistemaTransporte.SESSION_ATTRIBUTE);
             boolean administradorGlobal = authentication.getAuthorities().stream()
                     .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
-            Set<String> rolesPermitidos = Set.of(Usuario.ROLE_USER, Usuario.ROLE_ADMIN,
-                    Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
+            boolean moderadorTransporte = authentication.getAuthorities().stream()
+                    .anyMatch(authority -> "ROLE_MODERATOR".equals(authority.getAuthority()));
+            Set<String> rolesPermitidos = Set.of(
+                    Usuario.ROLE_USER, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
             if (!rolesPermitidos.contains(role)) {
                 response.put("status", "error");
                 response.put("message", "El rol seleccionado no es válido.");
@@ -538,21 +553,37 @@ public class AdminController {
             }
             if (opt.isPresent() && perteneceASistema(opt.get(), sistemaActual)) {
                 Usuario u = opt.get();
-                if (!administradorGlobal
-                        && (!Objects.equals(nombre, u.getNombre())
-                                || !Objects.equals(correo, u.getCorreo())
-                                || !Objects.equals(role, u.getRole()))) {
+                if (!esPersonalTransporte(u)) {
+                    response.put("status", "error");
+                    response.put("message", "Solo se pueden administrar moderadores y conductores del servicio.");
+                    return ResponseEntity.status(404).body(response);
+                }
+                if (u.isModeradorExterno()) {
                     response.put("status", "error");
                     response.put("message",
-                            "Solo un administrador global puede cambiar identidad o rol. Gestiona esos datos en Acceso.");
+                            "Las cuentas moderadoras de otros servicios no se pueden editar desde Transporte.");
+                    return ResponseEntity.status(409).body(response);
+                }
+                if (!administradorGlobal && (!moderadorTransporte
+                        || sistemaActual == null
+                        || !Objects.equals(nombre, u.getNombre())
+                        || !Objects.equals(correo, u.getCorreo())
+                        || (Usuario.ROLE_MODERATOR.equals(role) && sistemaAsignado != sistemaActual)
+                        || authentication.getName().equalsIgnoreCase(u.getCorreo()))) {
+                    response.put("status", "error");
+                    response.put("message",
+                            "Solo puedes cambiar roles de usuarios de tu servicio y asignar moderadores a ese mismo servicio.");
                     return ResponseEntity.status(403).body(response);
                 }
-                if (administradorGlobal) {
+                boolean cambioRol = !Objects.equals(role, u.getRole());
+                if (administradorGlobal || (moderadorTransporte && cambioRol)) {
                     accessIdentityClient.updateUser(userId, nombre, correo, role, u.isActivo(),
                             Usuario.ROLE_MODERATOR.equals(role) ? sistemaAsignado.name() : null);
                 }
-                u.setNombre(nombre);
-                u.setCorreo(correo);
+                if (administradorGlobal) {
+                    u.setNombre(nombre);
+                    u.setCorreo(correo);
+                }
                 boolean eraModerador = Usuario.ROLE_MODERATOR.equals(u.getRole());
                 u.setRole(role);
                 if (Usuario.ROLE_CONDUCTOR.equals(role)) {

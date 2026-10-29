@@ -59,6 +59,8 @@ public class GlobalOperationsController {
             "RECARGAS_MOVIL", "Recargas móviles");
     private static final List<String> SERVICE_ORDER = List.of(
             "TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO", "BILLETERA", "RECARGAS_MOVIL");
+    private static final List<String> ANALYTICS_COLORS = List.of(
+            "#e77a26", "#2878b8", "#2f9b72", "#8a63c7", "#df5967", "#d0a128", "#268e9b", "#6f7d8c");
 
     private final UsuarioRepository usuarios;
     private final GlobalOperationsService operations;
@@ -120,22 +122,66 @@ public class GlobalOperationsController {
                 .collect(Collectors.groupingBy(user -> user.getRole() == null ? "Sin rol" : user.getRole(),
                         Collectors.counting()));
         long maxMonthly = monthly.stream().mapToLong(MonthlyMetric::count).max().orElse(0);
-        long maxService = serviceMetrics.stream().mapToLong(ServiceMetric::count).max().orElse(0);
         model.addAttribute("monthly", monthly.stream()
                 .map(point -> point.withBar(maxMonthly == 0 ? 0 : (int) Math.max(5, point.count() * 100 / maxMonthly)))
                 .toList());
-        model.addAttribute("services", serviceMetrics.stream()
-                .map(point -> point.withBar(maxService == 0 ? 0 : (int) Math.max(5, point.count() * 100 / maxService)))
-                .toList());
-        model.addAttribute("roles", roleCounts.entrySet().stream()
+        List<DistributionMetric> services = java.util.stream.IntStream.range(0, serviceMetrics.size())
+                .mapToObj(index -> {
+                    ServiceMetric service = serviceMetrics.get(index);
+                    return new DistributionMetric(service.name(), service.count(), service.amount(),
+                            analyticsColor(index));
+                })
+                .toList();
+        List<RoleMetric> sortedRoles = roleCounts.entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
                 .map(entry -> new RoleMetric(entry.getKey(), entry.getValue()))
-                .toList());
+                .toList();
+        List<RoleMetric> roles = java.util.stream.IntStream.range(0, sortedRoles.size())
+                .mapToObj(index -> sortedRoles.get(index).withColor(analyticsColor(index)))
+                .toList();
+        model.addAttribute("services", services);
+        model.addAttribute("roles", roles);
+        model.addAttribute("serviceTotal", serviceMetrics.stream().mapToLong(ServiceMetric::count).sum());
+        model.addAttribute("roleTotal", roles.stream().mapToLong(RoleMetric::count).sum());
+        model.addAttribute("serviceDonutStyle",
+                donutStyle(serviceMetrics.stream().map(ServiceMetric::count).toList()));
+        model.addAttribute("roleDonutStyle", donutStyle(roles.stream().map(RoleMetric::count).toList()));
         model.addAttribute("totalTransacciones", snapshot.total());
         model.addAttribute("montoTotal", snapshot.totalAmount());
         model.addAttribute("erroresFuentes", snapshot.unavailableServices());
         model.addAttribute("fechaActualizacion", LocalDateTime.now().format(DATE_FORMAT));
         return "admin/global-analitica";
+    }
+
+    private static String analyticsColor(int index) {
+        return ANALYTICS_COLORS.get(index % ANALYTICS_COLORS.size());
+    }
+
+    private static String donutStyle(List<Long> values) {
+        long total = values.stream().mapToLong(Long::longValue).sum();
+        if (total == 0) {
+            return "background: conic-gradient(#e9eef3 0% 100%)";
+        }
+        StringBuilder gradient = new StringBuilder("background: conic-gradient(");
+        long cumulative = 0;
+        boolean first = true;
+        for (int index = 0; index < values.size(); index++) {
+            long value = values.get(index);
+            if (value == 0) {
+                continue;
+            }
+            if (!first) {
+                gradient.append(", ");
+            }
+            double start = cumulative * 100.0 / total;
+            cumulative += value;
+            double end = cumulative * 100.0 / total;
+            gradient.append(analyticsColor(index))
+                    .append(' ')
+                    .append(String.format(Locale.ROOT, "%.2f%% %.2f%%", start, end));
+            first = false;
+        }
+        return gradient.append(')').toString();
     }
 
     @GetMapping("/chats")
@@ -436,13 +482,23 @@ public class GlobalOperationsController {
         }
     }
 
+    public record DistributionMetric(String name, long count, BigDecimal amount, String color) {
+    }
+
     public record MonthlyMetric(String label, long count, int barPercent) {
         MonthlyMetric withBar(int percent) {
             return new MonthlyMetric(label, count, percent);
         }
     }
 
-    public record RoleMetric(String role, long count) {
+    public record RoleMetric(String role, long count, String color) {
+        public RoleMetric(String role, long count) {
+            this(role, count, "");
+        }
+
+        RoleMetric withColor(String value) {
+            return new RoleMetric(role, count, value);
+        }
     }
 
     public record ChatLink(String name, String url, boolean available) {

@@ -66,6 +66,56 @@ class GlobalOperationsControllerTest {
     }
 
     @Test
+    void buildsCircularAnalyticsForServicesAndRoles() {
+        LocalDateTime occurredAt = LocalDateTime.now();
+        List<GlobalTransaction> transactions = List.of(
+                new GlobalTransaction("operation-1", "BILLETERA", "ABONO", "Carga",
+                        "user-1", "", "", new BigDecimal("1000"), "APROBADO", occurredAt, "Billetera"),
+                new GlobalTransaction("operation-2", "BILLETERA", "ABONO", "Carga",
+                        "user-1", "", "", new BigDecimal("2000"), "APROBADO", occurredAt, "Billetera"),
+                new GlobalTransaction("operation-3", "RECARGAS_MOVIL", "SIMULADA", "Recarga",
+                        "user-2", "", "", new BigDecimal("3000"), "APROBADO", occurredAt, "RecargasMovil"));
+        Usuario admin = user();
+        admin.setRole(Usuario.ROLE_ADMIN);
+        when(operations.transactions(any(), nullable(java.time.LocalDate.class), nullable(java.time.LocalDate.class)))
+                .thenReturn(new TransactionSnapshot(transactions, Map.of()));
+        when(usuarios.findAll()).thenReturn(List.of(user(), admin));
+        var model = new ExtendedModelMap();
+
+        assertThat(controller.analytics(model)).isEqualTo("admin/global-analitica");
+
+        assertThat(model.getAttribute("serviceTotal")).isEqualTo(3L);
+        assertThat(model.getAttribute("roleTotal")).isEqualTo(2L);
+        assertThat((String) model.getAttribute("serviceDonutStyle"))
+                .contains("conic-gradient", "#8a63c7 0.00% 66.67%", "#df5967 66.67% 100.00%");
+        assertThat((String) model.getAttribute("roleDonutStyle")).contains("conic-gradient");
+        assertThat((List<GlobalOperationsController.DistributionMetric>) model.getAttribute("services"))
+                .filteredOn(service -> service.name().equals("Billetera"))
+                .extracting(GlobalOperationsController.DistributionMetric::count)
+                .containsExactly(2L);
+        assertThat((List<GlobalOperationsController.RoleMetric>) model.getAttribute("roles"))
+                .extracting(GlobalOperationsController.RoleMetric::count)
+                .containsExactly(1L, 1L);
+    }
+
+    @Test
+    void usesEmptyDonutWhenThereIsNoAnalyticsData() {
+        when(operations.transactions(any(), nullable(java.time.LocalDate.class), nullable(java.time.LocalDate.class)))
+                .thenReturn(new TransactionSnapshot(List.of(), Map.of()));
+        when(usuarios.findAll()).thenReturn(List.of());
+        var model = new ExtendedModelMap();
+
+        controller.analytics(model);
+
+        assertThat(model.getAttribute("serviceTotal")).isEqualTo(0L);
+        assertThat(model.getAttribute("roleTotal")).isEqualTo(0L);
+        assertThat(model.getAttribute("serviceDonutStyle"))
+                .isEqualTo("background: conic-gradient(#e9eef3 0% 100%)");
+        assertThat(model.getAttribute("roleDonutStyle"))
+                .isEqualTo("background: conic-gradient(#e9eef3 0% 100%)");
+    }
+
+    @Test
     void exportsSelectedUsersWithoutIncludingPasswordHashes() throws Exception {
         Usuario user = user();
         when(usuarios.findAll()).thenReturn(List.of(user));

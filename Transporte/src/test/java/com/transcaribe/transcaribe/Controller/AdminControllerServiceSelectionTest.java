@@ -2,16 +2,21 @@ package com.transcaribe.transcaribe.Controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+import java.util.List;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.ui.ConcurrentModel;
 
+import com.transcaribe.transcaribe.Model.PerfilTransporte;
 import com.transcaribe.transcaribe.Model.SistemaTransporte;
 import com.transcaribe.transcaribe.Model.Usuario;
 import com.transcaribe.transcaribe.Repository.BusRepository;
@@ -25,14 +30,16 @@ import com.transcaribe.transcaribe.service.PlataformaService;
 class AdminControllerServiceSelectionTest {
 
     private UsuarioRepository usuarios;
+    private PerfilTransporteRepository perfiles;
     private StubAccessIdentityClient acceso;
     private AdminController controller;
 
     @BeforeEach
     void setUp() {
         acceso = new StubAccessIdentityClient();
+        perfiles = mock(PerfilTransporteRepository.class);
         usuarios = new UsuarioRepository(
-                mock(PerfilTransporteRepository.class), mock(MongoOperations.class), acceso);
+                perfiles, mock(MongoOperations.class), acceso);
         controller = new AdminController(
                 usuarios,
                 mock(PlataformaService.class),
@@ -175,6 +182,100 @@ class AdminControllerServiceSelectionTest {
         assertThat(session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE)).isNull();
     }
 
+    @Test
+    void usersPageOnlyShowsTransportModeratorsAndDriversForSelectedSystem() {
+        register(user("moderator-transmetro@example.com", Usuario.ROLE_MODERATOR,
+                SistemaTransporte.TRANSMETRO));
+        register(user("moderator-transcaribe@example.com", Usuario.ROLE_MODERATOR,
+                SistemaTransporte.TRANSCARIBE));
+        register(user("driver-transmetro@example.com", Usuario.ROLE_CONDUCTOR, null));
+        register(user("driver-transcaribe@example.com", Usuario.ROLE_CONDUCTOR, null));
+        register(user("admin-transmetro@example.com", Usuario.ROLE_ADMIN, null));
+        register(user("user-transmetro@example.com", Usuario.ROLE_USER, null));
+        stubSitm("driver-transmetro@example.com", SistemaTransporte.TRANSMETRO);
+        stubSitm("driver-transcaribe@example.com", SistemaTransporte.TRANSCARIBE);
+        stubSitm("admin-transmetro@example.com", SistemaTransporte.TRANSMETRO);
+        stubSitm("user-transmetro@example.com", SistemaTransporte.TRANSMETRO);
+
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, SistemaTransporte.TRANSMETRO);
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, java.util.List.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")));
+        ConcurrentModel model = new ConcurrentModel();
+
+        controller.mostrarUsuarios(0, "", "", "", "", "", "", model, session, authentication);
+
+        @SuppressWarnings("unchecked")
+        List<Usuario> displayedUsers = (List<Usuario>) model.getAttribute("usuarios");
+        assertThat(displayedUsers).extracting(Usuario::getCorreo)
+                .containsExactlyInAnyOrder(
+                        "moderator-transmetro@example.com",
+                        "driver-transmetro@example.com",
+                        "user-transmetro@example.com");
+        assertThat(model.getAttribute("totalUsuarios")).isEqualTo(3);
+    }
+
+    @Test
+    void transportModeratorCanBeChangedIntoDriver() {
+        Usuario moderator = user("moderator@example.com", Usuario.ROLE_MODERATOR,
+                SistemaTransporte.TRANSCARIBE);
+        register(moderator);
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, java.util.List.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, SistemaTransporte.TRANSCARIBE);
+
+        var response = controller.editUser(
+                moderator.getId(), moderator.getNombre(), moderator.getCorreo(),
+                Usuario.ROLE_CONDUCTOR, null, authentication, session);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(200);
+        assertThat(acceso.updatedRole).isEqualTo(Usuario.ROLE_CONDUCTOR);
+    }
+
+    @Test
+    void walletModeratorShownAsUserCannotBeChangedFromTransport() {
+        Usuario moderator = user("moderator@example.com", Usuario.ROLE_USER, null);
+        moderator.setSitm(SistemaTransporte.TRANSCARIBE);
+        register(moderator);
+        acceso.identities.put(moderator.getCorreo(), new AccessUser(
+                moderator.getId(), moderator.getNombre(), moderator.getCorreo(), Usuario.ROLE_MODERATOR,
+                true, true, null, null, "BILLETERA"));
+        stubSitm(moderator.getId(), SistemaTransporte.TRANSCARIBE);
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, java.util.List.of(
+                        new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN")));
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, SistemaTransporte.TRANSCARIBE);
+
+        var response = controller.editUser(
+                moderator.getId(), moderator.getNombre(), moderator.getCorreo(),
+                Usuario.ROLE_USER, null, authentication, session);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(409);
+        assertThat(response.getBody()).containsEntry(
+                "message", "Las cuentas moderadoras de otros servicios no se pueden editar desde Transporte.");
+        assertThat(acceso.updatedRole).isNull();
+    }
+
+    private static Usuario user(String email, String role, SistemaTransporte assignedSystem) {
+        Usuario user = new Usuario(email, "", email);
+        user.setId(email);
+        user.setRole(role);
+        user.setSistemaAsignado(assignedSystem);
+        return user;
+    }
+
+    private void stubSitm(String email, SistemaTransporte sistema) {
+        PerfilTransporte profile = new PerfilTransporte();
+        profile.setId(email);
+        profile.setUsuarioId(email);
+        profile.setSitm(sistema);
+        when(perfiles.findByUsuarioId(email)).thenReturn(Optional.of(profile));
+    }
+
     private void register(Usuario user) {
         String id = user.getId() == null ? user.getCorreo() : user.getId();
         user.setId(id);
@@ -187,6 +288,7 @@ class AdminControllerServiceSelectionTest {
 
     private static final class StubAccessIdentityClient extends AccessIdentityClient {
         private final Map<String, AccessUser> identities = new HashMap<>();
+        private String updatedRole;
 
         private StubAccessIdentityClient() {
             super("http://localhost");
@@ -195,6 +297,26 @@ class AdminControllerServiceSelectionTest {
         @Override
         public AccessUser findByEmail(String email) {
             return identities.get(email.toLowerCase(Locale.ROOT));
+        }
+
+        @Override
+        public AccessUser findById(String id) {
+            return identities.values().stream()
+                    .filter(identity -> id.equals(identity.id()))
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        @Override
+        public List<AccessUser> findAll() {
+            return List.copyOf(identities.values());
+        }
+
+        @Override
+        public AccessUser updateUser(
+                String id, String name, String email, String role, boolean active, String serviceAssignment) {
+            updatedRole = role;
+            return new AccessUser(id, name, email, role, active, true, null, null, serviceAssignment);
         }
     }
 }

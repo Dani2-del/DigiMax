@@ -117,6 +117,7 @@ class UsuarioRepositoryTest {
         Usuario result = repository.findByCorreoIgnoreCase("persona@example.com").orElseThrow();
 
         assertThat(result.getRole()).isEqualTo(Usuario.ROLE_USER);
+        assertThat(result.isModeradorExterno()).isTrue();
         assertThat(result.getSitm()).isEqualTo(SistemaTransporte.TRANSCARIBE);
         assertThat(result.getSistemaAsignado()).isNull();
     }

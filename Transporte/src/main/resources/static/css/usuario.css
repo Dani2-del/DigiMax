@@ -1616,15 +1616,16 @@ body[data-sistema="TRANSMILENIO"] .menu-page section[data-sistema] form button:h
 }
 
 body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout {
-  border-color: var(--linea);
-  background: var(--mango-soft);
-  color: var(--tinta);
+  border-color: var(--coral);
+  background: var(--coral);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(200, 16, 46, 0.25);
 }
 
 body[data-sistema="TRANSMILENIO"] .menu-page .dashboard-logout:hover {
-  border-color: var(--mango);
-  background: #ffedaa;
-  color: var(--tinta-2);
+  border-color: var(--coral-2);
+  background: var(--coral-2);
+  color: #fff;
 }
 
 body[data-sistema="TRANSMILENIO"] .admin-switch-btn {
@@ -1968,21 +1969,23 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
   align-items: center;
   gap: 8px;
   padding: 9px 14px;
-  border: 1px solid var(--linea);
+  border: 1px solid var(--coral);
   border-radius: 10px;
-  background: transparent;
-  color: var(--piedra);
+  background: var(--coral);
+  color: #fff;
   font: inherit;
   font-size: 0.85rem;
   font-weight: 600;
   text-decoration: none;
-  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+  box-shadow: 0 6px 16px rgba(227, 96, 15, 0.22);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dashboard-logout:hover {
-  border-color: rgba(232, 85, 57, 0.28);
-  background: #fff0ec;
-  color: var(--coral-2);
+  border-color: var(--coral-2);
+  background: var(--coral-2);
+  color: #fff;
+  box-shadow: 0 9px 20px rgba(227, 96, 15, 0.3);
 }
 
 .admin-switch-btn {

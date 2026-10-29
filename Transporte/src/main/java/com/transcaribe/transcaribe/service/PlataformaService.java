@@ -211,13 +211,17 @@ public class PlataformaService {
 
     public boolean agregarNuevaTarjeta(
             String idUsuario, String nuevoNumero, SistemaTransporte sistemaTransporte) {
-        if (sistemaTransporte == null || !sistemaTransporte.estaDisponible()
-                || repositorioUsuarios.findByNumeroTarjetaEnListaYSistema(nuevoNumero, sistemaTransporte).isPresent()) {
+        if (sistemaTransporte == null || !sistemaTransporte.estaDisponible()) {
             return false;
         }
         Optional<Usuario> opt = repositorioUsuarios.findById(idUsuario);
         if (opt.isPresent()) {
             Usuario u = opt.get();
+            Optional<Usuario> dueñoExistente = repositorioUsuarios
+                    .findByNumeroTarjetaEnListaYSistema(nuevoNumero, sistemaTransporte);
+            if (dueñoExistente.filter(dueño -> !idUsuario.equals(dueño.getId())).isPresent()) {
+                return false;
+            }
             boolean existe = u.getTarjetas().stream().anyMatch(t -> t.getNumeroTarjeta().equals(nuevoNumero)
                     && t.getSistemaTransporte() == sistemaTransporte);
             if (!existe) {
@@ -252,7 +256,7 @@ public class PlataformaService {
         Optional<Usuario> dueñoExistente = repositorioUsuarios
                 .findByNumeroTarjetaEnListaYSistema(nuevoNumero, sistemaTransporte);
         
-        if (dueñoExistente.isPresent()) {
+        if (dueñoExistente.filter(dueño -> !idUsuario.equals(dueño.getId())).isPresent()) {
             return "La tarjeta ya está registrada por otro usuario.";
         }
 

@@ -24,7 +24,7 @@ import com.Servicio.RecargasMovil.service.PagosClient.ResultadoPago;
 @Service
 public class RecargasService {
 
-    private static final Pattern PHONE_NUMBER = Pattern.compile("^\\+?[1-9][0-9]{7,14}$");
+    private static final Pattern PHONE_NUMBER = Pattern.compile("^3[0-9]{9}$");
     private static final BigDecimal MAX_PACKAGE_PRICE = new BigDecimal("1000000");
 
     private final OperadorMovilRepository operadores;
@@ -154,9 +154,9 @@ public class RecargasService {
         OperadorMovil operator = operadores.findById(operadorId)
                 .filter(OperadorMovil::isActivo)
                 .orElseThrow(() -> new IllegalArgumentException("Selecciona un operador activo."));
-        String normalizedPhone = telefono == null ? "" : telefono.replaceAll("[\\s()-]", "");
+        String normalizedPhone = telefono == null ? "" : telefono;
         if (!PHONE_NUMBER.matcher(normalizedPhone).matches()) {
-            throw new IllegalArgumentException("Escribe un número móvil válido, con código de país si corresponde.");
+            throw new IllegalArgumentException("Escribe un número móvil de 10 dígitos que empiece por 3.");
         }
         String normalizedAlias = alias == null || alias.isBlank() ? "Mi línea" : alias.trim();
         if (normalizedAlias.length() > 40) {

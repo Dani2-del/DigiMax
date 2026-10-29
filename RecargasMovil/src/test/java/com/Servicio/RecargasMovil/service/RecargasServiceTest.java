@@ -172,6 +172,35 @@ class RecargasServiceTest {
     }
 
     @Test
+    void guardaUnaLineaConDiezDigitosQueEmpiezaPorTres() {
+        when(operadores.findById("claro-1")).thenReturn(Optional.of(operator("claro-1")));
+        when(lineas.save(any(LineaMovil.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        LineaMovil result = service.guardarLinea("user-1", "claro-1", "3000000000", "Mi línea");
+
+        assertThat(result.getTelefono()).isEqualTo("3000000000");
+        verify(lineas).save(any(LineaMovil.class));
+    }
+
+    @Test
+    void rechazaNumerosQueNoCumplenElFormatoMovilColombiano() {
+        when(operadores.findById("claro-1")).thenReturn(Optional.of(operator("claro-1")));
+
+        for (String invalidPhone : List.of(
+                "2000000000", "300000000", "30000000000", "300000000a",
+                "+573000000000", "300 0000000")) {
+            assertThatThrownBy(() -> service.guardarLinea(
+                    "user-1", "claro-1", invalidPhone, "Mi línea"))
+                    .as("número inválido: %s", invalidPhone)
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessage("Escribe un número móvil de 10 dígitos que empiece por 3.");
+        }
+
+        verify(lineas, never()).save(any(LineaMovil.class));
+    }
+
+    @Test
     void registraUnaRecargaDeSaldoComoPagoPendiente() {
         OperadorMovil operator = operator("claro-1");
         operator.setNombre("Claro");

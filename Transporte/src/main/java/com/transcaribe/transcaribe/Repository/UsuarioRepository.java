@@ -185,6 +185,8 @@ public class UsuarioRepository {
                 && !identity.isTransportModerator()
                         ? Usuario.ROLE_USER
                         : identity.role());
+        usuario.setModeradorExterno(Usuario.ROLE_MODERATOR.equals(identity.role())
+                && !identity.isTransportModerator());
         usuario.setActivo(identity.active());
         usuario.setVerificado(identity.verified());
         usuario.setFechaRegistro(identity.registeredAt());

@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Pattern;
 
@@ -43,6 +44,8 @@ public class AdminUsersController {
             Usuario.ROLE_USER, Usuario.ROLE_ADMIN, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
     private static final Set<String> MODERATOR_SERVICES = Set.of(
             "TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO", "RECARGAS_MOVIL", "BILLETERA");
+    private static final Set<String> TRANSPORT_SERVICES = Set.of(
+            "TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO");
 
     private final MongoTemplate mongoTemplate;
     private final UsuarioRepository usuarios;
@@ -152,6 +155,44 @@ public class AdminUsersController {
         if (usuario == null) {
             return ResponseEntity.notFound().build();
         }
+        boolean globalAdministrator = hasAuthority(administrator, Usuario.ROLE_ADMIN);
+        boolean moderator = hasAuthority(administrator, Usuario.ROLE_MODERATOR);
+        if (!globalAdministrator && !moderator) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("No tienes permiso para modificar esta cuenta."));
+        }
+
+        Usuario requestingUser = null;
+        String moderatorService = null;
+        if (!globalAdministrator) {
+            requestingUser = usuarios.findByCorreoIgnoreCase(administrator.getUsername()).orElse(null);
+            moderatorService = requestingUser == null ? null : requestingUser.getServicioAsignado();
+            if (requestingUser == null
+                    || !Usuario.ROLE_MODERATOR.equals(requestingUser.getRole())
+                    || !StringUtils.hasText(moderatorService)
+                    || !TRANSPORT_SERVICES.contains(moderatorService)
+                    || Objects.equals(requestingUser.getId(), usuario.getId())
+                    || Usuario.ROLE_ADMIN.equals(usuario.getRole())
+                    || (Usuario.ROLE_MODERATOR.equals(usuario.getRole())
+                        && !moderatorService.equals(usuario.getServicioAsignado()))) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Solo puedes cambiar roles dentro de tu servicio de transporte."));
+            }
+            if (!Set.of(Usuario.ROLE_USER, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR)
+                    .contains(request.role())
+                    || !request.name().trim().equals(usuario.getNombre())
+                    || !request.email().trim().equalsIgnoreCase(usuario.getCorreo())
+                    || !request.active().equals(usuario.isActivo())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Los moderadores solo pueden cambiar roles de usuarios de su servicio."));
+            }
+            if (Usuario.ROLE_MODERATOR.equals(request.role())
+                    && !moderatorService.equalsIgnoreCase(request.serviceAssignment())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(new ErrorResponse("Solo puedes asignar moderadores a tu servicio de transporte."));
+            }
+        }
+
         String serviceAssignment = StringUtils.hasText(request.serviceAssignment())
                 ? request.serviceAssignment().trim().toUpperCase(Locale.ROOT)
                 : usuario.getServicioAsignado();
@@ -162,7 +203,8 @@ public class AdminUsersController {
         }
 
         String normalizedEmail = request.email().trim().toLowerCase(Locale.ROOT);
-        boolean editingSelf = usuario.getCorreo().equalsIgnoreCase(administrator.getUsername());
+        boolean editingSelf = globalAdministrator
+                && usuario.getCorreo().equalsIgnoreCase(administrator.getUsername());
         if (editingSelf && (!Usuario.ROLE_ADMIN.equals(request.role()) || !request.active())) {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ErrorResponse("No puedes quitarte a ti mismo el acceso de administrador."));
@@ -187,6 +229,11 @@ public class AdminUsersController {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(new ErrorResponse("Ese correo ya está asociado a otra cuenta."));
         }
+    }
+
+    private static boolean hasAuthority(UserDetails user, String authority) {
+        return user != null && user.getAuthorities().stream()
+                .anyMatch(granted -> authority.equals(granted.getAuthority()));
     }
 
     private static UserSummary toSummary(Usuario usuario) {

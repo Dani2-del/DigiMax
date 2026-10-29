@@ -3,11 +3,12 @@ package com.transcaribe.transcaribe.service;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.net.http.HttpClient;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -31,8 +32,10 @@ public class AccessIdentityClient {
 
     public AccessIdentityClient(@Value("${app.acceso.base-url:http://localhost:8080}") String accesoUrl) {
         this.accesoUrl = accesoUrl;
-        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(Duration.ofSeconds(2));
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
         requestFactory.setReadTimeout(Duration.ofSeconds(3));
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }

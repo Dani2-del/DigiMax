@@ -7,6 +7,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.LockedException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -64,6 +65,11 @@ public class SecurityConfig {
             DaoAuthenticationProvider authenticationProvider) throws Exception {
         http
                 .authenticationProvider(authenticationProvider)
+                .csrf(csrf -> csrf.ignoringRequestMatchers(request ->
+                        request.getServletPath().startsWith("/api/")
+                                && request.getHeader(HttpHeaders.AUTHORIZATION) != null
+                                && request.getHeader(HttpHeaders.AUTHORIZATION).startsWith("Bearer ")
+                                && request.getHeader(HttpHeaders.AUTHORIZATION).length() > "Bearer ".length()))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/", "/login", "/registro", "/verificar-otp/**",
                                 "/olvido-password", "/verificar-codigo-recuperar-password",
@@ -72,6 +78,8 @@ public class SecurityConfig {
                                 "/oauth2/**", "/login/oauth2/**", "/error", "/error/**")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/admin/users/**")
+                        .hasAnyRole("ADMIN", "MODERATOR")
+                        .requestMatchers(HttpMethod.PATCH, "/api/admin/users/**")
                         .hasAnyRole("ADMIN", "MODERATOR")
                         .requestMatchers("/admin/**")
                         .hasRole("ADMIN")

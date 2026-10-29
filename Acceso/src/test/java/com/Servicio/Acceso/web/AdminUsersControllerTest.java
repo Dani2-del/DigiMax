@@ -140,4 +140,137 @@ class AdminUsersControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(user.getServicioAsignado()).isEqualTo("TRANSMILENIO");
     }
+
+    @Test
+    void transportModeratorCanAssignRoleWithinOwnService() {
+        Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
+        target.setId("user-1");
+        Usuario moderator = new Usuario("moderador@example.com", "password-hash", "Moderador");
+        moderator.setId("moderator-1");
+        moderator.setRole(Usuario.ROLE_MODERATOR);
+        moderator.setServicioAsignado("TRANSCARIBE");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        when(usuarios.findByCorreoIgnoreCase("moderador@example.com")).thenReturn(Optional.of(moderator));
+        when(usuarios.findByCorreoIgnoreCase("persona@example.com")).thenReturn(Optional.of(target));
+        when(usuarios.save(target)).thenReturn(target);
+        var authenticatedModerator = User.withUsername("moderador@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_MODERATOR)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Persona", "persona@example.com", Usuario.ROLE_MODERATOR, true, "TRANSCARIBE"),
+                authenticatedModerator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(target.getRole()).isEqualTo(Usuario.ROLE_MODERATOR);
+        assertThat(target.getServicioAsignado()).isEqualTo("TRANSCARIBE");
+        verify(usuarios).save(target);
+    }
+
+    @Test
+    void transportModeratorCanAssignConductorRoleWithinOwnService() {
+        Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
+        target.setId("user-1");
+        Usuario moderator = new Usuario("moderador@example.com", "password-hash", "Moderador");
+        moderator.setId("moderator-1");
+        moderator.setRole(Usuario.ROLE_MODERATOR);
+        moderator.setServicioAsignado("TRANSCARIBE");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        when(usuarios.findByCorreoIgnoreCase("moderador@example.com")).thenReturn(Optional.of(moderator));
+        when(usuarios.findByCorreoIgnoreCase("persona@example.com")).thenReturn(Optional.of(target));
+        when(usuarios.save(target)).thenReturn(target);
+        var authenticatedModerator = User.withUsername("moderador@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_MODERATOR)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Persona", "persona@example.com", Usuario.ROLE_CONDUCTOR, true, null),
+                authenticatedModerator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(target.getRole()).isEqualTo(Usuario.ROLE_CONDUCTOR);
+        assertThat(target.getServicioAsignado()).isNull();
+        verify(usuarios).save(target);
+    }
+
+    @Test
+    void transportModeratorCannotAssignUserToAnotherService() {
+        Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
+        target.setId("user-1");
+        Usuario moderator = new Usuario("moderador@example.com", "password-hash", "Moderador");
+        moderator.setId("moderator-1");
+        moderator.setRole(Usuario.ROLE_MODERATOR);
+        moderator.setServicioAsignado("TRANSCARIBE");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        when(usuarios.findByCorreoIgnoreCase("moderador@example.com")).thenReturn(Optional.of(moderator));
+        var authenticatedModerator = User.withUsername("moderador@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_MODERATOR)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Persona", "persona@example.com", Usuario.ROLE_MODERATOR, true, "TRANSMETRO"),
+                authenticatedModerator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(target.getRole()).isEqualTo(Usuario.ROLE_USER);
+        verify(usuarios, never()).save(target);
+    }
+
+    @Test
+    void transportModeratorCannotChangeIdentity() {
+        Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
+        target.setId("user-1");
+        Usuario moderator = new Usuario("moderador@example.com", "password-hash", "Moderador");
+        moderator.setId("moderator-1");
+        moderator.setRole(Usuario.ROLE_MODERATOR);
+        moderator.setServicioAsignado("TRANSCARIBE");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        when(usuarios.findByCorreoIgnoreCase("moderador@example.com")).thenReturn(Optional.of(moderator));
+        var authenticatedModerator = User.withUsername("moderador@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_MODERATOR)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Nombre cambiado", "persona@example.com", Usuario.ROLE_CONDUCTOR, true, null),
+                authenticatedModerator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(target.getRole()).isEqualTo(Usuario.ROLE_USER);
+        verify(usuarios, never()).save(target);
+    }
+
+    @Test
+    void transportModeratorCannotChangeModeratorFromAnotherService() {
+        Usuario target = new Usuario("persona@example.com", "password-hash", "Persona");
+        target.setId("user-1");
+        target.setRole(Usuario.ROLE_MODERATOR);
+        target.setServicioAsignado("TRANSMETRO");
+        Usuario moderator = new Usuario("moderador@example.com", "password-hash", "Moderador");
+        moderator.setId("moderator-1");
+        moderator.setRole(Usuario.ROLE_MODERATOR);
+        moderator.setServicioAsignado("TRANSCARIBE");
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        when(usuarios.findByCorreoIgnoreCase("moderador@example.com")).thenReturn(Optional.of(moderator));
+        var authenticatedModerator = User.withUsername("moderador@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_MODERATOR)
+                .build();
+
+        var response = controller.updateUser("user-1",
+                new AdminUsersController.UpdateUserRequest(
+                        "Persona", "persona@example.com", Usuario.ROLE_USER, true, null),
+                authenticatedModerator);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(target.getRole()).isEqualTo(Usuario.ROLE_MODERATOR);
+        verify(usuarios, never()).save(target);
+    }
 }

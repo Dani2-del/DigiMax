@@ -1,6 +1,7 @@
 package com.transcaribe.transcaribe.Model;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.annotation.Transient;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
@@ -44,6 +45,9 @@ public class Usuario {
     /** Sistema que puede administrar una cuenta moderadora. */
     @Field("sistema_asignado")
     private SistemaTransporte sistemaAsignado;
+
+    @Transient
+    private boolean moderadorExterno;
 
     @Field("sitm")
     private SistemaTransporte sitm;
@@ -119,6 +123,8 @@ public class Usuario {
 
     public SistemaTransporte getSistemaAsignado() { return sistemaAsignado; }
     public void setSistemaAsignado(SistemaTransporte sistemaAsignado) { this.sistemaAsignado = sistemaAsignado; }
+    public boolean isModeradorExterno() { return moderadorExterno; }
+    public void setModeradorExterno(boolean moderadorExterno) { this.moderadorExterno = moderadorExterno; }
     public SistemaTransporte getSitm() { return sitm; }
     public void setSitm(SistemaTransporte sitm) { this.sitm = sitm; }
 

@@ -19,7 +19,7 @@
                     <h1>Gestión de usuarios</h1>
                     <p class="admin-home-subtitle">
                         Servicio: <span th:text="${sistemaActual.nombre}">SITM</span>
-                        · Usuarios registrados: <span th:text="${totalUsuarios}"></span>
+                        · Personal del servicio: <span th:text="${totalUsuarios}"></span>
                     </p>
                 </div>
 
@@ -42,7 +42,6 @@
                         <option value="ROLE_USER" th:selected="${roleSeleccionado == 'ROLE_USER'}">Usuario</option>
                         <option value="ROLE_CONDUCTOR" th:selected="${roleSeleccionado == 'ROLE_CONDUCTOR'}">Conductor</option>
                         <option value="ROLE_MODERATOR" th:selected="${roleSeleccionado == 'ROLE_MODERATOR'}">Moderador</option>
-                        <option value="ROLE_ADMIN" th:selected="${roleSeleccionado == 'ROLE_ADMIN'}">Administrador</option>
                     </select>
                 </label>
                 <label>
@@ -77,7 +76,7 @@
             <p class="user-filter-error" th:if="${errorFiltro}" th:text="${errorFiltro}" role="alert"></p>
             <p class="user-filter-summary">
                 Mostrando <strong th:text="${totalFiltrado}">0</strong>
-                de <strong th:text="${totalUsuarios}">0</strong> usuarios registrados.
+                de <strong th:text="${totalUsuarios}">0</strong> usuarios, moderadores y conductores del servicio.
             </p>
 
             <div class="table-wrap">
@@ -114,7 +113,7 @@
                         <td>
                             <button th:if="${tieneRutasConfiguradas}" class="card-btn" th:attr="data-id=${u.id}" onclick="openChargeModal(this)">Cobrar</button>
                             <button class="card-btn"
-                                    th:attr="data-id=${u.id}, data-nombre=${u.nombre}, data-correo=${u.correo}, data-role=${u.role}, data-sistema-asignado=${u.sistemaAsignado}"
+                                    th:attr="data-id=${u.id}, data-nombre=${u.nombre}, data-correo=${u.correo}, data-role=${u.role}, data-sistema-asignado=${u.sistemaAsignado}, data-moderador-externo=${u.moderadorExterno}"
                                     onclick="openEditModal(this)">Editar</button>
                             <button class="card-btn2" th:if="${esAdministradorGlobal and u.role != 'ROLE_ADMIN'}"
                                     th:attr="data-id=${u.id}" onclick="deleteUser(this)">Desactivar</button>
@@ -169,12 +168,12 @@
         <label style="font-size:13px;color:#666;">Correo electrónico:</label>
         <input type="email" id="editCorreo" th:disabled="${!esAdministradorGlobal}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;"><br>
         <label style="font-size:13px;color:#666;">Rol asignado:</label>
-        <select id="editRole" th:disabled="${!esAdministradorGlobal}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;">
+        <select id="editRole" th:disabled="${!puedeGestionarRoles}" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:6px;">
             <option value="ROLE_USER">Usuario (ROLE_USER)</option>
-            <option value="ROLE_ADMIN">Administrador (ROLE_ADMIN)</option>
             <option value="ROLE_MODERATOR">Moderador (ROLE_MODERATOR)</option>
             <option value="ROLE_CONDUCTOR">Conductor (ROLE_CONDUCTOR · servicio actual)</option>
         </select>
+        <small id="moderatorRoleHelp" style="display:none;color:#666;">Las cuentas moderadoras de otros servicios no se pueden editar desde Transporte.</small>
         <div id="editModeratorService" style="display:none;margin-bottom:12px;">
             <label for="editSistemaAsignado" style="font-size:13px;color:#666;">Servicio del moderador:</label>
             <select id="editSistemaAsignado" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;">
@@ -188,7 +187,7 @@
         </div>
 
         <div style="display:flex;gap:10px;">
-            <button type="button" onclick="submitEdit()" class="primary" style="flex:1;">Guardar cambios</button>
+            <button id="saveEditButton" type="button" onclick="submitEdit()" class="primary" style="flex:1;">Guardar cambios</button>
             <button type="button" onclick="closeEditModal()" class="ghost" style="flex:1;">Cancelar</button>
         </div>
         <div id="editMsg" style="margin-top:15px;text-align:center;font-weight:bold;"></div>
@@ -213,6 +212,7 @@
     const modal = document.getElementById('chargeModal');
     const editModal = document.getElementById('editModal');
     const editRole = document.getElementById('editRole');
+    const canEditRole = !editRole.disabled;
     const moderatorService = document.getElementById('editModeratorService');
     const assignedService = document.getElementById('editSistemaAsignado');
     const conductorService = document.getElementById('editConductorService');
@@ -243,7 +243,19 @@
         document.getElementById('editUserId').value = btn.getAttribute('data-id');
         document.getElementById('editNombre').value = btn.getAttribute('data-nombre');
         document.getElementById('editCorreo').value = btn.getAttribute('data-correo');
-        document.getElementById('editRole').value = btn.getAttribute('data-role');
+        const role = btn.getAttribute('data-role');
+        const serviceAssignment = btn.getAttribute('data-sistema-asignado');
+        const externalModerator = btn.getAttribute('data-moderador-externo') === 'true';
+        const isTransportModerator = role === 'ROLE_MODERATOR'
+            && ['TRANSCARIBE', 'TRANSMILENIO', 'TRANSMETRO'].includes(serviceAssignment);
+        document.getElementById('editRole').value = role;
+        document.getElementById('editRole').disabled =
+            !canEditRole || externalModerator || (role === 'ROLE_MODERATOR' && !isTransportModerator);
+        document.getElementById('editNombre').disabled = !canEditRole || externalModerator;
+        document.getElementById('editCorreo').disabled = !canEditRole || externalModerator;
+        document.getElementById('saveEditButton').disabled = externalModerator;
+        document.getElementById('moderatorRoleHelp').style.display =
+            externalModerator || (role === 'ROLE_MODERATOR' && !isTransportModerator) ? 'block' : 'none';
         assignedService.value = btn.getAttribute('data-sistema-asignado')
             || document.getElementById('currentService').value;
         updateModeratorServiceVisibility();

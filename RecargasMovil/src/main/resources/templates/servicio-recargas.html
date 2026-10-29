@@ -109,8 +109,8 @@
     .wallet-link:hover { background: #5e3dbd; }
     main > .recargas-page-footer { display: flex; align-items: center; flex-direction: column; justify-content: center; gap: 12px; margin: 22px 0 10px; padding: 18px 4px 4px; border-top: 1px solid #e4deed; text-align: center; }
     .recargas-page-footer p { width: 100%; margin: 0; color: #77718a; font-size: .86rem; text-align: center; }
-    .recargas-page-footer form { width: auto; margin: 0; }
-    .recargas-page-footer button { width: auto; min-width: 120px; }
+    .recargas-page-footer .services-link { display: inline-flex; min-width: 120px; align-items: center; justify-content: center; box-sizing: border-box; padding: 11px 18px; border-radius: 11px; color: #fff; background: #7250d5; font-weight: 700; text-decoration: none; transition: background .15s ease, transform .15s ease; }
+    .recargas-page-footer .services-link:hover { color: #fff; background: #5e3dbd; transform: translateY(-1px); }
     [hidden] { display: none !important; }
     .muted { color: #77718a; }
     .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
@@ -262,8 +262,11 @@
         </select>
       </label>
       <label>Número móvil
-        <input name="telefono" type="tel" autocomplete="tel" maxlength="16"
-               placeholder="+573001234567" required>
+        <input name="telefono" type="text" inputmode="numeric" autocomplete="tel-national"
+               minlength="10" maxlength="10" pattern="3[0-9]{9}"
+               oninput="this.value=this.value.replace(/[^0-9]/g, '').slice(0, 10)"
+               title="Ingresa 10 dígitos numéricos. Debe empezar por 3."
+               placeholder="3000000000" required>
       </label>
       <label>Nombre para identificarla
         <input name="alias" type="text" maxlength="40" placeholder="Mi SIM personal">
@@ -487,10 +490,7 @@
     </div>
   </section>
   <footer class="page-footer recargas-page-footer">
-    <form th:action="@{/logout}" method="post">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-      <button type="submit">Salir</button>
-    </form>
+    <a class="services-link" th:href="${accesoUrl + '/servicios'}">Salir</a>
     <p>Digitrans · Recargas móviles</p>
   </footer>
 </main>
