@@ -14,6 +14,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -22,7 +24,6 @@ import com.Servicio.Acceso.model.AdminAuditEvent;
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.AdminAuditEventRepository;
 import com.Servicio.Acceso.repository.UsuarioRepository;
-import com.Servicio.Acceso.service.GlobalOperationsService;
 
 @ExtendWith(MockitoExtension.class)
 class GlobalAdminControllerTest {
@@ -34,7 +35,7 @@ class GlobalAdminControllerTest {
     private AdminAuditEventRepository auditEvents;
 
     @Mock
-    private GlobalOperationsService globalOperations;
+    private MongoTemplate mongoTemplate;
 
     @Mock
     private RedirectAttributes redirectAttributes;
@@ -43,7 +44,67 @@ class GlobalAdminControllerTest {
 
     @BeforeEach
     void setUp() {
-        controller = new GlobalAdminController(usuarios, auditEvents, globalOperations);
+        controller = new GlobalAdminController(usuarios, auditEvents, mongoTemplate);
+    }
+
+    @Test
+    void listsUsersNewestFirstByDefault() {
+        when(mongoTemplate.count(any(Query.class), org.mockito.ArgumentMatchers.eq(Usuario.class)))
+                .thenReturn(1L);
+        when(mongoTemplate.find(any(Query.class), org.mockito.ArgumentMatchers.eq(Usuario.class)))
+                .thenReturn(List.of(new Usuario("nuevo@example.com", "password-hash", "Nuevo")));
+        var model = new org.springframework.ui.ExtendedModelMap();
+
+        String response = controller.usuarios(0, "", "", "", "", model);
+
+        assertThat(response).isEqualTo("admin/global-usuarios");
+        assertThat(model.getAttribute("totalElements")).isEqualTo(1L);
+        var queryCaptor = org.mockito.ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).find(queryCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq(Usuario.class));
+        assertThat(queryCaptor.getValue().getSortObject())
+                .containsEntry("fechaRegistro", -1)
+                .containsEntry("id", -1);
+    }
+
+    @Test
+    void appliesSearchRoleStatusAndVerificationFilters() {
+        when(mongoTemplate.count(any(Query.class), org.mockito.ArgumentMatchers.eq(Usuario.class)))
+                .thenReturn(0L);
+        var model = new org.springframework.ui.ExtendedModelMap();
+
+        controller.usuarios(0, " Ana ", Usuario.ROLE_CONDUCTOR, "false", "true", model);
+
+        var queryCaptor = org.mockito.ArgumentCaptor.forClass(Query.class);
+        verify(mongoTemplate).count(queryCaptor.capture(),
+                org.mockito.ArgumentMatchers.eq(Usuario.class));
+        assertThat(queryCaptor.getValue().getQueryObject().toJson())
+                .contains("Ana")
+                .contains(Usuario.ROLE_CONDUCTOR)
+                .contains("activo")
+                .contains("verificado");
+        assertThat(model.getAttribute("selectedRole")).isEqualTo(Usuario.ROLE_CONDUCTOR);
+        assertThat(model.getAttribute("selectedActive")).isEqualTo("false");
+        assertThat(model.getAttribute("selectedVerified")).isEqualTo("true");
+    }
+
+    @Test
+    void rendersDashboardWithoutWaitingForExternalTransactionDatabases() {
+        when(usuarios.count()).thenReturn(2L);
+        when(usuarios.countByActivoTrue()).thenReturn(2L);
+        when(usuarios.countByVerificadoFalse()).thenReturn(0L);
+        when(usuarios.countByRole(Usuario.ROLE_ADMIN)).thenReturn(1L);
+        when(usuarios.countByRole(Usuario.ROLE_MODERATOR)).thenReturn(0L);
+        when(auditEvents.findTop8ByOrderByCreatedAtDesc()).thenReturn(List.of());
+        var administrator = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, List.of(new SimpleGrantedAuthority(Usuario.ROLE_ADMIN)));
+        var model = new org.springframework.ui.ExtendedModelMap();
+
+        String response = controller.dashboard(model, administrator);
+
+        assertThat(response).isEqualTo("admin/global-dashboard");
+        assertThat(model.getAttribute("totalUsuarios")).isEqualTo(2L);
+        assertThat(model.containsAttribute("totalTransaccionesGlobales")).isFalse();
     }
 
     @Test

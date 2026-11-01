@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "recargas_movil")
@@ -28,6 +29,7 @@ public class RecargaMovil {
     private String idPagoProveedor;
     private String estadoPago;
     private String pagador;
+    @Indexed(name = "recargas_fecha_idx")
     private LocalDateTime fecha = LocalDateTime.now();
 
     public String getOperacionId() { return operacionId; }

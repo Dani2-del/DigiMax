@@ -3,12 +3,17 @@ package com.Servicio.Acceso.web;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.IntStream;
@@ -75,15 +80,21 @@ class GlobalOperationsControllerTest {
                         "user-1", "", "", new BigDecimal("2000"), "APROBADO", occurredAt, "Billetera"),
                 new GlobalTransaction("operation-3", "RECARGAS_MOVIL", "SIMULADA", "Recarga",
                         "user-2", "", "", new BigDecimal("3000"), "APROBADO", occurredAt, "RecargasMovil"));
-        Usuario admin = user();
-        admin.setRole(Usuario.ROLE_ADMIN);
         when(operations.transactions(any(), nullable(java.time.LocalDate.class), nullable(java.time.LocalDate.class)))
                 .thenReturn(new TransactionSnapshot(transactions, Map.of()));
-        when(usuarios.findAll()).thenReturn(List.of(user(), admin));
+        when(usuarios.aggregateRoleCounts()).thenReturn(List.of(
+                roleCount(Usuario.ROLE_USER, 1),
+                roleCount(Usuario.ROLE_ADMIN, 1)));
         var model = new ExtendedModelMap();
 
-        assertThat(controller.analytics(model)).isEqualTo("admin/global-analitica");
+        assertThat(controller.analytics(null, null, model)).isEqualTo("admin/global-analitica");
 
+        LocalDate today = LocalDate.now(ZoneId.of("America/Bogota"));
+        assertThat(model.getAttribute("desde")).isEqualTo(today.minusDays(29));
+        assertThat(model.getAttribute("hasta")).isEqualTo(today);
+        assertThat(model.getAttribute("periodoLabel")).isEqualTo("30 días");
+        assertThat(model.getAttribute("monthly")).asList().hasSize(30);
+        verify(operations).transactions(any(), eq(today.minusDays(29)), eq(today));
         assertThat(model.getAttribute("serviceTotal")).isEqualTo(3L);
         assertThat(model.getAttribute("roleTotal")).isEqualTo(2L);
         assertThat((String) model.getAttribute("serviceDonutStyle"))
@@ -102,10 +113,10 @@ class GlobalOperationsControllerTest {
     void usesEmptyDonutWhenThereIsNoAnalyticsData() {
         when(operations.transactions(any(), nullable(java.time.LocalDate.class), nullable(java.time.LocalDate.class)))
                 .thenReturn(new TransactionSnapshot(List.of(), Map.of()));
-        when(usuarios.findAll()).thenReturn(List.of());
+        when(usuarios.aggregateRoleCounts()).thenReturn(List.of());
         var model = new ExtendedModelMap();
 
-        controller.analytics(model);
+        controller.analytics(null, null, model);
 
         assertThat(model.getAttribute("serviceTotal")).isEqualTo(0L);
         assertThat(model.getAttribute("roleTotal")).isEqualTo(0L);
@@ -113,6 +124,25 @@ class GlobalOperationsControllerTest {
                 .isEqualTo("background: conic-gradient(#e9eef3 0% 100%)");
         assertThat(model.getAttribute("roleDonutStyle"))
                 .isEqualTo("background: conic-gradient(#e9eef3 0% 100%)");
+    }
+
+    @Test
+    void analyticsCanLoadTheRequestedHistoricalRange() {
+        LocalDate from = LocalDate.of(2025, 11, 1);
+        LocalDate through = LocalDate.of(2026, 10, 31);
+        when(operations.transactions(any(), eq(from), eq(through)))
+                .thenReturn(new TransactionSnapshot(List.of(), Map.of()));
+        when(usuarios.aggregateRoleCounts()).thenReturn(List.of());
+        var model = new ExtendedModelMap();
+
+        controller.analytics(from, through, model);
+
+        assertThat(model.getAttribute("desde")).isEqualTo(from);
+        assertThat(model.getAttribute("hasta")).isEqualTo(through);
+        assertThat(model.getAttribute("periodoLabel")).isEqualTo("12 meses");
+        assertThat(model.getAttribute("granularidadLabel")).isEqualTo("Operaciones por mes");
+        assertThat(model.getAttribute("monthly")).asList().hasSize(12);
+        verify(operations).transactions(any(), eq(from), eq(through));
     }
 
     @Test
@@ -204,11 +234,44 @@ class GlobalOperationsControllerTest {
         assertThat(lastPage.getAttribute("hasNextPage")).isEqualTo(false);
         assertThat(lastPage.getAttribute("firstTransaction")).isEqualTo(11);
         assertThat(lastPage.getAttribute("lastTransaction")).isEqualTo(12);
+        LocalDate until = LocalDate.now(ZoneId.of("America/Bogota"));
+        assertThat(firstPage.getAttribute("desde")).isEqualTo(until.minusDays(29));
+        assertThat(firstPage.getAttribute("hasta")).isEqualTo(until);
+        verify(operations, times(2)).transactions(any(), eq(until.minusDays(29)), eq(until));
+    }
+
+    @Test
+    void preservesAnExplicitTransactionDateRange() {
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate through = LocalDate.of(2026, 1, 15);
+        when(operations.transactions(any(), eq(from), eq(through)))
+                .thenReturn(new TransactionSnapshot(List.of(), Map.of()));
+        var model = new ExtendedModelMap();
+
+        controller.transactions(from, through, null, 0, model);
+
+        assertThat(model.getAttribute("desde")).isEqualTo(from);
+        assertThat(model.getAttribute("hasta")).isEqualTo(through);
+        verify(operations).transactions(any(), eq(from), eq(through));
     }
 
     private static Usuario user() {
         Usuario user = new Usuario("user@example.com", "password-hash", "User Example");
         user.setId("user-1");
         return user;
+    }
+
+    private static UsuarioRepository.RoleCount roleCount(String role, long count) {
+        return new UsuarioRepository.RoleCount() {
+            @Override
+            public String getRole() {
+                return role;
+            }
+
+            @Override
+            public long getCount() {
+                return count;
+            }
+        };
     }
 }

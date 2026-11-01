@@ -77,17 +77,11 @@
         </article>
         <a class="metric-card metric-link" th:href="@{/admin/global/transacciones}">
           <span class="metric-label">Transacciones globales</span>
-          <strong th:text="${totalTransaccionesGlobales}">0</strong>
-          <small th:if="${#maps.isEmpty(erroresTransaccionesGlobales)}">Operaciones únicas en los servicios</small>
-          <small th:unless="${#maps.isEmpty(erroresTransaccionesGlobales)}">Algunas bases no están disponibles</small>
+          <strong>Ver</strong>
+          <small>Abre el módulo para consultar las operaciones consolidadas</small>
           <span class="metric-icon orange" aria-hidden="true">⇄</span>
         </a>
       </section>
-      <div th:if="${!#maps.isEmpty(erroresTransaccionesGlobales)}"
-           class="global-alert error" role="alert">
-        <span th:each="source : ${erroresTransaccionesGlobales.values()}"
-              th:text="${source} + ' '"></span>
-      </div>
 
       <section class="global-section">
         <div class="section-heading">

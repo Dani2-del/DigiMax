@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -94,6 +95,10 @@ public class GlobalOperationsController {
             desde = null;
             hasta = null;
         }
+        if (desde == null && hasta == null) {
+            hasta = LocalDate.now(REPORT_ZONE);
+            desde = hasta.minusDays(29);
+        }
         TransactionSnapshot snapshot = operations.transactions(selected, desde, hasta);
         int totalPages = (int) Math.ceil((double) snapshot.transactions().size() / TRANSACTION_PAGE_SIZE);
         int pageIndex = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
@@ -103,24 +108,48 @@ public class GlobalOperationsController {
     }
 
     @GetMapping("/analitica")
-    public String analytics(Model model) {
+    public String analytics(
+            @RequestParam(required = false) LocalDate desde,
+            @RequestParam(required = false) LocalDate hasta,
+            Model model) {
         LocalDate today = LocalDate.now(REPORT_ZONE);
-        LocalDate firstMonth = YearMonth.from(today).minusMonths(11).atDay(1);
-        TransactionSnapshot snapshot = operations.transactions(SERVICE_CODES, firstMonth, today);
+        if (!validRange(desde, hasta)) {
+            model.addAttribute("errorFiltro", "La fecha inicial no puede ser posterior a la fecha final.");
+            desde = null;
+            hasta = null;
+        }
+        if (desde == null && hasta == null) {
+            hasta = today;
+            desde = today.minusDays(29);
+        } else if (desde == null) {
+            desde = hasta.minusDays(29);
+        } else if (hasta == null) {
+            hasta = today;
+        }
+        LocalDate firstTwelveMonths = YearMonth.from(today).minusMonths(11).atDay(1);
+        TransactionSnapshot snapshot = operations.transactions(SERVICE_CODES, desde, hasta);
 
-        List<MonthlyMetric> monthly = monthlyMetrics(snapshot.transactions());
-        Map<String, Long> transactionCounts = snapshot.transactions().stream()
-                .collect(Collectors.groupingBy(GlobalTransaction::service, Collectors.counting()));
+        boolean dailyGranularity = !desde.isBefore(hasta.minusDays(44));
+        List<MonthlyMetric> monthly = analyticsMetrics(snapshot.transactions(), desde, hasta, dailyGranularity);
+        Map<String, ServiceMetric> metricsByCode = new LinkedHashMap<>();
+        snapshot.transactions().forEach(transaction -> {
+            ServiceMetric current = metricsByCode.getOrDefault(
+                    transaction.service(), new ServiceMetric(
+                            SERVICES.getOrDefault(transaction.service(), transaction.service()),
+                            0, BigDecimal.ZERO));
+            metricsByCode.put(transaction.service(), new ServiceMetric(
+                    current.name(), current.count() + 1, current.amount().add(transaction.amount())));
+        });
         List<ServiceMetric> serviceMetrics = SERVICE_ORDER.stream()
-                .map(code -> new ServiceMetric(SERVICES.get(code), transactionCounts.getOrDefault(code, 0L),
-                        snapshot.transactions().stream()
-                                .filter(transaction -> transaction.service().equals(code))
-                                .map(GlobalTransaction::amount)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add)))
+                .map(code -> metricsByCode.getOrDefault(
+                        code, new ServiceMetric(SERVICES.get(code), 0, BigDecimal.ZERO)))
                 .toList();
-        Map<String, Long> roleCounts = usuarios.findAll().stream()
-                .collect(Collectors.groupingBy(user -> user.getRole() == null ? "Sin rol" : user.getRole(),
-                        Collectors.counting()));
+        Map<String, Long> roleCounts = new LinkedHashMap<>();
+        usuarios.aggregateRoleCounts().forEach(roleCount -> roleCounts.merge(
+                roleCount.getRole() == null || roleCount.getRole().isBlank()
+                        ? "Sin rol" : roleCount.getRole(),
+                roleCount.getCount(),
+                Long::sum));
         long maxMonthly = monthly.stream().mapToLong(MonthlyMetric::count).max().orElse(0);
         model.addAttribute("monthly", monthly.stream()
                 .map(point -> point.withBar(maxMonthly == 0 ? 0 : (int) Math.max(5, point.count() * 100 / maxMonthly)))
@@ -149,6 +178,17 @@ public class GlobalOperationsController {
         model.addAttribute("totalTransacciones", snapshot.total());
         model.addAttribute("montoTotal", snapshot.totalAmount());
         model.addAttribute("erroresFuentes", snapshot.unavailableServices());
+        model.addAttribute("desde", desde);
+        model.addAttribute("hasta", hasta);
+        long periodDays = ChronoUnit.DAYS.between(desde, hasta) + 1;
+        model.addAttribute("periodoLabel", dailyGranularity
+                ? periodDays + (periodDays == 1 ? " día" : " días")
+                : ChronoUnit.MONTHS.between(YearMonth.from(desde), YearMonth.from(hasta)) + 1
+                        + (ChronoUnit.MONTHS.between(YearMonth.from(desde), YearMonth.from(hasta)) == 0
+                                ? " mes" : " meses"));
+        model.addAttribute("granularidadLabel", dailyGranularity ? "Operaciones por día" : "Operaciones por mes");
+        model.addAttribute("fechaInicioDoceMeses", firstTwelveMonths);
+        model.addAttribute("fechaHoy", today);
         model.addAttribute("fechaActualizacion", LocalDateTime.now().format(DATE_FORMAT));
         return "admin/global-analitica";
     }
@@ -278,8 +318,7 @@ public class GlobalOperationsController {
                 .distinct()
                 .collect(Collectors.collectingAndThen(Collectors.toList(), ids -> {
                     Map<String, Usuario> found = new LinkedHashMap<>();
-                    usuarios.findAll().stream().filter(user -> ids.contains(user.getId()))
-                            .forEach(user -> found.put(user.getId(), user));
+                    usuarios.findAllById(ids).forEach(user -> found.put(user.getId(), user));
                     return found;
                 }));
         int fromIndex = pageIndex * TRANSACTION_PAGE_SIZE;
@@ -311,18 +350,39 @@ public class GlobalOperationsController {
                 .map(code -> new ServiceOption(code, SERVICES.get(code))).toList());
     }
 
-    private static List<MonthlyMetric> monthlyMetrics(List<GlobalTransaction> transactions) {
-        Map<YearMonth, Long> counts = new LinkedHashMap<>();
-        YearMonth first = YearMonth.from(LocalDate.now()).minusMonths(11);
-        for (int month = 0; month < 12; month++) {
-            counts.put(first.plusMonths(month), 0L);
+    private static List<MonthlyMetric> analyticsMetrics(
+            List<GlobalTransaction> transactions, LocalDate from, LocalDate through, boolean dailyGranularity) {
+        Map<LocalDate, Long> dailyCounts = new LinkedHashMap<>();
+        Map<YearMonth, Long> monthlyCounts = new LinkedHashMap<>();
+        if (dailyGranularity) {
+            for (LocalDate day = from; !day.isAfter(through); day = day.plusDays(1)) {
+                dailyCounts.put(day, 0L);
+            }
+        } else {
+            YearMonth first = YearMonth.from(from);
+            YearMonth last = YearMonth.from(through);
+            for (YearMonth month = first; !month.isAfter(last); month = month.plusMonths(1)) {
+                monthlyCounts.put(month, 0L);
+            }
         }
         transactions.stream()
                 .filter(transaction -> transaction.occurredAt() != null)
-                .forEach(transaction -> counts.computeIfPresent(
-                        YearMonth.from(transaction.occurredAt()), (ignored, count) -> count + 1));
+                .forEach(transaction -> {
+                    if (dailyGranularity) {
+                        dailyCounts.computeIfPresent(
+                                transaction.occurredAt().toLocalDate(), (ignored, count) -> count + 1);
+                    } else {
+                        monthlyCounts.computeIfPresent(
+                                YearMonth.from(transaction.occurredAt()), (ignored, count) -> count + 1);
+                    }
+                });
+        Map<?, Long> counts = dailyGranularity ? dailyCounts : monthlyCounts;
         return counts.entrySet().stream()
-                .map(entry -> new MonthlyMetric(entry.getKey().toString(), entry.getValue(), 0))
+                .map(entry -> new MonthlyMetric(
+                        dailyGranularity
+                                ? ((LocalDate) entry.getKey()).format(DateTimeFormatter.ofPattern("dd/MM"))
+                                : entry.getKey().toString(),
+                        entry.getValue(), 0))
                 .toList();
     }
 

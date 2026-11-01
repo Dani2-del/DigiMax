@@ -6,11 +6,13 @@ import java.util.List;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.mongodb.core.mapping.Field;
 
 @Document(collection = "billeteras_universales")
+@CompoundIndex(name = "movimientos_fecha_idx", def = "{'movimientos.fecha': 1}")
 public class BilleteraUniversal {
 
     @Id

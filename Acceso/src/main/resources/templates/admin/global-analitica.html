@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Analítica global — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261029-1)}">
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261031-1)}">
 </head>
 <body class="global-admin-page">
 <div class="global-admin-shell">
@@ -36,23 +36,40 @@
       <div><p class="global-eyebrow">DATOS DE LOS SERVICIOS</p><h1>Analítica global</h1></div>
       <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
     </header>
+    <div th:if="${errorFiltro}" class="global-alert error" role="alert" th:text="${errorFiltro}"></div>
+    <section class="users-panel global-data-panel analytics-filter-panel">
+      <form class="global-report-form" method="get" th:action="@{/admin/global/analitica}">
+        <div class="report-date-fields">
+          <label>Desde<input type="date" name="desde" th:value="${desde}"></label>
+          <label>Hasta<input type="date" name="hasta" th:value="${hasta}"></label>
+        </div>
+        <div class="report-actions">
+          <button type="submit" class="save-user">Aplicar periodo</button>
+          <a class="back-dashboard"
+             th:href="@{/admin/global/analitica(desde=${fechaInicioDoceMeses}, hasta=${fechaHoy})}">
+            Ver últimos 12 meses
+          </a>
+        </div>
+      </form>
+    </section>
     <div th:if="${!#maps.isEmpty(erroresFuentes)}" class="global-alert error" role="alert">
       <strong>Algunas fuentes no respondieron; las gráficas pueden estar incompletas.</strong>
       <p th:each="source : ${erroresFuentes.values()}" th:text="${source}"></p>
     </div>
     <section class="metric-grid analytics-kpis">
-      <article class="metric-card metric-primary"><span class="metric-label">Operaciones únicas · 12 meses</span>
+      <article class="metric-card metric-primary"><span class="metric-label" th:text="|Operaciones únicas · ${periodoLabel}|">Operaciones únicas</span>
         <strong th:text="${totalTransacciones}">0</strong><small>Consolidación por ID de operación</small></article>
       <article class="metric-card"><span class="metric-label">Monto registrado</span>
         <strong th:text="|$ ${#numbers.formatDecimal(montoTotal, 0, 'COMMA', 2, 'POINT')}|">$ 0</strong><small>Según los registros disponibles</small></article>
       <article class="metric-card"><span class="metric-label">Periodo</span>
-        <strong>12 meses</strong><small>Actualizado <span th:text="${fechaActualizacion}">fecha</span></small></article>
+        <strong th:text="${periodoLabel}">30 días</strong><small>Actualizado <span th:text="${fechaActualizacion}">fecha</span></small></article>
     </section>
     <section class="analytics-global-grid">
       <article class="users-panel global-chart-card global-chart-wide">
-        <header><p class="global-eyebrow">TENDENCIA</p><h2>Operaciones por mes</h2>
+        <header><p class="global-eyebrow">TENDENCIA</p><h2 th:text="${granularidadLabel}">Operaciones por día</h2>
           <p>Actividad registrada en los cinco servicios conectados.</p></header>
-        <div class="global-month-chart" role="img" aria-label="Gráfica de operaciones mensuales">
+        <div class="global-month-chart" role="img" aria-label="Gráfica de operaciones del periodo"
+             th:style="|grid-template-columns:repeat(${monthly.size()},minmax(25px,1fr))|">
           <div class="global-month-column" th:each="point : ${monthly}">
             <strong th:text="${point.count}">0</strong>
             <div class="global-bar-track"><span class="global-bar" th:style="|height:${point.barPercent}%|"></span></div>

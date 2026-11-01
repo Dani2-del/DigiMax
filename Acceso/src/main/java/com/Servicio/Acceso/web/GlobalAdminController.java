@@ -4,10 +4,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.util.StringUtils;
@@ -22,7 +24,6 @@ import com.Servicio.Acceso.model.AdminAuditEvent;
 import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.repository.AdminAuditEventRepository;
 import com.Servicio.Acceso.repository.UsuarioRepository;
-import com.Servicio.Acceso.service.GlobalOperationsService;
 
 import org.springframework.security.core.Authentication;
 
@@ -38,15 +39,15 @@ public class GlobalAdminController {
 
     private final UsuarioRepository usuarios;
     private final AdminAuditEventRepository auditEvents;
-    private final GlobalOperationsService globalOperations;
+    private final MongoTemplate mongoTemplate;
 
     public GlobalAdminController(
             UsuarioRepository usuarios,
             AdminAuditEventRepository auditEvents,
-            GlobalOperationsService globalOperations) {
+            MongoTemplate mongoTemplate) {
         this.usuarios = usuarios;
         this.auditEvents = auditEvents;
-        this.globalOperations = globalOperations;
+        this.mongoTemplate = mongoTemplate;
     }
 
     @GetMapping
@@ -56,11 +57,6 @@ public class GlobalAdminController {
         model.addAttribute("usuariosNoVerificados", usuarios.countByVerificadoFalse());
         model.addAttribute("totalAdministradores", usuarios.countByRole(Usuario.ROLE_ADMIN));
         model.addAttribute("totalModeradores", usuarios.countByRole(Usuario.ROLE_MODERATOR));
-        var transactions = globalOperations.transactions(
-                Set.of("TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO", "BILLETERA", "RECARGAS_MOVIL"),
-                null, null);
-        model.addAttribute("totalTransaccionesGlobales", transactions.total());
-        model.addAttribute("erroresTransaccionesGlobales", transactions.unavailableServices());
         model.addAttribute("administrador", authentication.getName());
         model.addAttribute("auditoriaReciente", auditEvents.findTop8ByOrderByCreatedAtDesc());
         return "admin/global-dashboard";
@@ -75,20 +71,56 @@ public class GlobalAdminController {
     public String usuarios(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "") String search,
+            @RequestParam(defaultValue = "") String role,
+            @RequestParam(defaultValue = "") String active,
+            @RequestParam(defaultValue = "") String verified,
             Model model) {
-        int safePage = Math.max(0, page);
         String normalizedSearch = search.trim();
-        Page<Usuario> result = normalizedSearch.isBlank()
-                ? usuarios.findAll(PageRequest.of(safePage, PAGE_SIZE,
-                        Sort.by(Sort.Direction.ASC, "nombre")))
-                : usuarios.findByNombreContainingIgnoreCaseOrCorreoContainingIgnoreCase(
-                        normalizedSearch, normalizedSearch,
-                        PageRequest.of(safePage, PAGE_SIZE, Sort.by(Sort.Direction.ASC, "nombre")));
-        model.addAttribute("usuarios", result.getContent().stream().map(UserRow::from).toList());
-        model.addAttribute("currentPage", result.getNumber());
-        model.addAttribute("totalPages", result.getTotalPages());
-        model.addAttribute("totalElements", result.getTotalElements());
+        String normalizedRole = role.trim();
+        String normalizedActive = active.trim();
+        String normalizedVerified = verified.trim();
+        boolean validFilters = (normalizedRole.isEmpty() || ALLOWED_ROLES.contains(normalizedRole))
+                && (normalizedActive.isEmpty() || Set.of("true", "false").contains(normalizedActive))
+                && (normalizedVerified.isEmpty() || Set.of("true", "false").contains(normalizedVerified));
+        Query filter = new Query();
+        if (!normalizedSearch.isBlank()) {
+            String literalSearch = Pattern.quote(normalizedSearch);
+            filter.addCriteria(new Criteria().orOperator(
+                    Criteria.where("nombre").regex(literalSearch, "i"),
+                    Criteria.where("correo").regex(literalSearch, "i")));
+        }
+        if (!normalizedRole.isEmpty() && ALLOWED_ROLES.contains(normalizedRole)) {
+            filter.addCriteria(Criteria.where("role").is(normalizedRole));
+        }
+        if (Set.of("true", "false").contains(normalizedActive)) {
+            filter.addCriteria(Criteria.where("activo").is(Boolean.valueOf(normalizedActive)));
+        }
+        if (Set.of("true", "false").contains(normalizedVerified)) {
+            filter.addCriteria(Criteria.where("verificado").is(Boolean.valueOf(normalizedVerified)));
+        }
+
+        long totalElements = validFilters ? mongoTemplate.count(filter, Usuario.class) : 0;
+        int totalPages = totalElements == 0 ? 0 : (int) Math.ceil((double) totalElements / PAGE_SIZE);
+        int safePage = totalPages == 0 ? 0 : Math.min(Math.max(page, 0), totalPages - 1);
+        List<Usuario> pageUsers = validFilters
+                ? mongoTemplate.find(Query.of(filter)
+                        .with(Sort.by(Sort.Direction.DESC, "fechaRegistro")
+                                .and(Sort.by(Sort.Direction.DESC, "id")))
+                        .skip((long) safePage * PAGE_SIZE)
+                        .limit(PAGE_SIZE), Usuario.class)
+                : List.of();
+
+        model.addAttribute("usuarios", pageUsers.stream().map(UserRow::from).toList());
+        model.addAttribute("currentPage", safePage);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("totalElements", totalElements);
         model.addAttribute("search", normalizedSearch);
+        model.addAttribute("selectedRole", normalizedRole);
+        model.addAttribute("selectedActive", normalizedActive);
+        model.addAttribute("selectedVerified", normalizedVerified);
+        if (!validFilters) {
+            model.addAttribute("errorFiltro", "Uno de los filtros seleccionados no es válido.");
+        }
         model.addAttribute("roles", List.of(
                 Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_ADMIN, Usuario.ROLE_CONDUCTOR));
         model.addAttribute("moderatorServices", List.of(

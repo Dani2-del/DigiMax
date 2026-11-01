@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.mongodb.repository.Aggregation;
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
 
@@ -13,6 +14,17 @@ import com.Servicio.Acceso.model.Usuario;
 import com.Servicio.Acceso.model.SistemaTransporte;
 
 public interface UsuarioRepository extends MongoRepository<Usuario, String> {
+
+    @Aggregation(pipeline = {
+            "{ '$group': { '_id': '$role', 'count': { '$sum': 1 } } }",
+            "{ '$project': { 'role': '$_id', 'count': 1, '_id': 0 } }"
+    })
+    List<RoleCount> aggregateRoleCounts();
+
+    interface RoleCount {
+        String getRole();
+        long getCount();
+    }
 
     Optional<Usuario> findByCorreo(String correo);
 

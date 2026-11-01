@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Usuarios globales — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-4)}">
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261031-1)}">
   <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="global-admin-page">
@@ -46,10 +46,39 @@
           <span class="user-count" th:text="${totalElements} + ' cuentas'">0 cuentas</span>
         </div>
         <form class="user-search" method="get" th:action="@{/admin/global/usuarios}">
-          <label for="userSearch">Buscar por nombre o correo</label>
-          <div><input id="userSearch" type="search" name="search" th:value="${search}" placeholder="Ej. nombre@correo.com">
-            <button type="submit">Buscar</button></div>
+          <div class="user-filter-grid">
+            <label class="user-filter-field" for="userSearch">Buscar por nombre o correo
+              <input id="userSearch" type="search" name="search" th:value="${search}"
+                     placeholder="Ej. nombre@correo.com">
+            </label>
+            <label class="user-filter-field" for="userRole">Rol
+              <select id="userRole" name="role">
+                <option value="">Todos los roles</option>
+                <option th:each="role : ${roles}" th:value="${role}" th:text="${role}"
+                        th:selected="${role == selectedRole}"></option>
+              </select>
+            </label>
+            <label class="user-filter-field" for="userActive">Estado
+              <select id="userActive" name="active">
+                <option value="">Todos los estados</option>
+                <option value="true" th:selected="${selectedActive == 'true'}">Activas</option>
+                <option value="false" th:selected="${selectedActive == 'false'}">Suspendidas</option>
+              </select>
+            </label>
+            <label class="user-filter-field" for="userVerified">Verificación
+              <select id="userVerified" name="verified">
+                <option value="">Todas</option>
+                <option value="true" th:selected="${selectedVerified == 'true'}">Verificadas</option>
+                <option value="false" th:selected="${selectedVerified == 'false'}">Pendientes</option>
+              </select>
+            </label>
+            <div class="user-filter-actions">
+              <button type="submit">Filtrar</button>
+              <a th:href="@{/admin/global/usuarios}">Limpiar</a>
+            </div>
+          </div>
         </form>
+        <div th:if="${errorFiltro}" class="global-alert error" role="alert" th:text="${errorFiltro}"></div>
         <div class="table-scroll">
           <table class="global-users-table">
             <thead><tr><th>Usuario</th><th>Rol / servicio</th><th>Estado</th><th>Verificación</th><th>Administrar</th></tr></thead>
@@ -109,9 +138,11 @@
           </table>
         </div>
         <nav class="pagination" th:if="${totalPages > 1}" aria-label="Paginación de usuarios">
-          <a th:if="${currentPage > 0}" th:href="@{/admin/global/usuarios(page=${currentPage - 1},search=${search})}">← Anterior</a>
+          <a th:if="${currentPage > 0}"
+             th:href="@{/admin/global/usuarios(page=${currentPage - 1},search=${search},role=${selectedRole},active=${selectedActive},verified=${selectedVerified})}">← Anterior</a>
           <span th:text="|Página ${currentPage + 1} de ${totalPages}|">Página 1 de 1</span>
-          <a th:if="${currentPage + 1 < totalPages}" th:href="@{/admin/global/usuarios(page=${currentPage + 1},search=${search})}">Siguiente →</a>
+          <a th:if="${currentPage + 1 < totalPages}"
+             th:href="@{/admin/global/usuarios(page=${currentPage + 1},search=${search},role=${selectedRole},active=${selectedActive},verified=${selectedVerified})}">Siguiente →</a>
         </nav>
       </section>
       <footer class="global-footer">Digitrans · Cambios administrativos registrados en auditoría</footer>

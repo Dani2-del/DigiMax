@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Date;
@@ -15,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.bson.Document;
+import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,6 +30,9 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.MongoIterable;
+import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 
 import jakarta.annotation.PreDestroy;
 
@@ -89,8 +94,18 @@ public class GlobalOperationsService {
 
     private void readTransportTransactions(List<GlobalTransaction> output, Map<String, String> unavailable,
             Set<String> services, LocalDate from, LocalDate through) {
-        readCollection("Transporte", transporteDatabase.getCollection("transacciones"),
-                unavailable, document -> {
+        MongoCollection<Document> collection = transporteDatabase.getCollection("transacciones");
+        var query = collection.find();
+        Bson dateFilter = dateFilter("fecha", from, through);
+        if (dateFilter != null) {
+            query.filter(dateFilter);
+        }
+        query.projection(Projections.include(
+                "_id", "operation_id", "operationId", "operacion_id", "operacionId",
+                "sistema_transporte", "sistemaTransporte", "tipo", "type", "fecha",
+                "usuario_id", "usuarioId", "userId", "usuario_nombre", "usuarioNombre", "userName",
+                "usuario_correo", "usuarioCorreo", "userEmail", "monto", "amount", "estado", "status"));
+        readCollection("Transporte", query, unavailable, document -> {
                     String service = normalizeTransportService(first(document, "sistema_transporte", "sistemaTransporte"));
                     if (!services.contains(service)) {
                         return;
@@ -115,42 +130,62 @@ public class GlobalOperationsService {
 
     private void readWalletMovements(List<GlobalTransaction> output, Map<String, String> unavailable,
             Set<String> services, LocalDate from, LocalDate through) {
-        readCollection("Billetera", billeteraDatabase.getCollection("billeteras_universales"),
-                unavailable, wallet -> {
-                    String userId = text(first(wallet, "_id", "usuarioId", "userId"));
-                    Object rawMovements = first(wallet, "movimientos", "movements");
-                    if (!(rawMovements instanceof List<?> movements)) {
+        MongoCollection<Document> collection = billeteraDatabase.getCollection("billeteras_universales");
+        List<Bson> walletDateFilters = java.util.stream.Stream.of(
+                dateFilter("movimientos.fecha", from, through),
+                dateFilter("movimientos.date", from, through),
+                dateFilter("movements.fecha", from, through),
+                dateFilter("movements.date", from, through))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        List<Bson> movementDateFilters = java.util.stream.Stream.of(
+                dateFilter("_movements.fecha", from, through),
+                dateFilter("_movements.date", from, through))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        List<Document> pipeline = new ArrayList<>();
+        if (!walletDateFilters.isEmpty()) {
+            pipeline.add(new Document("$match", Filters.or(walletDateFilters)));
+        }
+        pipeline.add(new Document("$project", new Document("_id", 1)
+                .append("_movements", new Document("$ifNull",
+                        List.of("$movimientos", "$movements")))));
+        pipeline.add(new Document("$unwind", "$_movements"));
+        if (!movementDateFilters.isEmpty()) {
+            pipeline.add(new Document("$match", Filters.or(movementDateFilters)));
+        }
+        pipeline.add(new Document("$project", new Document("userId", "$_id")
+                .append("movement", "$_movements")));
+        readCollection("Billetera", collection.aggregate(pipeline), unavailable, wallet -> {
+                    String userId = text(first(wallet, "userId", "_id"));
+                    Object rawMovement = wallet.get("movement");
+                    if (!(rawMovement instanceof Document movement)) {
                         return;
                     }
-                    for (int index = 0; index < movements.size(); index++) {
-                        if (!(movements.get(index) instanceof Document movement)) {
-                            continue;
-                        }
-                        if (isTopUpAttempt(text(first(movement, "tipo", "type")))) {
-                            continue;
-                        }
-                        String service = normalizeWalletService(first(movement, "servicio", "service"),
-                                first(movement, "tipo", "type"), first(movement, "descripcion", "description"));
-                        if (!services.contains(service)) {
-                            continue;
-                        }
-                        LocalDateTime date = date(first(movement, "fecha", "date"));
-                        if (!inRange(date, from, through)) {
-                            continue;
-                        }
-                        output.add(new GlobalTransaction(
-                                text(first(movement, "operacionId", "operationId", "operacion_id")),
-                                service,
-                                text(first(movement, "tipo", "type")),
-                                text(first(movement, "descripcion", "description")),
-                                userId,
-                                "",
-                                "",
-                                amount(first(movement, "monto", "amount")),
-                                "COMPLETADA",
-                                date,
-                                "Billetera"));
+                    if (isTopUpAttempt(text(first(movement, "tipo", "type")))) {
+                        return;
                     }
+                    String service = normalizeWalletService(first(movement, "servicio", "service"),
+                            first(movement, "tipo", "type"), first(movement, "descripcion", "description"));
+                    if (!services.contains(service)) {
+                        return;
+                    }
+                    LocalDateTime date = date(first(movement, "fecha", "date"));
+                    if (!inRange(date, from, through)) {
+                        return;
+                    }
+                    output.add(new GlobalTransaction(
+                            text(first(movement, "operacionId", "operationId", "operacion_id")),
+                            service,
+                            text(first(movement, "tipo", "type")),
+                            text(first(movement, "descripcion", "description")),
+                            userId,
+                            "",
+                            "",
+                            amount(first(movement, "monto", "amount")),
+                            "COMPLETADA",
+                            date,
+                            "Billetera"));
                 });
     }
 
@@ -160,8 +195,16 @@ public class GlobalOperationsService {
 
     private void readMobileRecharges(List<GlobalTransaction> output, Map<String, String> unavailable,
             LocalDate from, LocalDate through) {
-        readCollection("Recargas móviles", recargasDatabase.getCollection("recargas_movil"),
-                unavailable, recharge -> {
+        MongoCollection<Document> collection = recargasDatabase.getCollection("recargas_movil");
+        var query = collection.find();
+        Bson dateFilter = dateFilter("fecha", from, through);
+        if (dateFilter != null) {
+            query.filter(dateFilter);
+        }
+        query.projection(Projections.include(
+                "_id", "operacionId", "operationId", "fecha", "operador", "paquete",
+                "usuarioId", "usuario_id", "userId", "monto", "amount", "estado", "status"));
+        readCollection("Recargas móviles", query, unavailable, recharge -> {
                     LocalDateTime date = date(first(recharge, "fecha"));
                     if (!inRange(date, from, through)) {
                         return;
@@ -185,9 +228,9 @@ public class GlobalOperationsService {
                 });
     }
 
-    private void readCollection(String serviceName, MongoCollection<Document> collection,
+    private void readCollection(String serviceName, MongoIterable<Document> documents,
             Map<String, String> unavailable, java.util.function.Consumer<Document> consumer) {
-        try (var cursor = collection.find().iterator()) {
+        try (var cursor = documents.iterator()) {
             while (cursor.hasNext()) {
                 consumer.accept(cursor.next());
             }
@@ -195,6 +238,27 @@ public class GlobalOperationsService {
             LOGGER.error("No se pudieron consultar los datos globales de {}.", serviceName, exception);
             unavailable.put(serviceName, "No se pudo consultar la base de datos de " + serviceName + ".");
         }
+    }
+
+    private static Bson dateFilter(String field, LocalDate from, LocalDate through) {
+        if (from == null && through == null) {
+            return null;
+        }
+        List<Bson> dateBounds = new ArrayList<>();
+        List<Bson> stringBounds = new ArrayList<>();
+        if (from != null) {
+            LocalDate lowerBound = from.minusDays(1);
+            dateBounds.add(Filters.gte(field, Date.from(
+                    lowerBound.atStartOfDay().toInstant(ZoneOffset.UTC))));
+            stringBounds.add(Filters.gte(field, lowerBound.atStartOfDay().toString()));
+        }
+        if (through != null) {
+            LocalDate upperBound = through.plusDays(2);
+            dateBounds.add(Filters.lt(field, Date.from(
+                    upperBound.atStartOfDay().toInstant(ZoneOffset.UTC))));
+            stringBounds.add(Filters.lt(field, upperBound.atStartOfDay().toString()));
+        }
+        return Filters.or(Filters.and(dateBounds), Filters.and(stringBounds));
     }
 
     static List<GlobalTransaction> deduplicate(List<GlobalTransaction> transactions) {
