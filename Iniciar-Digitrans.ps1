@@ -1,4 +1,16 @@
+param(
+    [ValidateSet('local', 'atlas')]
+    [string]$DatabaseProfile
+)
+
 $ErrorActionPreference = 'Stop'
+
+$mongoDatabases = [ordered]@{
+    ACCESO_MONGODB_URI = 'digitrans_acceso'
+    TRANSPORTE_MONGODB_URI = 'digitrans_transporte'
+    BILLETERA_MONGODB_URI = 'digitrans_billetera'
+    RECARGAS_MONGODB_URI = 'digitrans_recargas'
+}
 
 $services = @(
     @{
@@ -75,6 +87,18 @@ function Wait-ForPortFree([int]$Port, [int]$TimeoutSeconds = 15) {
 }
 
 try {
+    if ([string]::IsNullOrWhiteSpace($DatabaseProfile)) {
+        Write-Host 'Selecciona la base de datos para iniciar DigiMAX:'
+        Write-Host '  1. Local (localhost:27017)'
+        Write-Host '  2. Atlas'
+        $selection = (Read-Host 'Elige 1 o 2').Trim()
+        switch ($selection) {
+            '1' { $DatabaseProfile = 'local' }
+            '2' { $DatabaseProfile = 'atlas' }
+            default { throw 'Opción inválida. Ejecuta el .bat y elige 1 o 2.' }
+        }
+    }
+
     $root = Split-Path -Parent $MyInvocation.MyCommand.Path
     $jwtSecret = $env:APP_JWT_SECRET
     if ([string]::IsNullOrWhiteSpace($jwtSecret)) {
@@ -92,6 +116,26 @@ try {
         throw 'No está configurado MAIL_SERVICE_API_KEY en las variables de entorno de tu usuario.'
     }
     $env:MAIL_SERVICE_API_KEY = $mailApiKey
+
+    $env:SPRING_PROFILES_ACTIVE = "db-$DatabaseProfile"
+    if ($DatabaseProfile -eq 'atlas') {
+        foreach ($variable in $mongoDatabases.Keys) {
+            $uri = [Environment]::GetEnvironmentVariable($variable, 'User')
+            if ([string]::IsNullOrWhiteSpace($uri)) {
+                $uri = [Environment]::GetEnvironmentVariable($variable, 'Process')
+            }
+            $expectedDatabase = [regex]::Escape($mongoDatabases[$variable])
+            $atlasUriPattern = "^mongodb\+srv://[^/]+/$expectedDatabase(?:\?|$)"
+            if ([string]::IsNullOrWhiteSpace($uri) -or $uri -notmatch $atlasUriPattern) {
+                throw "No está configurada una URI Atlas válida para $variable. Configúrala en las variables de usuario y vuelve a abrir la terminal."
+            }
+            [Environment]::SetEnvironmentVariable($variable, $uri, 'Process')
+        }
+    } else {
+        foreach ($variable in $mongoDatabases.Keys) {
+            Remove-Item -Path "Env:\$variable" -ErrorAction SilentlyContinue
+        }
+    }
 
     foreach ($service in $services) {
         $owners = @(Get-PortOwners -Port $service.Port)
@@ -128,7 +172,7 @@ try {
         Write-Host "$($service.Name) está escuchando en el puerto $($service.Port)."
     }
 
-    Write-Host 'Los seis módulos están iniciados.'
+    Write-Host "Los seis módulos están iniciados usando MongoDB $DatabaseProfile."
 }
 catch {
     Write-Error $_

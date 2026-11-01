@@ -72,6 +72,15 @@ Cada módulo persistente usa una base MongoDB independiente:
 
 MongoDB crea cada base cuando el módulo realiza su primera escritura. `Correo` no necesita base de datos. La base antigua `Digitrans_Max` no se modifica ni migra automáticamente.
 
+Para alternar las cuatro bases MongoDB al iniciar toda la plataforma, usa uno de estos comandos desde la raíz:
+
+```powershell
+.\Iniciar-Digitrans.bat local
+.\Iniciar-Digitrans.bat atlas
+```
+
+`local` conecta todos los módulos persistentes a `localhost:27017`, aunque las variables Atlas estén configuradas en Windows. `atlas` requiere que las cuatro variables `ACCESO_MONGODB_URI`, `TRANSPORTE_MONGODB_URI`, `BILLETERA_MONGODB_URI` y `RECARGAS_MONGODB_URI` estén disponibles en el proceso o en las variables de usuario. El script de configuración `configurar_mongodb_atlas.py` guarda estas últimas. El lanzador valida la configuración antes de reiniciar los servicios y les aplica el mismo perfil; no copia ni sincroniza datos entre bases.
+
 Las direcciones de los servicios pueden personalizarse con `ACCESO_BASE_URL`, `BILLETERA_BASE_URL`, `PAGOS_BASE_URL`, `TRANSPORTE_URL`, `RECARGAS_URL` y `MAIL_SERVICE_URL`; sus valores locales predeterminados apuntan a los puertos indicados arriba.
 
 La consola global de Acceso consulta las bases de Transporte, Billetera y Recargas para consolidar transacciones. Usa las URI de MongoDB de cada módulo indicadas en la tabla; si personalizas una base, configura la misma URI en la variable correspondiente para que la consola pueda leer sus datos. El total global consolida operaciones por ID cuando los módulos comparten la misma referencia. Los reportes Excel permiten escoger conjuntos de datos, servicios y fechas.
