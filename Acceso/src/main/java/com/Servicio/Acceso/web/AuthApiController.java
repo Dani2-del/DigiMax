@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 import com.Servicio.Acceso.model.Usuario;
@@ -90,10 +92,14 @@ public class AuthApiController {
                 || ids.stream().anyMatch(id -> !StringUtils.hasText(id))) {
             return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).build();
         }
-        List<AuthenticatedUserResponse> identities = ids.stream()
-                .distinct()
-                .map(id -> usuarios.findById(id).orElse(null))
-                .filter(usuario -> usuario != null)
+        List<String> distinctIds = ids.stream().distinct().toList();
+        Map<String, Usuario> usersById = new HashMap<>();
+        for (Usuario usuario : usuarios.findAllById(distinctIds)) {
+            usersById.put(usuario.getId(), usuario);
+        }
+        List<AuthenticatedUserResponse> identities = distinctIds.stream()
+                .map(usersById::get)
+                .filter(java.util.Objects::nonNull)
                 .map(this::toAuthenticatedUser)
                 .toList();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identities);

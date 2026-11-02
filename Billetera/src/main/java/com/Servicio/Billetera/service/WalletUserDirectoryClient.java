@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.web.client.RestClient;
 
 @Component
@@ -34,6 +35,27 @@ public class WalletUserDirectoryClient {
                 .body(UserSummary.class);
     }
 
+    public List<UserSummary> findByIds(List<String> userIds, String token) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        if (userIds.size() > 200 || userIds.stream().anyMatch(id -> id == null || id.isBlank())) {
+            throw new IllegalArgumentException("La consulta por lote requiere entre 1 y 200 identidades válidas.");
+        }
+        List<IdentityResponse> identities = restClient.post()
+                .uri(accesoUrl + "/api/auth/transport-identities")
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .body(userIds)
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<IdentityResponse>>() { });
+        if (identities == null) {
+            throw new IllegalStateException("Acceso devolvió una respuesta vacía al consultar identidades.");
+        }
+        return identities.stream()
+                .map(identity -> new UserSummary(identity.id(), identity.name(), identity.email()))
+                .toList();
+    }
+
     public UserPage search(String query, int page, String token) {
         UserPage result = restClient.get()
                 .uri(accesoUrl + "/api/admin/users?page={page}&size={size}&search={search}&sort=recent",
@@ -48,6 +70,12 @@ public class WalletUserDirectoryClient {
     }
 
     public record UserSummary(String id, String name, String email) {
+    }
+
+    private record IdentityResponse(
+            String id, String email, String name, String role, boolean active,
+            boolean verified, java.time.LocalDateTime registeredAt,
+            String phone, String serviceAssignment) {
     }
 
     public record UserPage(List<UserSummary> content, long totalElements, int totalPages, int page, int size) {

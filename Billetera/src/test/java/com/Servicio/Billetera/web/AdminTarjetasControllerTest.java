@@ -2,6 +2,8 @@ package com.Servicio.Billetera.web;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -49,8 +51,86 @@ class AdminTarjetasControllerTest {
     private AdminTarjetasController controller;
 
     @Test
+    void dashboardUsesAggregatedWalletSummaryInsteadOfLoadingEveryWallet() {
+        when(billeteraService.dashboardSummary()).thenReturn(
+                new BilleteraService.DashboardSummary(12, 8, 2, new BigDecimal("12500.00")));
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertThat(controller.dashboard(
+                new AuthenticatedIdentity("admin", "admin@example.com", "Admin", "ROLE_ADMIN"), model))
+                .isEqualTo("admin-dashboard-billetera");
+
+        assertThat(model.getAttribute("totalCuentas")).isEqualTo(12L);
+        assertThat(model.getAttribute("tarjetasActivas")).isEqualTo(8L);
+        assertThat(model.getAttribute("tarjetasCongeladas")).isEqualTo(2L);
+        assertThat(model.getAttribute("saldoAdministrado")).isEqualTo(new BigDecimal("12500.00"));
+        verify(billeteraService, never()).billeterasAdministrativas();
+    }
+
+    @Test
     void adminRootOpensTheDashboardInsteadOfTheAccountSearch() {
         assertThat(controller.adminHome()).isEqualTo("redirect:/admin/dashboard");
+    }
+
+    @Test
+    void accountSearchLoadsOnlyFiveWalletsAndSkipsDirectorySearchWithoutAQuery() {
+        BilleteraUniversal wallet = walletWithMovements(0);
+        when(billeteraService.buscarCuentasAdministrativas("", List.of(), null, null, 5))
+                .thenReturn(List.of(wallet));
+        when(billeteraService.totalCuentasAdministrativas()).thenReturn(27L);
+        when(userDirectory.findByIds(List.of("user-0"), "access-token"))
+                .thenReturn(List.of(new UserSummary("user-0", "User Zero", "zero@example.com")));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        assertThat(controller.index(
+                "", null, null,
+                new AuthenticatedIdentity("admin", "admin@example.com", "Admin", "ROLE_ADMIN"),
+                request, model)).isEqualTo("admin-moderador-billetera");
+
+        @SuppressWarnings("unchecked")
+        List<AdminTarjetasController.WalletRow> accounts =
+                (List<AdminTarjetasController.WalletRow>) model.getAttribute("cuentas");
+        assertThat(accounts).hasSize(1);
+        assertThat(accounts.get(0).nombre()).isEqualTo("User Zero");
+        assertThat(model.getAttribute("totalCuentas")).isEqualTo(27L);
+        verify(userDirectory, never()).search(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyString());
+        verify(billeteraService, never()).billeterasAdministrativas();
+    }
+
+    @Test
+    void accountSearchMatchesWalletsByAccessUserNameAndPreservesDirectoryOrder() {
+        UserSummary firstMatch = new UserSummary("user-1", "User One", "one@example.com");
+        UserSummary secondMatch = new UserSummary("user-0", "User Zero", "zero@example.com");
+        when(billeteraService.buscarCuentasAdministrativas("User", List.of(), null, null, 5))
+                .thenReturn(List.of());
+        when(billeteraService.idsCuentasAdministrativas(null, null))
+                .thenReturn(List.of("user-0", "user-1"));
+        when(userDirectory.search("User", 0, "access-token"))
+                .thenReturn(new UserPage(List.of(firstMatch, secondMatch), 2, 1, 0, 100));
+        when(billeteraService.buscarCuentasAdministrativas(
+                "", List.of("user-1", "user-0"), null, null, 5))
+                .thenReturn(List.of(walletWithMovements(0), walletWithMovements(1)));
+        when(billeteraService.totalCuentasAdministrativas()).thenReturn(2L);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        controller.index(
+                "User", null, null,
+                new AuthenticatedIdentity("admin", "admin@example.com", "Admin", "ROLE_ADMIN"),
+                request, model);
+
+        @SuppressWarnings("unchecked")
+        List<AdminTarjetasController.WalletRow> accounts =
+                (List<AdminTarjetasController.WalletRow>) model.getAttribute("cuentas");
+        assertThat(accounts).extracting(AdminTarjetasController.WalletRow::usuarioId)
+                .containsExactly("user-1", "user-0");
+        assertThat(accounts).extracting(AdminTarjetasController.WalletRow::nombre)
+                .containsExactly("User One", "User Zero");
     }
 
     @Test
@@ -109,14 +189,16 @@ class AdminTarjetasControllerTest {
 
     @Test
     void movementsPagePaginatesFiveMostRecentEntries() {
-        List<BilleteraUniversal> wallets = IntStream.range(0, 2)
-                .mapToObj(userIndex -> walletWithMovements(userIndex))
+        List<BilleteraService.MovementDocument> movementDocuments = IntStream.range(5, 8)
+                .mapToObj(index -> movementDocument(1, index - 4))
                 .toList();
-        when(billeteraService.billeterasAdministrativas()).thenReturn(wallets);
-        when(userDirectory.findById(org.mockito.ArgumentMatchers.anyString(),
-                org.mockito.ArgumentMatchers.eq("access-token")))
-                .thenAnswer(invocation -> new UserSummary(
-                        invocation.getArgument(0), "User " + invocation.getArgument(0), "user@example.com"));
+        when(billeteraService.movimientosAdministrativos(
+                "", "", null, null, "", List.of(), 1, 5))
+                .thenReturn(new BilleteraService.MovementPage(8, 1, movementDocuments));
+        when(billeteraService.tiposMovimientoAdministrativos()).thenReturn(List.of("ABONO"));
+        when(billeteraService.serviciosMovimientoAdministrativos()).thenReturn(List.of("Billetera"));
+        when(userDirectory.findByIds(List.of("user-1"), "access-token"))
+                .thenReturn(List.of(new UserSummary("user-1", "User user-1", "user@example.com")));
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
@@ -132,22 +214,28 @@ class AdminTarjetasControllerTest {
         assertThat(page).hasSize(3);
         assertThat(page).extracting(entry -> entry.movement().getOperacionId())
                 .containsExactly("operation-5", "operation-6", "operation-7");
-        assertThat(model.getAttribute("totalMovimientos")).isEqualTo(8);
+        assertThat(model.getAttribute("totalMovimientos")).isEqualTo(8L);
         assertThat(model.getAttribute("totalPages")).isEqualTo(2);
         assertThat(model.getAttribute("firstMovement")).isEqualTo(6);
         assertThat(model.getAttribute("lastMovement")).isEqualTo(8);
         assertThat(model.getAttribute("hasPreviousPage")).isEqualTo(true);
         assertThat(model.getAttribute("hasNextPage")).isEqualTo(false);
+        verify(billeteraService, never()).billeterasAdministrativas();
     }
 
     @Test
     void movementsPageAppliesSearchTypeServiceAndDateFilters() {
-        List<BilleteraUniversal> wallets = List.of(walletWithMovements(0));
-        when(billeteraService.billeterasAdministrativas()).thenReturn(wallets);
         when(userDirectory.search("Carga 0", 0, "access-token"))
                 .thenReturn(new UserPage(List.of(), 0, 0, 0, 100));
-        when(userDirectory.findById("user-0", "access-token"))
-                .thenReturn(new UserSummary("user-0", "User Zero", "zero@example.com"));
+        when(billeteraService.movimientosAdministrativos(
+                "ABONO", "Billetera", LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 25),
+                "Carga 0", List.of(), 0, 5))
+                .thenReturn(new BilleteraService.MovementPage(
+                        1, 0, List.of(movementDocument(0, 0))));
+        when(billeteraService.tiposMovimientoAdministrativos()).thenReturn(List.of("ABONO"));
+        when(billeteraService.serviciosMovimientoAdministrativos()).thenReturn(List.of("Billetera"));
+        when(userDirectory.findByIds(List.of("user-0"), "access-token"))
+                .thenReturn(List.of(new UserSummary("user-0", "User Zero", "zero@example.com")));
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
@@ -164,17 +252,23 @@ class AdminTarjetasControllerTest {
         assertThat(results).hasSize(1);
         assertThat(results.get(0).movement().getOperacionId()).isEqualTo("operation-0");
         assertThat(results.get(0).userName()).isEqualTo("User Zero");
-        assertThat(model.getAttribute("totalMovimientos")).isEqualTo(1);
+        assertThat(model.getAttribute("totalMovimientos")).isEqualTo(1L);
     }
 
     @Test
     void movementsPageFindsTransactionsUsingUserNameOrEmailSearch() {
-        List<BilleteraUniversal> wallets = List.of(walletWithMovements(0));
-        when(billeteraService.billeterasAdministrativas()).thenReturn(wallets);
         when(userDirectory.search("zero@example.com", 0, "access-token"))
                 .thenReturn(new UserPage(
                         List.of(new UserSummary("user-0", "User Zero", "zero@example.com")),
                         1, 1, 0, 100));
+        when(billeteraService.movimientosAdministrativos(
+                "", "", null, null, "zero@example.com", List.of("user-0"), 0, 5))
+                .thenReturn(new BilleteraService.MovementPage(
+                        4, 0, IntStream.range(0, 4)
+                                .mapToObj(index -> movementDocument(0, index))
+                                .toList()));
+        when(billeteraService.tiposMovimientoAdministrativos()).thenReturn(List.of("ABONO"));
+        when(billeteraService.serviciosMovimientoAdministrativos()).thenReturn(List.of("Billetera"));
 
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
@@ -207,5 +301,10 @@ class AdminTarjetasControllerTest {
                 })
                 .toList());
         return wallet;
+    }
+
+    private static BilleteraService.MovementDocument movementDocument(int userIndex, int movementIndex) {
+        return new BilleteraService.MovementDocument(
+                "user-" + userIndex, walletWithMovements(userIndex).getMovimientos().get(movementIndex));
     }
 }

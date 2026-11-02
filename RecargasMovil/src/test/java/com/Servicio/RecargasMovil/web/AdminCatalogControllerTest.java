@@ -19,6 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.ui.ConcurrentModel;
 
 import com.Servicio.RecargasMovil.model.OperadorMovil;
@@ -71,6 +73,32 @@ class AdminCatalogControllerTest {
         assertThat(model.getAttribute("totalRecargas")).isEqualTo(0L);
         assertThat(model.getAttribute("paquetesActivos")).isEqualTo(0L);
         assertThat(model.getAttribute("recargasPage")).isNull();
+    }
+
+    @Test
+    void usersPageDisplaysTheCurrentAccessRole() {
+        ConcurrentModel model = new ConcurrentModel();
+        var identity = new com.Servicio.RecargasMovil.security.AuthenticatedIdentity(
+                "admin-1", "admin@example.com", "Admin", "ROLE_ADMIN");
+
+        assertThat(controller.users(identity, model)).isEqualTo("admin-usuarios");
+        assertThat(model.getAttribute("identity")).isSameAs(identity);
+    }
+
+    @Test
+    void usersApiProxyRequiresTheForwardedAccessToken() {
+        var response = controller.searchUsers("{}", new MockHttpServletRequest());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void refusesToUpdateAccountsWithoutLocalRechargeActivity() {
+        var response = controller.updateUser("user-1", "{}", new MockHttpServletRequest());
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        verify(mongoTemplate).exists(any(Query.class), eq("lineas_movil"));
+        verify(mongoTemplate).exists(any(Query.class), eq("recargas_movil"));
     }
 
     @Test

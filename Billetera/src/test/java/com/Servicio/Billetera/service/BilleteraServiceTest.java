@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -27,6 +28,8 @@ import org.springframework.dao.DuplicateKeyException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 
@@ -61,6 +64,70 @@ class BilleteraServiceTest {
         when(billeteras.findById("user-1")).thenReturn(Optional.of(wallet));
 
         assertThat(service.obtener("user-1")).isSameAs(wallet);
+    }
+
+    @Test
+    void dashboardSummaryUsesMongoAggregationAndMapsItsTotals() {
+        BilleteraService.DashboardSummary expected = new BilleteraService.DashboardSummary(
+                40, 25, 3, new BigDecimal("98765.43"));
+        when(mongoOperations.aggregate(
+                any(Aggregation.class), eq(BilleteraUniversal.class), eq(BilleteraService.DashboardSummary.class)))
+                .thenReturn(new AggregationResults<>(List.of(expected), new Document()));
+
+        assertThat(service.dashboardSummary()).isEqualTo(expected);
+    }
+
+    @Test
+    void dashboardSummaryReturnsZeroTotalsForAnEmptyWalletCollection() {
+        when(mongoOperations.aggregate(
+                any(Aggregation.class), eq(BilleteraUniversal.class), eq(BilleteraService.DashboardSummary.class)))
+                .thenReturn(new AggregationResults<>(List.of(), new Document()));
+
+        assertThat(service.dashboardSummary()).isEqualTo(
+                new BilleteraService.DashboardSummary(0, 0, 0, BigDecimal.ZERO));
+    }
+
+    @Test
+    void administrativeAccountSearchLimitsResultsAndExcludesMovementHistory() {
+        BilleteraUniversal wallet = wallet("user-1", "2500");
+        when(mongoOperations.find(any(Query.class), eq(BilleteraUniversal.class)))
+                .thenReturn(List.of(wallet));
+        ArgumentCaptor<Query> queryCaptor = ArgumentCaptor.forClass(Query.class);
+
+        assertThat(service.buscarCuentasAdministrativas("", List.of(), null, null, 5))
+                .containsExactly(wallet);
+
+        verify(mongoOperations).find(queryCaptor.capture(), eq(BilleteraUniversal.class));
+        assertThat(queryCaptor.getValue().getLimit()).isEqualTo(5);
+        assertThat(queryCaptor.getValue().getFieldsObject())
+                .containsEntry("movimientos", 0)
+                .containsEntry("tarjetas_desactivadas", 0);
+    }
+
+    @Test
+    void administrativeMovementsCountAndFetchOnlyTheRequestedMongoPage() {
+        MovimientoBilletera movement = new MovimientoBilletera(
+                "operation-1", "ABONO", "Carga de prueba",
+                new BigDecimal("20000"), LocalDateTime.of(2026, 10, 25, 12, 0));
+        BilleteraService.MovementDocument expected =
+                new BilleteraService.MovementDocument("user-1", movement);
+        when(mongoOperations.aggregate(
+                any(Aggregation.class), eq(BilleteraUniversal.class), eq(BilleteraService.MovementCount.class)))
+                .thenReturn(new AggregationResults<>(
+                        List.of(new BilleteraService.MovementCount(12)), new Document()));
+        when(mongoOperations.aggregate(
+                any(Aggregation.class), eq(BilleteraUniversal.class), eq(BilleteraService.MovementDocument.class)))
+                .thenReturn(new AggregationResults<>(List.of(expected), new Document()));
+
+        BilleteraService.MovementPage result = service.movimientosAdministrativos(
+                "ABONO", "Billetera", LocalDate.of(2026, 10, 25), LocalDate.of(2026, 10, 25),
+                "Carga", List.of("user-1"), 1, 5);
+
+        assertThat(result.total()).isEqualTo(12);
+        assertThat(result.pageIndex()).isEqualTo(1);
+        assertThat(result.movements()).containsExactly(expected);
+        verify(mongoOperations, times(2)).aggregate(
+                any(Aggregation.class), eq(BilleteraUniversal.class), any());
     }
 
     @Test

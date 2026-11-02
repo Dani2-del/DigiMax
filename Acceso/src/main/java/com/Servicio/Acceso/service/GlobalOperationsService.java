@@ -92,6 +92,44 @@ public class GlobalOperationsService {
         return new TransactionSnapshot(List.copyOf(unique), Map.copyOf(unavailable));
     }
 
+    public List<String> mobileRechargeUserIds() {
+        Set<String> userIds = new java.util.TreeSet<>();
+        collectDistinctUserIds("lineas_movil", userIds);
+        collectDistinctUserIds("recargas_movil", userIds);
+        return List.copyOf(userIds);
+    }
+
+    public boolean hasMobileRechargeActivity(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+        return hasUserId("lineas_movil", userId) || hasUserId("recargas_movil", userId);
+    }
+
+    private void collectDistinctUserIds(String collectionName, Set<String> userIds) {
+        MongoCollection<Document> collection = recargasDatabase.getCollection(collectionName);
+        for (String field : List.of("usuarioId", "usuario_id", "userId")) {
+            collection.distinct(field, String.class)
+                    .forEach(value -> {
+                        if (value != null && !value.isBlank()) {
+                            userIds.add(value);
+                        }
+                    });
+        }
+    }
+
+    private boolean hasUserId(String collectionName, String userId) {
+        MongoCollection<Document> collection = recargasDatabase.getCollection(collectionName);
+        Bson userIdFilter = Filters.or(
+                Filters.eq("usuarioId", userId),
+                Filters.eq("usuario_id", userId),
+                Filters.eq("userId", userId));
+        return collection.find(userIdFilter)
+                .projection(Projections.include("_id"))
+                .limit(1)
+                .first() != null;
+    }
+
     private void readTransportTransactions(List<GlobalTransaction> output, Map<String, String> unavailable,
             Set<String> services, LocalDate from, LocalDate through) {
         MongoCollection<Document> collection = transporteDatabase.getCollection("transacciones");

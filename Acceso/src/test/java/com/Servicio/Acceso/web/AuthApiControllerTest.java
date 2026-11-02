@@ -80,7 +80,7 @@ class AuthApiControllerTest {
         when(jwtService.extractUsername("token-valido")).thenReturn("conductor@example.com");
         when(userDetailsService.loadUserByUsername("conductor@example.com")).thenReturn(conductor);
         when(jwtService.isTokenValid("token-valido", conductor)).thenReturn(true);
-        when(usuarios.findById("user-2")).thenReturn(Optional.of(target));
+        when(usuarios.findAllById(List.of("user-2"))).thenReturn(List.of(target));
 
         var response = controller.transportIdentities("Bearer token-valido", List.of("user-2"));
 
@@ -103,6 +103,6 @@ class AuthApiControllerTest {
         var response = controller.transportIdentities("Bearer token-valido", List.of("user-2"));
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
-        verify(usuarios, never()).findById("user-2");
+        verify(usuarios, never()).findAllById(List.of("user-2"));
     }
 }

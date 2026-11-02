@@ -25,30 +25,43 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import org.springframework.web.util.UriUtils;
 
 import com.Servicio.RecargasMovil.model.CategoriaPaquete;
 import com.Servicio.RecargasMovil.model.OperadorMovil;
 import com.Servicio.RecargasMovil.model.PaqueteMovil;
 import com.Servicio.RecargasMovil.model.RecargaMovil;
+import com.Servicio.RecargasMovil.security.AuthenticatedIdentity;
+import com.Servicio.RecargasMovil.security.RemoteAccessAuthenticationFilter;
 import com.Servicio.RecargasMovil.repository.OperadorMovilRepository;
 import com.Servicio.RecargasMovil.repository.PaqueteMovilRepository;
 import com.Servicio.RecargasMovil.repository.RecargaMovilRepository;
 import com.Servicio.RecargasMovil.service.RecargasExcelReportService;
 import com.Servicio.RecargasMovil.service.RecargasService;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping("/admin")
@@ -64,6 +77,7 @@ public class AdminCatalogController {
     private final MongoTemplate mongoTemplate;
     private final RecargasExcelReportService excelReportService;
     private final String accesoUrl;
+    private final RestClient restClient = RestClient.create();
 
     public AdminCatalogController(
             RecargasService recargasService,
@@ -91,6 +105,61 @@ public class AdminCatalogController {
     public String dashboard(Model model) {
         addSummary(model);
         return "admin-catalogo";
+    }
+
+    @GetMapping("/usuarios")
+    public String users(@AuthenticationPrincipal AuthenticatedIdentity identity, Model model) {
+        model.addAttribute("identity", identity);
+        return "admin-usuarios";
+    }
+
+    @PostMapping("/usuarios/buscar")
+    @ResponseBody
+    public ResponseEntity<String> searchUsers(
+            @RequestBody String filters, HttpServletRequest request) {
+        return forwardUsersRequest(HttpMethod.POST, "/api/admin/users/recargas", filters, request);
+    }
+
+    @PatchMapping("/usuarios/{id}")
+    @ResponseBody
+    public ResponseEntity<String> updateUser(
+            @PathVariable String id, @RequestBody String update, HttpServletRequest request) {
+        Criteria belongsToRecargas = new Criteria().orOperator(
+                Criteria.where("usuarioId").is(id),
+                Criteria.where("usuario_id").is(id),
+                Criteria.where("userId").is(id));
+        boolean hasActivity = mongoTemplate.exists(
+                        new Query(belongsToRecargas), "lineas_movil")
+                || mongoTemplate.exists(new Query(belongsToRecargas), "recargas_movil");
+        if (!hasActivity) {
+            return ResponseEntity.notFound().build();
+        }
+        String encodedId = UriUtils.encodePathSegment(id, StandardCharsets.UTF_8);
+        return forwardUsersRequest(HttpMethod.PATCH, "/api/admin/users/recargas/" + encodedId, update, request);
+    }
+
+    private ResponseEntity<String> forwardUsersRequest(
+            HttpMethod method, String path, String body, HttpServletRequest request) {
+        Object token = request.getAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE);
+        if (!(token instanceof String accessToken) || accessToken.isBlank()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        try {
+            return restClient.method(method)
+                    .uri(accesoUrl + path)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .toEntity(String.class);
+        } catch (RestClientResponseException exception) {
+            return ResponseEntity.status(exception.getStatusCode())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(exception.getResponseBodyAsString());
+        } catch (ResourceAccessException exception) {
+            LOGGER.error("No se pudo contactar al servicio de Acceso para gestionar usuarios de Recargas.", exception);
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).build();
+        }
     }
 
     @GetMapping("/reportes")

@@ -2,15 +2,22 @@ package com.Servicio.Billetera.service;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
@@ -222,6 +229,246 @@ public class BilleteraService {
                 .sorted(Comparator.comparing(BilleteraUniversal::getUsuarioId,
                         Comparator.nullsLast(Comparator.naturalOrder())))
                 .toList();
+    }
+
+    public long totalCuentasAdministrativas() {
+        return mongoOperations.count(new Query(), BilleteraUniversal.class);
+    }
+
+    public List<String> idsCuentasAdministrativas(BigDecimal saldoDesde, BigDecimal saldoHasta) {
+        Query query = walletBalanceQuery(saldoDesde, saldoHasta);
+        return mongoOperations.findDistinct(query, "_id", BilleteraUniversal.class, String.class);
+    }
+
+    public List<BilleteraUniversal> buscarCuentasAdministrativas(
+            String buscar, List<String> usuarioIds,
+            BigDecimal saldoDesde, BigDecimal saldoHasta, int limit) {
+        List<Criteria> filters = new ArrayList<>();
+        if (saldoDesde != null || saldoHasta != null) {
+            Criteria balance = Criteria.where("saldo");
+            if (saldoDesde != null) {
+                balance.gte(saldoDesde);
+            }
+            if (saldoHasta != null) {
+                balance.lte(saldoHasta);
+            }
+            filters.add(balance);
+        }
+        if (buscar != null && !buscar.isBlank()) {
+            Pattern searchPattern = Pattern.compile(
+                    Pattern.quote(buscar.trim()), Pattern.CASE_INSENSITIVE);
+            List<Criteria> searchFilters = new ArrayList<>(List.of(
+                    Criteria.where("_id").regex(searchPattern),
+                    Criteria.where("numeroTarjeta").regex(searchPattern)));
+            if (usuarioIds != null && !usuarioIds.isEmpty()) {
+                searchFilters.add(Criteria.where("_id").in(usuarioIds));
+            }
+            filters.add(new Criteria().orOperator(searchFilters.toArray(Criteria[]::new)));
+        } else if (usuarioIds != null && !usuarioIds.isEmpty()) {
+            filters.add(Criteria.where("_id").in(usuarioIds));
+        }
+        Criteria criteria = filters.isEmpty()
+                ? new Criteria()
+                : new Criteria().andOperator(filters.toArray(Criteria[]::new));
+        Query query = Query.query(criteria)
+                .with(Sort.by(Sort.Direction.ASC, "_id"))
+                .limit(Math.max(1, limit));
+        query.fields().exclude("movimientos").exclude("tarjetas_desactivadas");
+        return mongoOperations.find(query, BilleteraUniversal.class);
+    }
+
+    private static Query walletBalanceQuery(BigDecimal saldoDesde, BigDecimal saldoHasta) {
+        if (saldoDesde == null && saldoHasta == null) {
+            return new Query();
+        }
+        Criteria balance = Criteria.where("saldo");
+        if (saldoDesde != null) {
+            balance.gte(saldoDesde);
+        }
+        if (saldoHasta != null) {
+            balance.lte(saldoHasta);
+        }
+        return Query.query(balance);
+    }
+
+    public DashboardSummary dashboardSummary() {
+        AggregationExpression activeCards = ConditionalOperators.when(
+                Criteria.where("activadaPorUsuario").is(true).and("estado").is(EstadoTarjeta.ACTIVA))
+                .then(1).otherwise(0);
+        AggregationExpression frozenCards = ConditionalOperators.when(
+                Criteria.where("activadaPorUsuario").is(true).and("estado").is(EstadoTarjeta.CONGELADA))
+                .then(1).otherwise(0);
+        AggregationExpression activeBalance = ConditionalOperators.when(
+                Criteria.where("activadaPorUsuario").is(true)
+                        .and("estado").ne(EstadoTarjeta.DESACTIVADA))
+                .thenValueOf("saldo").otherwise(BigDecimal.ZERO);
+        Aggregation aggregation = Aggregation.newAggregation(
+                BilleteraUniversal.class,
+                Aggregation.group()
+                        .count().as("totalCuentas")
+                        .sum(activeCards).as("tarjetasActivas")
+                        .sum(frozenCards).as("tarjetasCongeladas")
+                        .sum(activeBalance).as("saldoAdministrado"));
+        DashboardSummary summary = mongoOperations.aggregate(
+                aggregation, BilleteraUniversal.class, DashboardSummary.class).getUniqueMappedResult();
+        return summary == null
+                ? new DashboardSummary(0, 0, 0, BigDecimal.ZERO)
+                : summary;
+    }
+
+    public MovementPage movimientosAdministrativos(
+            String tipo, String servicio, LocalDate desde, LocalDate hasta,
+            String buscar, List<String> usuarioIds, int page, int pageSize) {
+        List<Criteria> filters = new ArrayList<>();
+        if (tipo != null && !tipo.isBlank()) {
+            filters.add(Criteria.where("movimientos.tipo").is(tipo));
+        }
+        if (servicio != null && !servicio.isBlank()) {
+            filters.add(serviceCriteria(servicio));
+        }
+        if (desde != null || hasta != null) {
+            Criteria dateCriteria = Criteria.where("movimientos.fecha");
+            if (desde != null) {
+                dateCriteria.gte(desde.atStartOfDay());
+            }
+            if (hasta != null) {
+                dateCriteria.lt(hasta.plusDays(1).atStartOfDay());
+            }
+            filters.add(dateCriteria);
+        }
+        if (buscar != null && !buscar.isBlank()) {
+            Pattern searchPattern = Pattern.compile(
+                    Pattern.quote(buscar.trim()), Pattern.CASE_INSENSITIVE);
+            List<Criteria> searchFilters = new ArrayList<>(List.of(
+                    Criteria.where("_id").regex(searchPattern),
+                    Criteria.where("movimientos.operacionId").regex(searchPattern),
+                    Criteria.where("movimientos.tipo").regex(searchPattern),
+                    Criteria.where("movimientos.descripcion").regex(searchPattern),
+                    Criteria.where("movimientos.servicio").regex(searchPattern)));
+            if (usuarioIds != null && !usuarioIds.isEmpty()) {
+                searchFilters.add(Criteria.where("_id").in(usuarioIds));
+            }
+            filters.add(new Criteria().orOperator(searchFilters.toArray(Criteria[]::new)));
+        }
+        Criteria criteria = filters.isEmpty()
+                ? new Criteria()
+                : new Criteria().andOperator(filters.toArray(Criteria[]::new));
+
+        Aggregation countAggregation = Aggregation.newAggregation(
+                BilleteraUniversal.class,
+                Aggregation.match(criteria),
+                Aggregation.unwind("movimientos"),
+                Aggregation.match(criteria),
+                Aggregation.count().as("total"));
+        MovementCount count = mongoOperations.aggregate(
+                countAggregation, BilleteraUniversal.class, MovementCount.class).getUniqueMappedResult();
+        long total = count == null ? 0 : count.total();
+
+        int safePage = Math.max(0, page);
+        int safePageSize = Math.max(1, pageSize);
+        int totalPages = (int) Math.ceil((double) total / safePageSize);
+        int pageIndex = Math.min(safePage, Math.max(0, totalPages - 1));
+        Aggregation pageAggregation = Aggregation.newAggregation(
+                BilleteraUniversal.class,
+                Aggregation.match(criteria),
+                Aggregation.unwind("movimientos"),
+                Aggregation.match(criteria),
+                Aggregation.sort(Sort.by(Sort.Direction.DESC, "movimientos.fecha")
+                        .and(Sort.by(Sort.Direction.ASC, "_id"))
+                        .and(Sort.by(Sort.Direction.ASC, "movimientos.operacionId"))),
+                Aggregation.skip((long) pageIndex * safePageSize),
+                Aggregation.limit(safePageSize),
+                Aggregation.project()
+                        .and("_id").as("userId")
+                        .and("movimientos").as("movement"));
+        List<MovementDocument> movements = mongoOperations.aggregate(
+                pageAggregation, BilleteraUniversal.class, MovementDocument.class).getMappedResults();
+        return new MovementPage(total, pageIndex, movements);
+    }
+
+    public List<String> tiposMovimientoAdministrativos() {
+        return mongoOperations.getCollection("billeteras_universales")
+                .distinct("movimientos.tipo", String.class)
+                .into(new ArrayList<>()).stream()
+                .filter(value -> value != null && !value.isBlank())
+                .sorted().toList();
+    }
+
+    public List<String> serviciosMovimientoAdministrativos() {
+        return mongoOperations.getCollection("billeteras_universales")
+                .distinct("movimientos.servicio", String.class)
+                .into(new ArrayList<>()).stream()
+                .filter(value -> value != null && !value.isBlank())
+                .collect(java.util.stream.Collectors.collectingAndThen(
+                        java.util.stream.Collectors.toCollection(java.util.TreeSet::new),
+                        values -> {
+                            values.addAll(List.of(
+                                    "Billetera", "Otros", "Paquetes y recargas", "Soporte Billetera",
+                                    "Transcaribe", "Transmetro", "TransMilenio", "Transporte"));
+                            return List.copyOf(values);
+                        }));
+    }
+
+    private static Criteria serviceCriteria(String service) {
+        Criteria storedService = Criteria.where("movimientos.servicio").is(service);
+        Criteria missingService = new Criteria().orOperator(
+                Criteria.where("movimientos.servicio").is(null),
+                Criteria.where("movimientos.servicio").is(""));
+        Criteria fallback = switch (service) {
+            case "Transcaribe" -> descriptionContains("transcaribe");
+            case "TransMilenio" -> descriptionContains("transmilenio");
+            case "Transmetro" -> descriptionContains("transmetro");
+            case "Paquetes y recargas" -> descriptionContains("paquete");
+            case "Transporte" -> allOf(
+                    descriptionContains("pasaje"),
+                    descriptionExcludes("transcaribe"),
+                    descriptionExcludes("transmilenio"),
+                    descriptionExcludes("transmetro"),
+                    descriptionExcludes("paquete"));
+            case "Billetera" -> Criteria.where("movimientos.tipo")
+                    .in("ABONO", "ABONO_PENDIENTE", "ABONO_RECHAZADO");
+            case "Soporte Billetera" -> Criteria.where("movimientos.tipo")
+                    .in("AJUSTE_ADMIN", "RETIRO_ADMIN", "CAMBIO_ESTADO");
+            case "Otros" -> allOf(
+                    descriptionExcludes("transcaribe"),
+                    descriptionExcludes("transmilenio"),
+                    descriptionExcludes("transmetro"),
+                    descriptionExcludes("paquete"),
+                    descriptionExcludes("pasaje"),
+                    Criteria.where("movimientos.tipo")
+                            .nin("ABONO", "ABONO_PENDIENTE", "ABONO_RECHAZADO",
+                                    "AJUSTE_ADMIN", "RETIRO_ADMIN", "CAMBIO_ESTADO"));
+            default -> null;
+        };
+        if (fallback == null) {
+            return storedService;
+        }
+        return new Criteria().orOperator(
+                storedService,
+                new Criteria().andOperator(missingService, fallback));
+    }
+
+    private static Criteria descriptionContains(String value) {
+        return Criteria.where("movimientos.descripcion")
+                .regex(Pattern.compile(Pattern.quote(value), Pattern.CASE_INSENSITIVE));
+    }
+
+    private static Criteria descriptionExcludes(String value) {
+        return Criteria.where("movimientos.descripcion")
+                .not().regex(Pattern.compile(Pattern.quote(value), Pattern.CASE_INSENSITIVE));
+    }
+
+    private static Criteria allOf(Criteria... criteria) {
+        return new Criteria().andOperator(criteria);
+    }
+
+    public record MovementPage(long total, int pageIndex, List<MovementDocument> movements) {
+    }
+
+    public record MovementDocument(String userId, MovimientoBilletera movement) {
+    }
+
+    public record MovementCount(long total) {
     }
 
     public BilleteraUniversal billeteraAdministrativa(String usuarioId) {
@@ -707,6 +954,10 @@ public class BilleteraService {
             DisenoTarjeta diseno,
             LocalDateTime desactivadaEn,
             boolean saldoTransferido) {
+    }
+
+    public record DashboardSummary(
+            long totalCuentas, long tarjetasActivas, long tarjetasCongeladas, BigDecimal saldoAdministrado) {
     }
 
     public static class WalletNotFoundException extends RuntimeException {

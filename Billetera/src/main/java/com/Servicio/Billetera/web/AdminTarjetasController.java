@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.Comparator;
@@ -73,25 +72,12 @@ public class AdminTarjetasController {
     public String dashboard(
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             Model model) {
-        List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
-        long activeCount = wallets.stream()
-                .filter(BilleteraUniversal::isActivadaPorUsuario)
-                .filter(wallet -> wallet.getEstado() == EstadoTarjeta.ACTIVA)
-                .count();
-        long frozenCount = wallets.stream()
-                .filter(BilleteraUniversal::isActivadaPorUsuario)
-                .filter(wallet -> wallet.getEstado() == EstadoTarjeta.CONGELADA)
-                .count();
-        BigDecimal totalBalance = wallets.stream()
-                .filter(BilleteraUniversal::isActivadaPorUsuario)
-                .filter(wallet -> wallet.getEstado() != EstadoTarjeta.DESACTIVADA)
-                .map(BilleteraUniversal::getSaldo)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BilleteraService.DashboardSummary summary = billeteraService.dashboardSummary();
         model.addAttribute("identity", identity);
-        model.addAttribute("totalCuentas", wallets.size());
-        model.addAttribute("tarjetasActivas", activeCount);
-        model.addAttribute("tarjetasCongeladas", frozenCount);
-        model.addAttribute("saldoAdministrado", totalBalance);
+        model.addAttribute("totalCuentas", summary.totalCuentas());
+        model.addAttribute("tarjetasActivas", summary.tarjetasActivas());
+        model.addAttribute("tarjetasCongeladas", summary.tarjetasCongeladas());
+        model.addAttribute("saldoAdministrado", summary.saldoAdministrado());
         return "admin-dashboard-billetera";
     }
 
@@ -166,50 +152,62 @@ public class AdminTarjetasController {
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             HttpServletRequest request,
             Model model) {
-        List<BilleteraUniversal> allWallets = billeteraService.billeterasAdministrativas();
         String query = buscar.trim();
-        String normalizedQuery = query.toLowerCase(Locale.ROOT);
-        String token = accessToken(request);
         boolean invalidBalanceRange = (saldoDesde != null && saldoDesde.signum() < 0)
                 || (saldoHasta != null && saldoHasta.signum() < 0)
                 || (saldoDesde != null && saldoHasta != null && saldoDesde.compareTo(saldoHasta) > 0);
-        Map<String, BilleteraUniversal> walletsById = allWallets.stream()
-                .collect(Collectors.toMap(BilleteraUniversal::getUsuarioId, Function.identity()));
-        Map<String, WalletRow> accountRows = new LinkedHashMap<>();
-        allWallets.stream()
-                .filter(wallet -> !invalidBalanceRange)
-                .filter(wallet -> !query.isBlank()
-                        && (contains(wallet.getUsuarioId(), normalizedQuery)
-                        || contains(wallet.getNumeroTarjeta(), normalizedQuery)))
-                .filter(wallet -> cumpleFiltroSaldo(wallet, saldoDesde, saldoHasta))
-                .limit(5)
-                .forEach(wallet -> accountRows.put(wallet.getUsuarioId(), toWalletRow(
-                        wallet, userDirectory.findById(wallet.getUsuarioId(), token))));
-
-        int page = 0;
-        int totalPages;
-        if (accountRows.isEmpty() && !invalidBalanceRange) {
+        Map<String, UserSummary> usersById = new LinkedHashMap<>();
+        List<BilleteraUniversal> accounts = invalidBalanceRange ? List.of()
+                : billeteraService.buscarCuentasAdministrativas(
+                        query, List.of(), saldoDesde, saldoHasta, 5);
+        if (accounts.isEmpty() && !invalidBalanceRange && !query.isBlank()) {
+            String token = accessToken(request);
+            Set<String> eligibleWalletIds = Set.copyOf(
+                    billeteraService.idsCuentasAdministrativas(saldoDesde, saldoHasta));
+            int page = 0;
+            WalletUserDirectoryClient.UserPage userPage;
             do {
-                WalletUserDirectoryClient.UserPage userPage = userDirectory.search(query, page, token);
+                userPage = userDirectory.search(query, page, token);
                 for (UserSummary user : userPage.content()) {
-                    BilleteraUniversal wallet = walletsById.get(user.id());
-                    if (wallet != null && cumpleFiltroSaldo(wallet, saldoDesde, saldoHasta)) {
-                        accountRows.putIfAbsent(user.id(), toWalletRow(wallet, user));
-                    }
-                    if (accountRows.size() >= 5) {
-                        break;
+                    if (eligibleWalletIds.contains(user.id())) {
+                        usersById.put(user.id(), user);
+                        if (usersById.size() == 5) {
+                            break;
+                        }
                     }
                 }
-                totalPages = userPage.totalPages();
                 page++;
-            } while (page < totalPages && accountRows.size() < 5);
+            } while (page < userPage.totalPages() && usersById.size() < 5);
+            if (!usersById.isEmpty()) {
+                accounts = billeteraService.buscarCuentasAdministrativas(
+                        "", List.copyOf(usersById.keySet()), saldoDesde, saldoHasta, 5);
+                Map<String, BilleteraUniversal> accountsById = accounts.stream()
+                        .collect(Collectors.toMap(BilleteraUniversal::getUsuarioId, Function.identity()));
+                accounts = usersById.keySet().stream()
+                        .map(accountsById::get)
+                        .filter(java.util.Objects::nonNull)
+                        .toList();
+            }
         }
+        if (!accounts.isEmpty()) {
+            List<String> usersToLoad = accounts.stream()
+                    .map(BilleteraUniversal::getUsuarioId)
+                    .filter(userId -> !usersById.containsKey(userId))
+                    .toList();
+            if (!usersToLoad.isEmpty()) {
+                userDirectory.findByIds(usersToLoad, accessToken(request))
+                        .forEach(user -> usersById.put(user.id(), user));
+            }
+        }
+        List<WalletRow> accountRows = accounts.stream()
+                .map(wallet -> toWalletRow(wallet, usersById.get(wallet.getUsuarioId())))
+                .toList();
         model.addAttribute("identity", identity);
-        model.addAttribute("cuentas", List.copyOf(accountRows.values()));
+        model.addAttribute("cuentas", accountRows);
         model.addAttribute("buscar", buscar);
         model.addAttribute("saldoDesde", saldoDesde);
         model.addAttribute("saldoHasta", saldoHasta);
-        model.addAttribute("totalCuentas", allWallets.size());
+        model.addAttribute("totalCuentas", billeteraService.totalCuentasAdministrativas());
         model.addAttribute("resultadosCuentas", accountRows.size());
         model.addAttribute("errorFiltroSaldo", invalidBalanceRange);
         return "admin-moderador-billetera";
@@ -226,13 +224,6 @@ public class AdminTarjetasController {
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             HttpServletRequest request,
             Model model) {
-        List<BilleteraUniversal> wallets = billeteraService.billeterasAdministrativas();
-        List<WalletMovementRow> allMovements = wallets.stream()
-                .flatMap(wallet -> wallet.getMovimientos().stream()
-                        .map(movement -> new WalletMovementRow(
-                                wallet.getUsuarioId(), wallet.getUsuarioId(), "", movement)))
-                .toList();
-
         boolean invalidDateRange = desde != null && hasta != null && desde.isAfter(hasta);
         if (invalidDateRange) {
             desde = null;
@@ -245,27 +236,31 @@ public class AdminTarjetasController {
         Map<String, UserSummary> matchedUsers = query.isBlank()
                 ? Map.of() : searchUsers(query, token);
         Set<String> matchedUserIds = matchedUsers.keySet();
-
-        List<WalletMovementRow> filtered = allMovements.stream()
-                .filter(row -> tipo.isBlank() || tipo.equalsIgnoreCase(row.movement().getTipo()))
-                .filter(row -> servicio.isBlank()
-                        || servicio.equalsIgnoreCase(row.movement().getServicio()))
-                .filter(row -> inDateRange(row.movement().getFecha(), fromDate, throughDate))
-                .filter(row -> query.isBlank()
-                        || matchedUserIds.contains(row.userId())
-                        || matchesMovement(row, query))
-                .sorted(Comparator.comparing(
-                        (WalletMovementRow row) -> row.movement().getFecha(),
-                        Comparator.nullsLast(Comparator.reverseOrder())))
+        BilleteraService.MovementPage movementPage = billeteraService.movimientosAdministrativos(
+                tipo, servicio, fromDate, throughDate, query, List.copyOf(matchedUserIds),
+                page, MOVEMENT_PAGE_SIZE);
+        long totalMovimientos = movementPage.total();
+        int totalPages = (int) Math.ceil((double) totalMovimientos / MOVEMENT_PAGE_SIZE);
+        int pageIndex = movementPage.pageIndex();
+        int firstMovement = totalMovimientos == 0 ? 0 : pageIndex * MOVEMENT_PAGE_SIZE + 1;
+        List<WalletMovementRow> rows = movementPage.movements().stream()
+                .map(row -> new WalletMovementRow(
+                        row.userId(), row.userId(), "", row.movement()))
                 .toList();
-
-        int totalPages = (int) Math.ceil((double) filtered.size() / MOVEMENT_PAGE_SIZE);
-        int pageIndex = Math.max(0, Math.min(page, Math.max(0, totalPages - 1)));
-        int fromIndex = pageIndex * MOVEMENT_PAGE_SIZE;
-        int toIndex = Math.min(fromIndex + MOVEMENT_PAGE_SIZE, filtered.size());
-        List<WalletMovementRow> visible = filtered.subList(fromIndex, toIndex).stream()
-                .map(row -> enrichMovement(row, matchedUsers, token))
+        Map<String, UserSummary> pageUsers = new LinkedHashMap<>(matchedUsers);
+        List<String> usersToLoad = rows.stream()
+                .map(WalletMovementRow::userId)
+                .filter(userId -> !pageUsers.containsKey(userId))
+                .distinct()
                 .toList();
+        if (!usersToLoad.isEmpty()) {
+            userDirectory.findByIds(usersToLoad, token)
+                    .forEach(user -> pageUsers.put(user.id(), user));
+        }
+        List<WalletMovementRow> visible = rows.stream()
+                .map(row -> enrichMovement(row, pageUsers))
+                .toList();
+        int lastMovement = firstMovement == 0 ? 0 : firstMovement + visible.size() - 1;
 
         model.addAttribute("identity", identity);
         model.addAttribute("movimientos", visible);
@@ -274,21 +269,15 @@ public class AdminTarjetasController {
         model.addAttribute("servicioSeleccionado", servicio);
         model.addAttribute("desde", desde);
         model.addAttribute("hasta", hasta);
-        model.addAttribute("tipos", allMovements.stream()
-                .map(row -> row.movement().getTipo())
-                .filter(value -> value != null && !value.isBlank())
-                .distinct().sorted().toList());
-        model.addAttribute("servicios", allMovements.stream()
-                .map(row -> row.movement().getServicio())
-                .filter(value -> value != null && !value.isBlank())
-                .distinct().sorted().toList());
-        model.addAttribute("totalMovimientos", filtered.size());
+        model.addAttribute("tipos", billeteraService.tiposMovimientoAdministrativos());
+        model.addAttribute("servicios", billeteraService.serviciosMovimientoAdministrativos());
+        model.addAttribute("totalMovimientos", totalMovimientos);
         model.addAttribute("totalPages", totalPages);
         model.addAttribute("pageIndex", pageIndex);
         model.addAttribute("hasPreviousPage", pageIndex > 0);
         model.addAttribute("hasNextPage", pageIndex + 1 < totalPages);
-        model.addAttribute("firstMovement", filtered.isEmpty() ? 0 : fromIndex + 1);
-        model.addAttribute("lastMovement", toIndex);
+        model.addAttribute("firstMovement", firstMovement);
+        model.addAttribute("lastMovement", lastMovement);
         model.addAttribute("errorFiltroFecha", invalidDateRange);
         return "admin-movimientos-billetera";
     }
@@ -305,26 +294,13 @@ public class AdminTarjetasController {
         return matches;
     }
 
-    private WalletMovementRow enrichMovement(
-            WalletMovementRow row, Map<String, UserSummary> matchedUsers, String token) {
+    private static WalletMovementRow enrichMovement(
+            WalletMovementRow row, Map<String, UserSummary> matchedUsers) {
         UserSummary user = matchedUsers.get(row.userId());
-        if (user == null) {
-            user = userDirectory.findById(row.userId(), token);
-        }
         String name = user == null || user.name() == null || user.name().isBlank()
                 ? row.userId() : user.name();
         String email = user == null || user.email() == null ? "" : user.email();
         return new WalletMovementRow(row.userId(), name, email, row.movement());
-    }
-
-    private static boolean matchesMovement(WalletMovementRow row, String query) {
-        String normalized = query.toLowerCase(Locale.ROOT);
-        MovimientoBilletera movement = row.movement();
-        return contains(row.userId(), normalized)
-                || contains(movement.getOperacionId(), normalized)
-                || contains(movement.getTipo(), normalized)
-                || contains(movement.getDescripcion(), normalized)
-                || contains(movement.getServicio(), normalized);
     }
 
     private static boolean inDateRange(
@@ -418,10 +394,6 @@ public class AdminTarjetasController {
         return "admin-tarjetas-desactivadas";
     }
 
-    private static boolean contains(String value, String query) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains(query);
-    }
-
     private static String accessToken(HttpServletRequest request) {
         Object token = request.getAttribute(
                 com.Servicio.Billetera.security.RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE);
@@ -429,12 +401,6 @@ public class AdminTarjetasController {
             throw new IllegalStateException("No se encontró la sesión para consultar el directorio de usuarios.");
         }
         return accessToken;
-    }
-
-    private static boolean cumpleFiltroSaldo(
-            BilleteraUniversal wallet, BigDecimal saldoDesde, BigDecimal saldoHasta) {
-        return (saldoDesde == null || wallet.getSaldo().compareTo(saldoDesde) >= 0)
-                && (saldoHasta == null || wallet.getSaldo().compareTo(saldoHasta) <= 0);
     }
 
     private static WalletRow toWalletRow(BilleteraUniversal wallet, UserSummary user) {
