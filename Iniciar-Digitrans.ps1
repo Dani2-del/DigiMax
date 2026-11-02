@@ -172,6 +172,42 @@ try {
         Write-Host "$($service.Name) está escuchando en el puerto $($service.Port)."
     }
 
+    # Modelo predictivo: publica las predicciones con la misma base que el perfil elegido.
+    # No detiene el arranque: si falla, solo muestra una advertencia.
+    $carpetaModelo = $env:DIGITRANS_MODELO
+    if ([string]::IsNullOrWhiteSpace($carpetaModelo)) {
+        $carpetaModelo = Join-Path (Split-Path -Parent $root) 'modelo_digitrans'
+    }
+    $scriptModelo = Join-Path $carpetaModelo 'publicar_predicciones.py'
+    if (Test-Path -LiteralPath $scriptModelo) {
+        if ($DatabaseProfile -eq 'atlas') {
+            $uriModelo = [Environment]::GetEnvironmentVariable('ACCESO_MONGODB_URI', 'Process')
+        }
+        else {
+            $uriModelo = 'mongodb://localhost:27017'
+        }
+        $uriAnterior = $env:MONGO_URI
+        $env:MONGO_URI = $uriModelo
+        Write-Host "Publicando predicciones del modelo predictivo ($DatabaseProfile)..."
+        try {
+            Push-Location -LiteralPath $carpetaModelo
+            python publicar_predicciones.py
+            if ($LASTEXITCODE -ne 0) {
+                Write-Warning 'El modelo predictivo no se publicó. Revisa el mensaje anterior.'
+            }
+        }
+        catch {
+            Write-Warning "No se pudo ejecutar el modelo predictivo: $($_.Exception.Message)"
+        }
+        finally {
+            Pop-Location
+            $env:MONGO_URI = $uriAnterior
+        }
+    }
+    else {
+        Write-Warning "No se encontró publicar_predicciones.py en $carpetaModelo. Se omite el modelo predictivo."
+    }
+
     Write-Host "Los seis módulos están iniciados usando MongoDB $DatabaseProfile."
 }
 catch {

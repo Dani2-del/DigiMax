@@ -127,7 +127,7 @@ class GlobalAdminControllerTest {
 
     @Test
     void predictiveModelPageShowsPlaceholderView() {
-        assertThat(controller.modeloPredictivo()).isEqualTo("admin/global-modelo-predictivo");
+        assertThat(controller.modeloPredictivo(new org.springframework.ui.ExtendedModelMap())).isEqualTo("admin/global-modelo-predictivo");
     }
 
     @Test

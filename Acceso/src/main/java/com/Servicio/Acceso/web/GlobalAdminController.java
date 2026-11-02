@@ -1,7 +1,10 @@
 package com.Servicio.Acceso.web;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -63,8 +66,65 @@ public class GlobalAdminController {
     }
 
     @GetMapping("/modelo-predictivo")
-    public String modeloPredictivo() {
+    public String modeloPredictivo(Model model) {
+        org.bson.Document metricas = mongoTemplate.findOne(new Query(), org.bson.Document.class, "modelo_metricas");
+        model.addAttribute("metricas", metricas);
+
+        String coleccion = "predicciones_recarga";
+        long alto = mongoTemplate.count(Query.query(Criteria.where("nivel_riesgo").is("Alto")), coleccion);
+        long medio = mongoTemplate.count(Query.query(Criteria.where("nivel_riesgo").is("Medio")), coleccion);
+        long bajo = mongoTemplate.count(Query.query(Criteria.where("nivel_riesgo").is("Bajo")), coleccion);
+        model.addAttribute("conteoAlto", alto);
+        model.addAttribute("conteoMedio", medio);
+        model.addAttribute("conteoBajo", bajo);
+        model.addAttribute("total", alto + medio + bajo);
+        model.addAttribute("donutStyle", estiloDonutRiesgo(alto, medio, bajo));
+        model.addAttribute("barrasF1", barrasF1(metricas));
+
+
+        org.bson.Document referencia = mongoTemplate.findOne(new Query(), org.bson.Document.class, coleccion);
+        model.addAttribute("semanaReferencia",
+                referencia == null ? null : referencia.getString("semana_referencia"));
+
         return "admin/global-modelo-predictivo";
+    }
+
+    private static String estiloDonutRiesgo(long alto, long medio, long bajo) {
+        long total = alto + medio + bajo;
+        if (total == 0) {
+            return "background: conic-gradient(#e9eef3 0% 100%)";
+        }
+        double a = alto * 100.0 / total;
+        double m = medio * 100.0 / total;
+        return String.format(Locale.US,
+                "background: conic-gradient(#c2410c 0%% %.2f%%, #d97706 %.2f%% %.2f%%, #94a3b8 %.2f%% 100%%)",
+                a, a, a + m, a + m);
+    }
+
+    private static List<Map<String, Object>> barrasF1(org.bson.Document metricas) {
+        double f1 = numero(metricas, "f1");
+        double base = numero(metricas, "f1_linea_base");
+        double maximo = Math.max(Math.max(f1, base), 0.0001);
+        List<Map<String, Object>> barras = new ArrayList<>();
+        barras.add(barra("Modelo", f1, f1 / maximo * 100));
+        barras.add(barra("Regla simple", base, base / maximo * 100));
+        return barras;
+    }
+
+    private static Map<String, Object> barra(String etiqueta, double valor, double porcentaje) {
+        Map<String, Object> b = new LinkedHashMap<>();
+        b.put("etiqueta", etiqueta);
+        b.put("valor", String.format(Locale.US, "%.3f", valor));
+        b.put("porcentaje", String.format(Locale.US, "%.2f", porcentaje));
+        return b;
+    }
+
+    private static double numero(org.bson.Document doc, String clave) {
+        if (doc == null) {
+            return 0.0;
+        }
+        Object v = doc.get(clave);
+        return v instanceof Number n ? n.doubleValue() : 0.0;
     }
 
     @GetMapping("/usuarios")

@@ -37,10 +37,89 @@
       <div><p class="global-eyebrow">CENTRO DE CONTROL · DIGITRANS</p><h1>Modelo predictivo</h1></div>
       <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
     </header>
-    <section class="global-section">
+
+    <section class="global-section" th:if="${metricas == null}">
       <div class="audit-panel">
-        <h2>Proximamente</h2>
+        <h2>Próximamente</h2>
+        <p>El modelo aún no ha publicado sus resultados.</p>
       </div>
+    </section>
+
+    <section class="global-section" th:unless="${metricas == null}">
+
+      <!-- Idea del modelo -->
+      <div class="audit-panel">
+        <h2>¿Qué hace este modelo?</h2>
+        <p>Mira lo que hizo cada pasajero en el pasado y estima si volverá a recargar saldo en los próximos 7 días.
+           Luego ordena a los pasajeros de más a menos probables.</p>
+        <p class="audit-note">Está entrenado con datos de prueba generados por el equipo. Muestra el patrón de esos datos,
+           no el comportamiento real de los pasajeros.</p>
+        <p>Semana de referencia: <strong th:text="${semanaReferencia}">—</strong></p>
+      </div>
+
+      <!-- Grupos de riesgo: dona + leyenda -->
+      <div class="audit-panel">
+        <h2>¿Cuántos pasajeros hay en cada grupo?</h2>
+        <div class="global-donut-layout">
+          <div class="global-donut" th:style="${donutStyle}" aria-hidden="true">
+            <div class="global-donut-hole">
+              <strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong>
+              <span>pasajeros</span>
+            </div>
+          </div>
+          <ul class="global-donut-legend" aria-label="Pasajeros por grupo de riesgo">
+            <li>
+              <span class="global-donut-swatch" style="--slice-color:#c2410c"></span>
+              <span class="global-donut-label"><strong>Alto</strong>
+                <small>Probablemente recargará la próxima semana</small></span>
+              <b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b>
+            </li>
+            <li>
+              <span class="global-donut-swatch" style="--slice-color:#d97706"></span>
+              <span class="global-donut-label"><strong>Medio</strong>
+                <small>Podría recargar, pero no es lo más probable</small></span>
+              <b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b>
+            </li>
+            <li>
+              <span class="global-donut-swatch" style="--slice-color:#94a3b8"></span>
+              <span class="global-donut-label"><strong>Bajo</strong>
+                <small>Es poco probable que recargue pronto</small></span>
+              <b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Comparacion: modelo vs regla simple -->
+      <div class="audit-panel">
+        <h2>¿El modelo le gana a una regla simple?</h2>
+        <p>La regla simple dice: "si recargó la semana pasada, volverá a recargar". Se compara con el modelo usando
+           el F1, un número que combina qué tan bien acierta y qué tan bien encuentra a los pasajeros que recargan.
+           Entre más alto, mejor.</p>
+        <div class="global-month-chart" role="img" aria-label="Comparación del F1 entre el modelo y la regla simple"
+             th:style="|grid-template-columns:repeat(${barrasF1.size()},minmax(120px,1fr))|">
+          <div class="global-month-column" th:each="b : ${barrasF1}">
+            <strong th:text="${b['valor']}">0</strong>
+            <div class="global-bar-track"><span class="global-bar" th:style="'height:' + ${b['porcentaje']} + '%;' + (${b['etiqueta']} == 'Modelo' ? 'background:#c2410c' : 'background:#94a3b8')"></span></div>
+            <small th:text="${b['etiqueta']}">Modelo</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lo que significan las medidas -->
+      <div class="audit-panel">
+        <h2>¿Qué tan bien acierta el modelo?</h2>
+        <p class="audit-note">Medido con datos nuevos que el modelo nunca vio durante su ajuste.</p>
+        <ul>
+          <li><strong>Precisión:</strong> cuando predice que un pasajero recargará, acierta
+              <strong th:text="${#numbers.formatInteger(metricas['precision'] * 10, 1)}">2</strong> de cada 10 veces.</li>
+          <li><strong>Recall:</strong> de los pasajeros que sí recargaron, el modelo logra identificar
+              <strong th:text="${#numbers.formatInteger(metricas['recall'] * 10, 1)}">4</strong> de cada 10.</li>
+          <li><strong>AUC-ROC:</strong> qué tan bien separa a quienes recargan de quienes no.
+              Un 0,5 sería adivinar al azar y un 1 sería perfecto. Resultado: <strong th:text="${metricas['auc_roc']}">0</strong>.</li>
+        </ul>
+      </div>
+
     </section>
   </main>
 </div>
