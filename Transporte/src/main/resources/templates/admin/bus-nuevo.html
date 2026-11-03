@@ -85,9 +85,11 @@
             margin-bottom: 16px;
         }
     </style>
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
-<body>
+<body th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <div class="card">
         <div class="header">

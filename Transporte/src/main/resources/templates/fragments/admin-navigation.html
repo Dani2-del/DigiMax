@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:fragment="styles">
+        <link rel="stylesheet" th:href="@{/css/admin-navigation.css(v=20261102-8)}">
+    </th:block>
+</head>
+<body>
+<nav th:fragment="bar" class="admin-global-nav" aria-label="Navegación administrativa">
+    <div class="admin-global-nav-inner">
+        <a class="admin-global-nav-brand" th:href="@{/menu}" aria-label="Digitrans, vista de usuario">
+            <img class="admin-global-nav-logo" src="/images/digitrans-mark.svg" alt="">
+            <span class="admin-global-nav-title">Digitrans</span>
+        </a>
+        <div class="admin-global-nav-links">
+            <a class="admin-global-nav-link" th:href="@{/menu}">Vista usuario</a>
+            <span class="admin-global-nav-separator" aria-hidden="true">·</span>
+            <a class="admin-global-nav-link" th:href="@{/choose-view}">Volver a servicios</a>
+            <a class="admin-global-nav-link admin-global-nav-switch"
+               th:if="${esAdministradorGlobal}"
+               th:href="@{/admin/seleccionar-entidad}">
+                <span class="admin-global-nav-separator" aria-hidden="true">·</span>
+                Cambiar de transporte
+            </a>
+        </div>
+        <a class="admin-global-nav-link admin-global-nav-logout" th:href="@{/salir}">Salir</a>
+    </div>
+</nav>
+</body>
+</html>

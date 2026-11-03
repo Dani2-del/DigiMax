@@ -55,7 +55,7 @@ class AdminControllerServiceSelectionTest {
         administrator.setRole(Usuario.ROLE_ADMIN);
         register(administrator);
         var authentication = new UsernamePasswordAuthenticationToken(
-                "admin@example.com", null, java.util.List.of());
+                "admin@example.com", null, adminAuthorities());
         MockHttpSession session = new MockHttpSession();
 
         String firstResponse = controller.cambiarEntidadAdministrativa(
@@ -79,7 +79,7 @@ class AdminControllerServiceSelectionTest {
         administrator.setRole(Usuario.ROLE_ADMIN);
         register(administrator);
         var authentication = new UsernamePasswordAuthenticationToken(
-                "admin@example.com", null, java.util.List.of());
+                "admin@example.com", null, adminAuthorities());
         MockHttpSession session = new MockHttpSession();
         controller.cambiarEntidadAdministrativa(
                 SistemaTransporte.TRANSCARIBE, session, true, authentication);
@@ -112,6 +112,22 @@ class AdminControllerServiceSelectionTest {
     }
 
     @Test
+    void administratorCanOpenEntityConfirmationWithoutLookingUpIdentityAgain() {
+        var authentication = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, adminAuthorities());
+        MockHttpSession session = new MockHttpSession();
+        session.setAttribute("entidadPendienteConfirmacion", SistemaTransporte.TRANSMILENIO);
+        ConcurrentModel model = new ConcurrentModel();
+
+        String response = controller.seleccionarEntidad(model, true, session, authentication);
+
+        assertThat(response).isEqualTo("admin/seleccionar-entidad");
+        assertThat(model.getAttribute("nombre")).isEqualTo("admin@example.com");
+        assertThat(model.getAttribute("requiereSegundaConfirmacion")).isEqualTo(true);
+        assertThat(model.getAttribute("entidadPendiente")).isEqualTo(SistemaTransporte.TRANSMILENIO);
+    }
+
+    @Test
     void moderatorCannotConfirmAnotherEntityEvenWithAnAdminPendingValue() {
         Usuario moderator = new Usuario("moderator@example.com", "", "Moderator");
         moderator.setRole(Usuario.ROLE_MODERATOR);
@@ -135,7 +151,7 @@ class AdminControllerServiceSelectionTest {
         administrator.setRole(Usuario.ROLE_ADMIN);
         register(administrator);
         var authentication = new UsernamePasswordAuthenticationToken(
-                "admin@example.com", null, java.util.List.of());
+                "admin@example.com", null, adminAuthorities());
 
         for (SistemaTransporte sistema : SistemaTransporte.disponibles()) {
             MockHttpSession session = new MockHttpSession();
@@ -268,6 +284,10 @@ class AdminControllerServiceSelectionTest {
         return user;
     }
 
+    private static List<org.springframework.security.core.authority.SimpleGrantedAuthority> adminAuthorities() {
+        return List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+    }
+
     private void stubSitm(String email, SistemaTransporte sistema) {
         PerfilTransporte profile = new PerfilTransporte();
         profile.setId(email);
@@ -292,6 +312,11 @@ class AdminControllerServiceSelectionTest {
 
         private StubAccessIdentityClient() {
             super("http://localhost");
+        }
+
+        @Override
+        public AccessUser currentUser() {
+            return null;
         }
 
         @Override

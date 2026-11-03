@@ -8,9 +8,11 @@
     <title>Panel administrador - Digitrans</title>
     <link rel="stylesheet" th:href="@{/css/admin.css(v=20261025-3)}">
     <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}">
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <main class="center-card wide">
         <section class="card admin-home">
@@ -23,21 +25,8 @@
                     <h1>Panel <span th:text="${sistemaActual.nombre}">Transcaribe</span></h1>
                     <p class="admin-home-subtitle">
                         Elige una sección para continuar.
-                        <span th:text="' ' + ${totalUsuarios} + ' usuarios registrados'"></span>
+                        <span id="registeredUsersCount" aria-live="polite"> Consultando usuarios…</span>
                     </p>
-                </div>
-                <div class="admin-home-actions">
-                    <a th:if="${esAdministradorGlobal}" href="/admin/seleccionar-entidad" class="btn-usuario">
-                        Cambiar servicio
-                    </a>
-                    <a href="/menu" class="btn-usuario">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="8" r="4"/></svg>
-                        Vista Usuario
-                    </a>
-                    <a th:href="@{/salir}" class="btn-cerrar-sesion">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M12 3h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>
-                        Salir
-                    </a>
                 </div>
             </header>
 
@@ -204,6 +193,26 @@
 
 <script>
     let granularidadActual = 'anual';
+
+    fetch('/admin/dashboard/usuarios/count', { headers: { Accept: 'application/json' } })
+        .then((response) => {
+            if (!response.ok) {
+                throw new Error(`El servidor respondió HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then((total) => {
+            if (!Number.isSafeInteger(total) || total < 0) {
+                throw new Error('El servidor devolvió un conteo de usuarios inválido');
+            }
+            document.getElementById('registeredUsersCount').textContent =
+                ` ${total.toLocaleString('es-CO')} usuarios registrados`;
+        })
+        .catch((error) => {
+            console.error('No se pudo cargar el conteo de usuarios del panel.', error);
+            document.getElementById('registeredUsersCount').textContent =
+                ' Conteo de usuarios temporalmente no disponible';
+        });
 
     function abrirModalExcel() {
         const anioSelect = document.getElementById('filtroAnio');

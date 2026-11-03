@@ -10,6 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
@@ -46,14 +47,30 @@ public class SecurityConfig {
     }
 
     @Bean
+    FilterRegistrationBean<SameOriginUserManagementFilter> sameOriginUserManagementFilterRegistration(
+            SameOriginUserManagementFilter filter) {
+        FilterRegistrationBean<SameOriginUserManagementFilter> registration =
+                new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    SameOriginUserManagementFilter sameOriginUserManagementFilter() {
+        return new SameOriginUserManagementFilter();
+    }
+
+    @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             @Value("${app.acceso.base-url}") String accesoUrl,
             @Value("${app.cookie.secure:false}") boolean secureCookie,
             RemoteAccessAuthenticationFilter authenticationFilter,
-            CsrfTokenRepository csrfTokenRepository) throws Exception {
+            CsrfTokenRepository csrfTokenRepository,
+            SameOriginUserManagementFilter sameOriginUserManagementFilter) throws Exception {
         http
                 .csrf(csrf -> csrf
                         .csrfTokenRepository(csrfTokenRepository)
+                        .ignoringRequestMatchers("/admin/usuarios/buscar", "/admin/usuarios/*")
                         .ignoringRequestMatchers("/logout"))
                 .authorizeHttpRequests(authorize -> authorize
                         .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
@@ -79,6 +96,7 @@ public class SecurityConfig {
                         })
                         .logoutSuccessHandler((request, response, authentication) ->
                                 response.sendRedirect(accesoUrl + "/")));
+        http.addFilterBefore(sameOriginUserManagementFilter, CsrfFilter.class);
         return http.build();
     }
 }

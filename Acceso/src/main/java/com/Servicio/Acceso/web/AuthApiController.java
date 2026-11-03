@@ -80,6 +80,24 @@ public class AuthApiController {
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(contacts);
     }
 
+    @GetMapping("/transport-directory")
+    public ResponseEntity<List<TransportIdentity>> transportDirectory(
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+        UserDetails principal = validPrincipal(authorization);
+        if (principal == null || !mayReadOperationalContacts(principal)) {
+            return ResponseEntity.status(401).cacheControl(CacheControl.noStore()).build();
+        }
+        List<TransportIdentity> identities = usuarios.findTransportIdentities(List.of(
+                        Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
+                        "USER", "MODERATOR", "CONDUCTOR")).stream()
+                .filter(usuario -> StringUtils.hasText(usuario.getId()))
+                .map(usuario -> new TransportIdentity(
+                        usuario.getId(), usuario.getCorreo(), normalizeRole(usuario.getRole()),
+                        usuario.getServicioAsignado()))
+                .toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identities);
+    }
+
     @PostMapping("/transport-identities")
     public ResponseEntity<List<AuthenticatedUserResponse>> transportIdentities(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
@@ -164,5 +182,8 @@ public class AuthApiController {
     }
 
     public record AdministrativeContact(String id, String email, String role) {
+    }
+
+    public record TransportIdentity(String id, String email, String role, String serviceAssignment) {
     }
 }

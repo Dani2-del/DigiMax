@@ -124,16 +124,6 @@ public class AdminCatalogController {
     @ResponseBody
     public ResponseEntity<String> updateUser(
             @PathVariable String id, @RequestBody String update, HttpServletRequest request) {
-        Criteria belongsToRecargas = new Criteria().orOperator(
-                Criteria.where("usuarioId").is(id),
-                Criteria.where("usuario_id").is(id),
-                Criteria.where("userId").is(id));
-        boolean hasActivity = mongoTemplate.exists(
-                        new Query(belongsToRecargas), "lineas_movil")
-                || mongoTemplate.exists(new Query(belongsToRecargas), "recargas_movil");
-        if (!hasActivity) {
-            return ResponseEntity.notFound().build();
-        }
         String encodedId = UriUtils.encodePathSegment(id, StandardCharsets.UTF_8);
         return forwardUsersRequest(HttpMethod.PATCH, "/api/admin/users/recargas/" + encodedId, update, request);
     }
@@ -153,6 +143,10 @@ public class AdminCatalogController {
                     .retrieve()
                     .toEntity(String.class);
         } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().is4xxClientError()) {
+                LOGGER.warn("Acceso rechazó la gestión de usuarios de Recargas con HTTP {} en {}.",
+                        exception.getStatusCode().value(), path);
+            }
             return ResponseEntity.status(exception.getStatusCode())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(exception.getResponseBodyAsString());

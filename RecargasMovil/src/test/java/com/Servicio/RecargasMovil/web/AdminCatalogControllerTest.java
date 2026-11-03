@@ -93,12 +93,12 @@ class AdminCatalogControllerTest {
     }
 
     @Test
-    void refusesToUpdateAccountsWithoutLocalRechargeActivity() {
+    void updateProxyDoesNotDuplicateRechargeActivityCheckBeforeForwarding() {
         var response = controller.updateUser("user-1", "{}", new MockHttpServletRequest());
 
-        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
-        verify(mongoTemplate).exists(any(Query.class), eq("lineas_movil"));
-        verify(mongoTemplate).exists(any(Query.class), eq("recargas_movil"));
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        verify(mongoTemplate, never()).exists(any(Query.class), eq("lineas_movil"));
+        verify(mongoTemplate, never()).exists(any(Query.class), eq("recargas_movil"));
     }
 
     @Test

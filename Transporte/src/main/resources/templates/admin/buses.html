@@ -45,9 +45,11 @@
         body[data-sistema="TRANSMETRO"] .route-picker-option input { accent-color:#12a842; }
         @media (max-width:700px) { .bus-management-form { grid-template-columns:1fr; } .bus-row { align-items:flex-start; flex-direction:column; } }
     </style>
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="admin-buses-page" th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <main class="center-card wide">
         <section class="card">

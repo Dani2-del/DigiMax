@@ -15,9 +15,11 @@
         .flash-ok { background: #e6fffa; color: #22543d; border: 1px solid #38a169; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
         .flash-error { background: #fff5f5; color: #822727; border: 1px solid #f56565; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
     </style>
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <div class="center-card">
         <div class="card">

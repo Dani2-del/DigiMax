@@ -18,8 +18,6 @@
     ROLE_USER: "Usuario",
     ROLE_MODERATOR: "Moderador"
   };
-  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-  const csrfHeader = document.querySelector('meta[name="csrf-header"]').content;
   let latestLoad = 0;
 
   function showMessage(text, isError = false) {
@@ -105,8 +103,7 @@
       const response = await fetch("/admin/usuarios/buscar", {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          [csrfHeader]: csrfToken
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(payload)
       });
@@ -197,8 +194,7 @@
       const response = await fetch(`/admin/usuarios/${encodeURIComponent(user.id)}`, {
         method: "PATCH",
         headers: {
-          "Content-Type": "application/json",
-          [csrfHeader]: csrfToken
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(update)
       });

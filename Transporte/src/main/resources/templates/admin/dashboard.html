@@ -6,10 +6,12 @@
     <meta name="_csrf" th:content="${_csrf?.token}"/>
     <meta name="_csrf_header" th:content="${_csrf?.headerName}"/>
     <link rel="stylesheet" th:href="@{/css/admin.css(v=20261025-3)}" />
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 
 <body th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <div class="center-card wide">
         <div class="card">

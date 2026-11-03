@@ -29,22 +29,25 @@ public class AdminSistemaInterceptor implements HandlerInterceptor {
             return false;
         }
 
-        Usuario usuario = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
-        if (usuario == null) {
-            response.sendError(HttpServletResponse.SC_FORBIDDEN);
-            return false;
-        }
-
         HttpSession session = request.getSession();
-        if (Usuario.ROLE_MODERATOR.equals(usuario.getRole())) {
-            SistemaTransporte asignado = usuario.getSistemaAsignado();
-            if (asignado == null || !asignado.estaDisponible()) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN,
-                        "La cuenta moderadora no tiene una entidad válida asignada.");
+        boolean administradorGlobal = authentication.getAuthorities().stream()
+                .anyMatch(authority -> Usuario.ROLE_ADMIN.equals(authority.getAuthority()));
+        if (!administradorGlobal) {
+            Usuario usuario = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
+            if (usuario == null) {
+                response.sendError(HttpServletResponse.SC_FORBIDDEN);
                 return false;
             }
-            session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, asignado);
-            return permitirHerramientasSistema(request, response, asignado);
+            if (Usuario.ROLE_MODERATOR.equals(usuario.getRole())) {
+                SistemaTransporte asignado = usuario.getSistemaAsignado();
+                if (asignado == null || !asignado.estaDisponible()) {
+                    response.sendError(HttpServletResponse.SC_FORBIDDEN,
+                            "La cuenta moderadora no tiene una entidad válida asignada.");
+                    return false;
+                }
+                session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, asignado);
+                return permitirHerramientasSistema(request, response, asignado);
+            }
         }
 
         Object seleccionado = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);

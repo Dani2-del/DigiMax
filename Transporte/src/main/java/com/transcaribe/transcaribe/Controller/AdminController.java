@@ -7,6 +7,8 @@ import java.time.format.DateTimeParseException;
 import java.util.*;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -37,6 +39,8 @@ import org.springframework.http.ContentDisposition;
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(AdminController.class);
 
     private final UsuarioRepository usuarioRepository;
     private final PlataformaService plataformaService;
@@ -70,12 +74,13 @@ public class AdminController {
                                      @RequestParam(defaultValue = "false") boolean confirmar,
                                      jakarta.servlet.http.HttpSession session,
                                      org.springframework.security.core.Authentication authentication) {
-        Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
-        if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())) {
+        if (!hasAuthority(authentication, Usuario.ROLE_ADMIN)) {
             return "redirect:/error/403";
         }
+        var administratorIdentity = accessIdentityClient.currentUser();
         model.addAttribute("entidades", SistemaTransporte.disponibles());
-        model.addAttribute("nombre", administrador.getNombre());
+        model.addAttribute("nombre", administratorIdentity == null
+                ? authentication.getName() : administratorIdentity.name());
         Object pending = session.getAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
         if (confirmar && pending instanceof SistemaTransporte sistema) {
             model.addAttribute("requiereSegundaConfirmacion", true);
@@ -108,8 +113,7 @@ public class AdminController {
                                                jakarta.servlet.http.HttpSession session,
                                                @RequestParam(defaultValue = "false") boolean primeraConfirmacion,
                                                org.springframework.security.core.Authentication authentication) {
-        Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
-        if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())
+        if (!hasAuthority(authentication, Usuario.ROLE_ADMIN)
                 || sistema == null || !sistema.estaDisponible() || !primeraConfirmacion) {
             return "redirect:/admin/seleccionar-entidad?error=true";
         }
@@ -122,9 +126,8 @@ public class AdminController {
                                          @RequestParam(defaultValue = "false") boolean segundaConfirmacion,
                                          jakarta.servlet.http.HttpSession session,
                                          org.springframework.security.core.Authentication authentication) {
-        Usuario administrador = usuarioRepository.findByCorreo(authentication.getName()).orElse(null);
         Object pending = session.getAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
-        if (administrador == null || !Usuario.ROLE_ADMIN.equals(administrador.getRole())
+        if (!hasAuthority(authentication, Usuario.ROLE_ADMIN)
                 || !segundaConfirmacion || !(pending instanceof SistemaTransporte entidadPendiente)
                 || entidadPendiente != sistema || !sistema.estaDisponible()) {
             session.removeAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
@@ -133,6 +136,13 @@ public class AdminController {
         session.removeAttribute(ENTIDAD_PENDIENTE_CONFIRMACION);
         session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, sistema);
         return "redirect:/admin/dashboard";
+    }
+
+    private static boolean hasAuthority(
+            org.springframework.security.core.Authentication authentication, String authority) {
+        return authentication != null && authentication.isAuthenticated()
+                && authentication.getAuthorities().stream()
+                        .anyMatch(granted -> authority.equals(granted.getAuthority()));
     }
 
 
@@ -147,18 +157,38 @@ public class AdminController {
                                    jakarta.servlet.http.HttpSession session) {
         SistemaTransporte sistemaActual = (SistemaTransporte) session.getAttribute(
                 SistemaTransporte.SESSION_ATTRIBUTE);
-        model.addAttribute("totalUsuarios", contarUsuariosSistema(sistemaActual));
         model.addAttribute("sistemaActual", sistemaActual);
         model.addAttribute("esTransmilenio", sistemaActual == SistemaTransporte.TRANSMILENIO);
         model.addAttribute("tieneRutasConfiguradas", sistemaActual.tieneRutasConfiguradas());
         model.addAttribute("permiteGestionConductores", sistemaActual.permiteGestionConductores());
         model.addAttribute("esAdministradorGlobal", authentication.getAuthorities().stream()
                 .anyMatch(autoridad -> "ROLE_ADMIN".equals(autoridad.getAuthority())));
-        usuarioRepository.findByCorreo(authentication.getName()).ifPresent(usuario ->
-                model.addAttribute("alertasAdmin",
-                        avisoAdministrativoService.obtenerPendientes(usuario.getId(), sistemaActual)));
+        var administratorIdentity = accessIdentityClient.currentUser();
+        if (administratorIdentity != null) {
+            model.addAttribute("alertasAdmin",
+                    avisoAdministrativoService.obtenerPendientes(administratorIdentity.id(), sistemaActual));
+        }
         model.addAttribute("alertaReturnTo", "/admin/dashboard");
         return "admin/inicio";
+    }
+
+    @GetMapping("/dashboard/usuarios/count")
+    @ResponseBody
+    public ResponseEntity<Long> contarUsuariosDashboard(jakarta.servlet.http.HttpSession session) {
+        Object selectedSystem = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);
+        if (!(selectedSystem instanceof SistemaTransporte sistema) || !sistema.estaDisponible()) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .body(contarUsuariosSistema(sistema));
+        } catch (org.springframework.web.client.ResourceAccessException exception) {
+            LOGGER.warn("Acceso no respondió a tiempo al consultar el conteo del dashboard.", exception);
+            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                    .build();
+        }
     }
 
     @GetMapping("/usuarios")
@@ -264,9 +294,7 @@ public class AdminController {
     }
 
     private long contarUsuariosSistema(SistemaTransporte sistemaActual) {
-        try (var usuarios = usuarioRepository.streamBySistemaTransporte(sistemaActual)) {
-            return usuarios.filter(AdminController::esPersonalTransporte).count();
-        }
+        return usuarioRepository.countTransportUsers(sistemaActual);
     }
 
     private static boolean esPersonalTransporte(Usuario usuario) {

@@ -2,6 +2,7 @@ package com.transcaribe.transcaribe.Repository;
 
 import java.util.Optional;
 import java.util.List;
+import java.util.Collection;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
@@ -12,6 +13,12 @@ import com.transcaribe.transcaribe.Model.SistemaTransporte;
 public interface PerfilTransporteRepository extends MongoRepository<PerfilTransporte, String> {
 
     Optional<PerfilTransporte> findByUsuarioId(String usuarioId);
+
+    List<PerfilTransporte> findByUsuarioIdIn(Collection<String> usuarioIds);
+
+    @Query(value = "{ 'usuarioId': { '$in': ?0 } }",
+            fields = "{ '_id': 1, 'usuarioId': 1, 'sitm': 1, 'sistema_asignado': 1 }")
+    List<PerfilTransporte> findMembershipByUsuarioIdIn(Collection<String> usuarioIds);
 
     @Query("{ 'tarjetas.numeroTarjeta': ?0 }")
     Optional<PerfilTransporte> findByNumeroTarjetaEnLista(String numeroTarjeta);

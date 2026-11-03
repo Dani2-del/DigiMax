@@ -10,9 +10,11 @@
         .admin-schedule-home .admin-home-actions .btn-pagina,
         .admin-schedule-home .admin-home-actions button { white-space:nowrap; }
     </style>
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body class="admin-schedule-home" th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <main class="center-card wide">
         <section class="card admin-home">

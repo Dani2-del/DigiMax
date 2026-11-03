@@ -7,9 +7,11 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
     <link rel="stylesheet" th:href="@{/css/mapa-rutas.css}">
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body>
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <main class="route-map-page">
     <header class="route-map-header">
         <a th:href="@{/mapa-rutas}" class="route-map-back">← Ver mapa beta</a>

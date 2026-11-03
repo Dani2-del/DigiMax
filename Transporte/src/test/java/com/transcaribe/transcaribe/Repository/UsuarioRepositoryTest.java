@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.bson.Document;
@@ -24,6 +25,7 @@ import com.transcaribe.transcaribe.Model.SistemaTransporte;
 import com.transcaribe.transcaribe.Model.Usuario;
 import com.transcaribe.transcaribe.service.AccessIdentityClient;
 import com.transcaribe.transcaribe.service.AccessUser;
+import com.transcaribe.transcaribe.service.AccessIdentityClient.TransportIdentity;
 
 @ExtendWith(MockitoExtension.class)
 class UsuarioRepositoryTest {
@@ -123,6 +125,23 @@ class UsuarioRepositoryTest {
     }
 
     @Test
+    void countsTransportUsersUsingOneBatchedProfileLookup() {
+        acceso.transportIdentities = List.of(
+                new TransportIdentity("user-1", "user@example.com", Usuario.ROLE_USER, null),
+                new TransportIdentity("driver-1", "driver@example.com", Usuario.ROLE_CONDUCTOR, null),
+                new TransportIdentity("moderator-1", "moderator@example.com",
+                        Usuario.ROLE_MODERATOR, "TRANSCARIBE"));
+        PerfilTransporte userProfile = profile("user-1", SistemaTransporte.TRANSCARIBE);
+        PerfilTransporte driverProfile = profile("driver-1", SistemaTransporte.TRANSMETRO);
+        when(perfiles.findMembershipByUsuarioIdIn(List.of("user-1", "driver-1")))
+                .thenReturn(List.of(userProfile, driverProfile));
+
+        assertThat(repository.countTransportUsers(SistemaTransporte.TRANSCARIBE)).isEqualTo(2);
+
+        verify(perfiles).findMembershipByUsuarioIdIn(List.of("user-1", "driver-1"));
+    }
+
+    @Test
     void deactivatesCentralAccountWithoutDeletingProfile() {
         Usuario usuario = new Usuario("persona@example.com", "", "Persona");
         usuario.setId("central-user-id");
@@ -136,6 +155,8 @@ class UsuarioRepositoryTest {
 
     private static final class StubAccessIdentityClient extends AccessIdentityClient {
         private AccessUser identity;
+        private List<AccessUser> identities = List.of();
+        private List<TransportIdentity> transportIdentities = List.of();
         private String updatedId;
         private boolean updatedActive;
 
@@ -149,11 +170,29 @@ class UsuarioRepositoryTest {
         }
 
         @Override
+        public List<AccessUser> findAll() {
+            return identities;
+        }
+
+        @Override
+        public List<TransportIdentity> findTransportDirectory() {
+            return transportIdentities;
+        }
+
+        @Override
         public AccessUser updateUser(
                 String id, String name, String email, String role, boolean active, String serviceAssignment) {
             updatedId = id;
             updatedActive = active;
             return null;
         }
+    }
+
+    private static PerfilTransporte profile(String userId, SistemaTransporte sistema) {
+        PerfilTransporte profile = new PerfilTransporte();
+        profile.setId(userId);
+        profile.setUsuarioId(userId);
+        profile.setSitm(sistema);
+        return profile;
     }
 }

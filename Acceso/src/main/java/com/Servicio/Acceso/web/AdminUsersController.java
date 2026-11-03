@@ -130,6 +130,18 @@ public class AdminUsersController {
                 .body(new UserPage(content, total, pages, page, size));
     }
 
+    @GetMapping("/directory")
+    public ResponseEntity<List<UserSummary>> userDirectory() {
+        List<UserSummary> users = mongoTemplate.find(
+                        new Query().with(Sort.by(Sort.Direction.ASC, "nombre")
+                                .and(Sort.by(Sort.Direction.ASC, "id"))),
+                        Usuario.class)
+                .stream()
+                .map(AdminUsersController::toSummary)
+                .toList();
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(users);
+    }
+
     @PostMapping("/recargas")
     public ResponseEntity<UserPage> listRechargeUsers(
             @RequestBody UserSearchRequest request,

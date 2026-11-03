@@ -60,6 +60,21 @@ class AdminUsersControllerTest {
     }
 
     @Test
+    void loadsUserDirectoryWithoutPagingOrCounting() {
+        Usuario user = new Usuario("persona@example.com", "password-hash", "Persona");
+        user.setId("user-1");
+        when(mongoTemplate.find(any(Query.class), eq(Usuario.class))).thenReturn(List.of(user));
+
+        var response = controller.userDirectory();
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(new AdminUsersController.UserSummary(
+                "user-1", "Persona", "persona@example.com", Usuario.ROLE_USER,
+                true, false, user.getFechaRegistro(), null, null));
+        verify(mongoTemplate, never()).count(any(Query.class), eq(Usuario.class));
+    }
+
+    @Test
     void listsOnlyUsersWithMobileRechargeActivityForGlobalAdministrators() {
         Usuario user = new Usuario("persona@example.com", "password-hash", "Persona");
         user.setId("user-1");

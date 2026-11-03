@@ -1,0 +1,121 @@
+.admin-global-nav {
+    --admin-nav-color: #b75c16;
+    --admin-nav-color-end: #ff7a1a;
+    --admin-nav-border: #ff5600;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+    width: 100%;
+    min-height: 71px;
+    padding: 12px clamp(16px, 4vw, 40px);
+    border-bottom: 3px solid var(--admin-nav-border);
+    background: linear-gradient(120deg, var(--admin-nav-color) 0%, var(--admin-nav-color-end) 100%);
+    box-shadow: 0 6px 18px rgba(183, 92, 22, 0.25);
+}
+
+body[data-sistema="TRANSCARIBE"] .admin-global-nav {
+    --admin-nav-color: #b75c16;
+    --admin-nav-color-end: #ff7a1a;
+    --admin-nav-border: #ff5600;
+}
+
+body[data-sistema="TRANSMILENIO"] .admin-global-nav {
+    --admin-nav-color: #c8102e;
+    --admin-nav-color-end: #c8102e;
+    --admin-nav-border: #f2c500;
+    box-shadow: 0 6px 18px rgba(143, 23, 43, 0.25);
+}
+
+body[data-sistema="TRANSMETRO"] .admin-global-nav {
+    --admin-nav-color: #087a2e;
+    --admin-nav-color-end: #12a842;
+    --admin-nav-border: #c5ed36;
+    box-shadow: 0 6px 18px rgba(23, 75, 44, 0.24);
+}
+
+.admin-global-nav-inner {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+}
+
+.admin-global-nav-brand {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 7px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.admin-global-nav-logo {
+    display: block;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.admin-global-nav-title {
+    font-size: 1.4rem;
+    font-weight: 750;
+}
+
+.admin-global-nav-links {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 5px;
+    margin-left: 2px;
+}
+
+.admin-global-nav-logout {
+    margin-left: auto;
+}
+
+.admin-global-nav-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 0;
+    color: #fff;
+    font-size: 0.92rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: opacity 140ms ease;
+}
+
+.admin-global-nav-link:hover,
+.admin-global-nav-link:focus-visible {
+    color: #fff;
+    opacity: 0.78;
+}
+
+.admin-global-nav-separator {
+    color: rgba(255, 255, 255, 0.72);
+}
+
+@media (max-width: 560px) {
+    .admin-global-nav-inner {
+        flex-wrap: wrap;
+        gap: 6px 8px;
+    }
+
+    .admin-global-nav-links {
+        flex: 1 0 100%;
+        gap: 6px;
+        margin-left: 0;
+    }
+
+    .admin-global-nav-logout {
+        margin-left: 0;
+    }
+
+    .admin-global-nav-link {
+        font-size: 0.76rem;
+    }
+}

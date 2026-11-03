@@ -15,9 +15,11 @@
         .ghost { background: #edf2f7; color: #2d3748; }
         .notice { background: #ebf8ff; color: #2c5282; border: 1px solid #90cdf4; padding: 12px; border-radius: 8px; margin-bottom: 18px; }
     </style>
+    <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
 <body th:attr="data-sistema=${sistemaActual}">
+<div th:replace="~{fragments/admin-navigation :: bar}"></div>
 <div class="page">
     <div class="center-card edit-card">
         <div class="card">

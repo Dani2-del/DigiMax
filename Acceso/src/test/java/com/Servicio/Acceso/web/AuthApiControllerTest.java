@@ -105,4 +105,28 @@ class AuthApiControllerTest {
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
         verify(usuarios, never()).findAllById(List.of("user-2"));
     }
+
+    @Test
+    void returnsOnlyMinimalTransportDirectoryFieldsForAuthorizedRoles() {
+        UserDetails administrator = User.withUsername("admin@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_ADMIN)
+                .build();
+        Usuario target = new Usuario("persona@example.com", "", "Persona");
+        target.setId("user-1");
+        target.setRole(Usuario.ROLE_USER);
+        when(jwtService.extractUsername("token-valido")).thenReturn("admin@example.com");
+        when(userDetailsService.loadUserByUsername("admin@example.com")).thenReturn(administrator);
+        when(jwtService.isTokenValid("token-valido", administrator)).thenReturn(true);
+        when(usuarios.findTransportIdentities(List.of(
+                Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
+                "USER", "MODERATOR", "CONDUCTOR"))).thenReturn(List.of(target));
+
+        var response = controller.transportDirectory("Bearer token-valido");
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(response.getBody()).containsExactly(new AuthApiController.TransportIdentity(
+                "user-1", "persona@example.com", Usuario.ROLE_USER, null));
+        verify(usuarios, never()).findAll();
+    }
 }

@@ -1,6 +1,9 @@
 package com.transcaribe.transcaribe.Repository;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -16,6 +19,7 @@ import com.transcaribe.transcaribe.Model.SistemaTransporte;
 import com.transcaribe.transcaribe.Model.Usuario;
 import com.transcaribe.transcaribe.service.AccessIdentityClient;
 import com.transcaribe.transcaribe.service.AccessUser;
+import com.transcaribe.transcaribe.service.AccessIdentityClient.TransportIdentity;
 
 @Repository
 public class UsuarioRepository {
@@ -84,6 +88,28 @@ public class UsuarioRepository {
 
     public Stream<Usuario> streamBySistemaTransporte(SistemaTransporte sistema) {
         return findAll().stream().filter(usuario -> perteneceAlSistema(usuario, sistema));
+    }
+
+    public long countTransportUsers(SistemaTransporte sistema) {
+        if (sistema == null) {
+            return 0;
+        }
+        List<TransportIdentity> identities = acceso.findTransportDirectory();
+        if (identities.isEmpty()) {
+            return 0;
+        }
+        if (identities.stream().anyMatch(identity -> identity.id() == null || identity.id().isBlank())) {
+            throw new IllegalStateException("Acceso devolvió una identidad incompleta.");
+        }
+
+        List<TransportIdentity> usersWithProfileMembership = identities.stream()
+                .filter(identity -> !isAssignedTransportModerator(identity))
+                .toList();
+        Map<String, PerfilTransporte> profilesByUserId =
+                findProfilesForUsers(usersWithProfileMembership);
+        return identities.stream()
+                .filter(identity -> belongsToSystem(identity, profilesByUserId.get(identity.id()), sistema))
+                .count();
     }
 
     public List<Usuario> findByRutaFavoritaIgnoreCase(String rutaRegex) {
@@ -174,6 +200,53 @@ public class UsuarioRepository {
             profile = perfiles.save(profile);
         }
         return toUsuario(identity, profile);
+    }
+
+    private Map<String, PerfilTransporte> findProfilesForUsers(List<TransportIdentity> identities) {
+        if (identities.isEmpty()) {
+            return Map.of();
+        }
+        List<String> userIds = identities.stream()
+                .map(TransportIdentity::id)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+        Map<String, PerfilTransporte> profilesByUserId = new HashMap<>();
+        if (!userIds.isEmpty()) {
+            perfiles.findMembershipByUsuarioIdIn(userIds).forEach(profile ->
+                    profilesByUserId.put(profile.getUsuarioId(), profile));
+        }
+
+        List<TransportIdentity> usersWithoutProfile = identities.stream()
+                .filter(identity -> !profilesByUserId.containsKey(identity.id()))
+                .filter(identity -> identity.email() != null && !identity.email().isBlank())
+                .toList();
+        Map<String, TransportIdentity> usersByEmail = new HashMap<>();
+        List<String> legacyEmails = usersWithoutProfile.stream()
+                .map(identity -> {
+                    String email = identity.email().trim();
+                    usersByEmail.put(email.toLowerCase(Locale.ROOT), identity);
+                    return email;
+                })
+                .distinct()
+                .toList();
+        if (!legacyEmails.isEmpty()) {
+            Query legacyQuery = Query.query(Criteria.where("correo").in(legacyEmails));
+            legacyQuery.fields().include("correo").include("sitm").include("sistema_asignado");
+            mongoTemplate.find(legacyQuery, Usuario.class).forEach(legacy -> {
+                TransportIdentity identity = legacy.getCorreo() == null
+                        ? null : usersByEmail.get(legacy.getCorreo().toLowerCase(Locale.ROOT));
+                if (identity != null) {
+                    PerfilTransporte profile = new PerfilTransporte();
+                    profile.setId(identity.id());
+                    profile.setUsuarioId(identity.id());
+                    profile.setSitm(legacy.getSitm());
+                    profile.setSistemaAsignado(legacy.getSistemaAsignado());
+                    profilesByUserId.put(identity.id(), profile);
+                }
+            });
+        }
+        return profilesByUserId;
     }
 
     private Usuario toUsuario(AccessUser identity, PerfilTransporte profile) {
@@ -282,6 +355,22 @@ public class UsuarioRepository {
         return usuario.getSitm() == sistema
                 || (Usuario.ROLE_CONDUCTOR.equals(usuario.getRole())
                         && usuario.getSitm() == null
+                        && sistema == SistemaTransporte.TRANSCARIBE);
+    }
+
+    private static boolean isAssignedTransportModerator(TransportIdentity identity) {
+        return Usuario.ROLE_MODERATOR.equals(identity.role()) && identity.isTransportModerator();
+    }
+
+    private static boolean belongsToSystem(
+            TransportIdentity identity, PerfilTransporte profile, SistemaTransporte sistema) {
+        if (Usuario.ROLE_MODERATOR.equals(identity.role()) && identity.isTransportModerator()) {
+            return sistema.name().equals(identity.serviceAssignment());
+        }
+        SistemaTransporte assignedSystem = profile == null ? null : profile.getSitm();
+        return assignedSystem == sistema
+                || (Usuario.ROLE_CONDUCTOR.equals(identity.role())
+                        && assignedSystem == null
                         && sistema == SistemaTransporte.TRANSCARIBE);
     }
 }

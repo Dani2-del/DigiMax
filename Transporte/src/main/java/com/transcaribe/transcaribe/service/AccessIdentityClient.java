@@ -17,6 +17,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.transcaribe.transcaribe.Model.SistemaTransporte;
+import com.transcaribe.transcaribe.Model.Usuario;
 import jakarta.servlet.http.HttpServletRequest;
 
 @Component
@@ -90,7 +92,14 @@ public class AccessIdentityClient {
     }
 
     public List<AccessUser> findAll() {
-        return listUsers("");
+        List<AccessUser> users = authorizedGet()
+                .uri(accesoUrl + "/api/admin/users/directory")
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<AccessUser>>() {});
+        if (users == null) {
+            throw new IllegalStateException("Acceso devolvió un directorio de usuarios vacío.");
+        }
+        return users;
     }
 
     public List<AccessUser> search(String search) {
@@ -109,6 +118,17 @@ public class AccessIdentityClient {
                 .map(contact -> new AccessUser(
                         contact.id(), null, contact.email(), contact.role(), true, true, null, null, null))
                 .toList();
+    }
+
+    public List<TransportIdentity> findTransportDirectory() {
+        List<TransportIdentity> identities = authorizedGet()
+                .uri(accesoUrl + "/api/auth/transport-directory")
+                .retrieve()
+                .body(new ParameterizedTypeReference<List<TransportIdentity>>() {});
+        if (identities == null) {
+            throw new IllegalStateException("Acceso devolvió un directorio de Transporte vacío.");
+        }
+        return identities;
     }
 
     public List<AccessUser> findTransportUsers(List<String> ids) {
@@ -212,5 +232,13 @@ public class AccessIdentityClient {
 
     private record UpdateUserRequest(
             String name, String email, String role, boolean active, String serviceAssignment) {
+    }
+
+    public record TransportIdentity(String id, String email, String role, String serviceAssignment) {
+        public boolean isTransportModerator() {
+            return Usuario.ROLE_MODERATOR.equals(role)
+                    && SistemaTransporte.disponibles().stream()
+                            .anyMatch(system -> system.name().equals(serviceAssignment));
+        }
     }
 }
