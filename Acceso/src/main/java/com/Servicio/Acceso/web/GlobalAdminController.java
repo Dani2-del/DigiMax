@@ -228,6 +228,11 @@ public class GlobalAdminController {
                     "Selecciona el servicio que administrará esta cuenta moderadora.");
             return "redirect:/admin/global/usuarios";
         }
+        if (Usuario.ROLE_CONDUCTOR.equals(usuario.getRole()) && Usuario.ROLE_MODERATOR.equals(role)) {
+            redirectAttributes.addFlashAttribute("error",
+                    "Promueve conductores desde el módulo de Transporte para validar su SITM.");
+            return "redirect:/admin/global/usuarios";
+        }
 
         boolean editingSelf = usuario.getCorreo().equalsIgnoreCase(authentication.getName());
         if (editingSelf && (!Usuario.ROLE_ADMIN.equals(role) || !activo)) {

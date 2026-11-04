@@ -75,11 +75,12 @@ class AdminTarjetasControllerTest {
     @Test
     void accountSearchLoadsOnlyFiveWalletsAndSkipsDirectorySearchWithoutAQuery() {
         BilleteraUniversal wallet = walletWithMovements(0);
-        when(billeteraService.buscarCuentasAdministrativas("", List.of(), null, null, 5))
-                .thenReturn(List.of(wallet));
-        when(billeteraService.totalCuentasAdministrativas()).thenReturn(27L);
+        when(billeteraService.idsCuentasAdministrativas(null, null)).thenReturn(List.of("user-0"));
         when(userDirectory.findByIds(List.of("user-0"), "access-token"))
                 .thenReturn(List.of(new UserSummary("user-0", "User Zero", "zero@example.com")));
+        when(billeteraService.buscarCuentasAdministrativas("", List.of("user-0"), null, null, 5))
+                .thenReturn(List.of(wallet));
+        when(billeteraService.totalCuentasAdministrativas()).thenReturn(27L);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
         ExtendedModelMap model = new ExtendedModelMap();
@@ -105,14 +106,14 @@ class AdminTarjetasControllerTest {
     void accountSearchMatchesWalletsByAccessUserNameAndPreservesDirectoryOrder() {
         UserSummary firstMatch = new UserSummary("user-1", "User One", "one@example.com");
         UserSummary secondMatch = new UserSummary("user-0", "User Zero", "zero@example.com");
-        when(billeteraService.buscarCuentasAdministrativas("User", List.of(), null, null, 5))
+        when(billeteraService.buscarCuentasAdministrativas("User", List.of(), null, null, 200))
                 .thenReturn(List.of());
         when(billeteraService.idsCuentasAdministrativas(null, null))
                 .thenReturn(List.of("user-0", "user-1"));
         when(userDirectory.search("User", 0, "access-token"))
                 .thenReturn(new UserPage(List.of(firstMatch, secondMatch), 2, 1, 0, 100));
         when(billeteraService.buscarCuentasAdministrativas(
-                "", List.of("user-1", "user-0"), null, null, 5))
+                "", List.of("user-1", "user-0"), null, null, 2))
                 .thenReturn(List.of(walletWithMovements(0), walletWithMovements(1)));
         when(billeteraService.totalCuentasAdministrativas()).thenReturn(2L);
         MockHttpServletRequest request = new MockHttpServletRequest();
@@ -131,6 +132,57 @@ class AdminTarjetasControllerTest {
                 .containsExactly("user-1", "user-0");
         assertThat(accounts).extracting(AdminTarjetasController.WalletRow::nombre)
                 .containsExactly("User One", "User Zero");
+    }
+
+    @Test
+    void accountListExcludesAdministratorsAndModeratorsFromOtherServices() {
+        List<String> walletIds = List.of("admin-1", "other-moderator", "user-1", "user-2");
+        when(billeteraService.idsCuentasAdministrativas(null, null)).thenReturn(walletIds);
+        when(userDirectory.findByIds(walletIds, "access-token")).thenReturn(List.of(
+                new UserSummary("admin-1", "Admin", "admin@example.com", "ROLE_ADMIN", null),
+                new UserSummary("other-moderator", "Other Moderator", "other@example.com",
+                        "ROLE_MODERATOR", "TRANSCARIBE"),
+                new UserSummary("user-1", "User", "user@example.com"),
+                new UserSummary("user-2", "Wallet Moderator", "wallet@example.com",
+                        "ROLE_MODERATOR", "BILLETERA")));
+        when(billeteraService.buscarCuentasAdministrativas(
+                "", List.of("user-1", "user-2"), null, null, 5))
+                .thenReturn(List.of(walletWithMovements(1), walletWithMovements(2)));
+        when(billeteraService.totalCuentasAdministrativas()).thenReturn(4L);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
+        ExtendedModelMap model = new ExtendedModelMap();
+
+        controller.index(
+                "", null, null,
+                new AuthenticatedIdentity("admin", "admin@example.com", "Admin", "ROLE_ADMIN"),
+                request, model);
+
+        @SuppressWarnings("unchecked")
+        List<AdminTarjetasController.WalletRow> accounts =
+                (List<AdminTarjetasController.WalletRow>) model.getAttribute("cuentas");
+        assertThat(accounts).extracting(AdminTarjetasController.WalletRow::usuarioId)
+                .containsExactly("user-1", "user-2");
+        verify(userDirectory, never()).search(
+                org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyString());
+    }
+
+    @Test
+    void directAccountAccessRejectsAnAdministratorIdentity() {
+        when(userDirectory.findById("admin-1", "access-token"))
+                .thenReturn(new UserSummary("admin-1", "Admin", "admin@example.com", "ROLE_ADMIN", null));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setAttribute(RemoteAccessAuthenticationFilter.TOKEN_ATTRIBUTE, "access-token");
+
+        assertThatThrownBy(() -> controller.selectedAccount(
+                "admin-1",
+                new AuthenticatedIdentity("admin", "admin@example.com", "Admin", "ROLE_ADMIN"),
+                request, new ExtendedModelMap()))
+                .isInstanceOf(ResponseStatusException.class)
+                .extracting(exception -> ((ResponseStatusException) exception).getStatusCode().value())
+                .isEqualTo(404);
+        verify(billeteraService, never()).billeteraAdministrativa("admin-1");
     }
 
     @Test

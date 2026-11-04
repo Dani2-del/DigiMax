@@ -9,7 +9,8 @@ import java.util.Optional;
 import java.time.LocalDate;
 import java.util.stream.Stream;
 
-public interface HorarioConductorRepository extends MongoRepository<HorarioConductor, String> {
+public interface HorarioConductorRepository extends MongoRepository<HorarioConductor, String>,
+        HorarioConductorRepositoryCustom {
 
     List<HorarioConductor> findByConductorIdOrderByFechaAscHoraInicioAsc(String conductorId);
 
@@ -36,4 +37,8 @@ public interface HorarioConductorRepository extends MongoRepository<HorarioCondu
     Optional<HorarioConductor> findByIdAndConductorId(String id, String conductorId);
 
     List<HorarioConductor> findByBusIdAndFecha(String busId, java.time.LocalDate fecha);
+
+    List<HorarioConductor> findByConductorIdAndFecha(String conductorId, java.time.LocalDate fecha);
+
+    List<HorarioConductor> findByBusIdIsNullAndFecha(java.time.LocalDate fecha);
 }

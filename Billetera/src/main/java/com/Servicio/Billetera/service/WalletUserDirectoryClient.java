@@ -52,8 +52,21 @@ public class WalletUserDirectoryClient {
             throw new IllegalStateException("Acceso devolvió una respuesta vacía al consultar identidades.");
         }
         return identities.stream()
-                .map(identity -> new UserSummary(identity.id(), identity.name(), identity.email()))
+                .map(identity -> new UserSummary(
+                        identity.id(), identity.name(), identity.email(),
+                        identity.role(), identity.serviceAssignment(), identity.active()))
                 .toList();
+    }
+
+    public UserSummary updateRole(
+            UserSummary user, String role, String serviceAssignment, String token) {
+        return restClient.patch()
+                .uri(accesoUrl + "/api/admin/users/{id}", user.id())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                .body(new UpdateUserRequest(
+                        user.name(), user.email(), role, user.active(), serviceAssignment))
+                .retrieve()
+                .body(UserSummary.class);
     }
 
     public UserPage search(String query, int page, String token) {
@@ -69,7 +82,19 @@ public class WalletUserDirectoryClient {
         return result;
     }
 
-    public record UserSummary(String id, String name, String email) {
+    public record UserSummary(
+            String id, String name, String email, String role, String serviceAssignment, boolean active) {
+        public UserSummary(String id, String name, String email, String role, String serviceAssignment) {
+            this(id, name, email, role, serviceAssignment, true);
+        }
+
+        public UserSummary(String id, String name, String email) {
+            this(id, name, email, "ROLE_USER", null, true);
+        }
+    }
+
+    private record UpdateUserRequest(
+            String name, String email, String role, boolean active, String serviceAssignment) {
     }
 
     private record IdentityResponse(

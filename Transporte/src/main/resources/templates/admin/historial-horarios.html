@@ -7,22 +7,22 @@
     <style>
         .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
         .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-        .btn-secundario { background: #2f855a; color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .btn-secundario:hover { background: #276749; }
+        .btn-secundario { background: var(--accent-2); color: #fff; border: 0; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-secundario:hover { background: var(--tinta-2); }
         .filters { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; padding: 16px; background: #f7fafc; border: 1px solid #e2e8f0; border-radius: 10px; }
         .filter-field { display: flex; flex-direction: column; gap: 6px; }
         .filter-field label { font-weight: 600; color: #4a5568; }
         .filter-field input, .filter-field select { box-sizing: border-box; width: 100%; padding: 9px 10px; border: 1px solid #cbd5e0; border-radius: 7px; background: #fff; }
         .filter-actions { display: flex; align-items: end; gap: 8px; }
         .primary, .ghost { border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; font-weight: 700; }
-        .primary { background: #2a9d8f; color: #fff; }
+        .primary { background: var(--accent); color: #fff; }
         .ghost { background: #edf2f7; color: #2d3748; }
         .summary { margin: 14px 0; color: #4a5568; }
         .history-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1.2fr 1fr; gap: 12px; align-items: center; padding: 13px 14px; border: 1px solid #edf2f7; border-radius: 8px; margin-bottom: 8px; }
-        .history-header { background: #2d3748; color: #fff; border-color: #2d3748; font-weight: 700; }
+        .history-header { background: var(--tinta); color: #fff; border-color: var(--tinta); font-weight: 700; }
         .history-cell small { display: block; color: #718096; font-size: 11px; margin-bottom: 3px; }
         .history-header small { color: #e2e8f0; }
-        .status { display: inline-block; padding: 4px 8px; border-radius: 999px; background: #ebf8ff; color: #2b6cb0; font-size: 11px; font-weight: 700; }
+        .status { display: inline-block; padding: 4px 8px; border-radius: 999px; background: var(--caribe-soft); color: var(--tinta); font-size: 11px; font-weight: 700; }
         .flash-error { background: #fff5f5; color: #822727; border: 1px solid #f56565; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
         @media (max-width: 760px) {
             .history-header { display: none; }
@@ -64,7 +64,7 @@
                 </div>
                 <div class="filter-field">
                     <label for="ruta">Ruta</label>
-                    <input id="ruta" type="search" name="ruta" th:value="${rutaSeleccionada}" placeholder="Ej: T100E">
+                    <input id="ruta" type="search" name="ruta" th:value="${rutaSeleccionada}" th:placeholder="${ejemploRuta != null and !ejemploRuta.isEmpty() ? 'Ej: ' + ejemploRuta : 'Buscar ruta'}" placeholder="Ej: T100E">
                 </div>
                 <div class="filter-field">
                     <label for="fechaDesde">Desde</label>

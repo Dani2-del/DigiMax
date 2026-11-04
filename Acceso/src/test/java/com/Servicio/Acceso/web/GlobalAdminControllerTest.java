@@ -126,6 +126,26 @@ class GlobalAdminControllerTest {
     }
 
     @Test
+    void refusesToPromoteAConductorFromTheGlobalConsole() {
+        Usuario target = new Usuario("conductor@example.com", "password-hash", "Conductor");
+        target.setId("user-1");
+        target.setRole(Usuario.ROLE_CONDUCTOR);
+        when(usuarios.findById("user-1")).thenReturn(Optional.of(target));
+        var administrator = new UsernamePasswordAuthenticationToken(
+                "admin@example.com", null, List.of(new SimpleGrantedAuthority(Usuario.ROLE_ADMIN)));
+
+        String response = controller.actualizarUsuario(
+                "user-1", "Conductor", "conductor@example.com", Usuario.ROLE_MODERATOR,
+                "TRANSCARIBE", true, true, true, "Cambio de rol", administrator, redirectAttributes);
+
+        assertThat(response).isEqualTo("redirect:/admin/global/usuarios");
+        verify(usuarios, never()).save(any(Usuario.class));
+        verify(auditEvents, never()).save(any(AdminAuditEvent.class));
+        verify(redirectAttributes).addFlashAttribute(
+                "error", "Promueve conductores desde el módulo de Transporte para validar su SITM.");
+    }
+
+    @Test
     void predictiveModelPageShowsPlaceholderView() {
         assertThat(controller.modeloPredictivo(new org.springframework.ui.ExtendedModelMap())).isEqualTo("admin/global-modelo-predictivo");
     }

@@ -322,6 +322,7 @@ public class AdminUsersController {
         Usuario requestingUser = null;
         String moderatorService = null;
         boolean recargasModerator = false;
+        boolean walletModerator = false;
         if (!globalAdministrator) {
             requestingUser = usuarios.findByCorreoIgnoreCase(administrator.getUsername()).orElse(null);
             moderatorService = requestingUser == null ? null : requestingUser.getServicioAsignado();
@@ -331,13 +332,15 @@ public class AdminUsersController {
                     || Objects.equals(requestingUser.getId(), usuario.getId())
                     || Usuario.ROLE_ADMIN.equals(usuario.getRole())
                     || (!TRANSPORT_SERVICES.contains(moderatorService)
-                            && !"RECARGAS_MOVIL".equals(moderatorService))
+                            && !"RECARGAS_MOVIL".equals(moderatorService)
+                            && !"BILLETERA".equals(moderatorService))
                     || (Usuario.ROLE_MODERATOR.equals(usuario.getRole())
                         && !moderatorService.equals(usuario.getServicioAsignado()))) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body(new ErrorResponse("Solo puedes cambiar roles dentro del servicio que administras."));
             }
             recargasModerator = "RECARGAS_MOVIL".equals(moderatorService);
+            walletModerator = "BILLETERA".equals(moderatorService);
             if (recargasModerator) {
                 boolean targetBelongsToAnotherService = !Usuario.ROLE_USER.equals(usuario.getRole())
                         && !(Usuario.ROLE_MODERATOR.equals(usuario.getRole())
@@ -358,7 +361,26 @@ public class AdminUsersController {
                             .body(new ErrorResponse("No se pudo verificar la actividad de la cuenta."));
                 }
             }
-            Set<String> moderatorRoles = recargasModerator
+            if (walletModerator) {
+                boolean targetBelongsToWallet = Usuario.ROLE_USER.equals(usuario.getRole())
+                        || (Usuario.ROLE_MODERATOR.equals(usuario.getRole())
+                                && "BILLETERA".equals(usuario.getServicioAsignado()));
+                if (!targetBelongsToWallet) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                            .body(new ErrorResponse("Solo puedes gestionar usuarios de Billetera."));
+                }
+                try {
+                    if (!globalOperations.hasWalletAccount(usuario.getId())) {
+                        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                                .body(new ErrorResponse("La cuenta no tiene una billetera asociada."));
+                    }
+                } catch (MongoException exception) {
+                    LOGGER.error("No se pudo verificar la billetera del usuario {}.", usuario.getId(), exception);
+                    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                            .body(new ErrorResponse("No se pudo verificar la cuenta de Billetera."));
+                }
+            }
+            Set<String> moderatorRoles = recargasModerator || walletModerator
                     ? Set.of(Usuario.ROLE_USER, Usuario.ROLE_MODERATOR)
                     : Set.of(Usuario.ROLE_USER, Usuario.ROLE_CONDUCTOR, Usuario.ROLE_MODERATOR);
             if (!moderatorRoles.contains(request.role())

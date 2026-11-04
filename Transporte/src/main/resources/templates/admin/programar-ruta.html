@@ -7,11 +7,11 @@
     <style>
         .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
         .btn-secundario {
-            background-color: #2f855a; color: white; border: none;
+            background-color: var(--accent-2); color: white; border: none;
             padding: 10px 16px; border-radius: 8px; font-weight: bold;
             font-size: 14px; cursor: pointer; white-space: nowrap;
         }
-        .btn-secundario:hover { background-color: #276749; }
+        .btn-secundario:hover { background-color: var(--tinta-2); }
         .flash-ok { background: #e6fffa; color: #22543d; border: 1px solid #38a169; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
         .flash-error { background: #fff5f5; color: #822727; border: 1px solid #f56565; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px; }
     </style>
@@ -32,7 +32,7 @@
                     <button type="button" class="ghost" onclick="window.location.href='/admin/horarios'">
                         ← Menú de horarios
                     </button>
-                    <button type="button" class="btn-secundario" style="background-color:#2a9d8f;" onclick="window.location.href='/admin/horarios/historial'">
+                    <button type="button" class="btn-secundario" onclick="window.location.href='/admin/horarios/historial'">
                         📚 Historial de rutas
                     </button>
                 </div>
@@ -96,7 +96,7 @@
             <form th:action="@{/admin/horarios/programar}" method="get"
                   style="display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin:14px 0 18px; padding:14px; background:#f7fafc; border:1px solid #e2e8f0; border-radius:10px;">
                 <input type="search" name="buscarRuta" th:value="${buscarRuta}"
-                       placeholder="Buscar ruta..."
+                       th:placeholder="${ejemploRuta != null and !ejemploRuta.isEmpty() ? 'Buscar ruta, ej: ' + ejemploRuta : 'Buscar ruta...'}" placeholder="Buscar ruta..."
                        style="padding:10px; border:1px solid #cbd5e0; border-radius:7px;">
                 <select name="conductorId" style="padding:10px; border:1px solid #cbd5e0; border-radius:7px;">
                     <option value="">Todos los conductores</option>

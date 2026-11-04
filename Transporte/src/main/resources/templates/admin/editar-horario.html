@@ -11,9 +11,9 @@
         .form-row input, .form-row select { box-sizing: border-box; width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 7px; }
         .form-actions { display: flex; gap: 10px; margin-top: 22px; }
         .primary, .ghost { flex: 1; border: 0; border-radius: 8px; padding: 12px; cursor: pointer; font-weight: 700; }
-        .primary { background: #2a9d8f; color: white; }
+        .primary { background: var(--accent); color: white; }
         .ghost { background: #edf2f7; color: #2d3748; }
-        .notice { background: #ebf8ff; color: #2c5282; border: 1px solid #90cdf4; padding: 12px; border-radius: 8px; margin-bottom: 18px; }
+        .notice { background: var(--caribe-soft); color: var(--tinta); border: 1px solid var(--accent); padding: 12px; border-radius: 8px; margin-bottom: 18px; }
     </style>
     <th:block th:replace="~{fragments/admin-navigation :: styles}"></th:block>
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>

@@ -28,6 +28,8 @@ public class AccessIdentityClient {
     public static final String USER_ATTRIBUTE = AccessIdentityClient.class.getName() + ".user";
 
     private static final int PAGE_SIZE = 100;
+    private static final int TRANSPORT_DIRECTORY_PAGE_SIZE = 10_000;
+    private static final int TRANSPORT_USER_BATCH_SIZE = 1_000;
 
     private final RestClient restClient;
     private final String accesoUrl;
@@ -121,10 +123,29 @@ public class AccessIdentityClient {
     }
 
     public List<TransportIdentity> findTransportDirectory() {
-        List<TransportIdentity> identities = authorizedGet()
-                .uri(accesoUrl + "/api/auth/transport-directory")
-                .retrieve()
-                .body(new ParameterizedTypeReference<List<TransportIdentity>>() {});
+        List<TransportIdentity> identities = new ArrayList<>();
+        int page = 0;
+        while (page < Integer.MAX_VALUE) {
+            java.net.URI uri = UriComponentsBuilder.fromUriString(accesoUrl)
+                    .path("/api/auth/transport-directory")
+                    .queryParam("page", page)
+                    .queryParam("size", TRANSPORT_DIRECTORY_PAGE_SIZE)
+                    .build()
+                    .encode()
+                    .toUri();
+            List<TransportIdentity> batch = authorizedGet()
+                    .uri(uri)
+                    .retrieve()
+                    .body(new ParameterizedTypeReference<List<TransportIdentity>>() {});
+            if (batch == null) {
+                throw new IllegalStateException("Acceso devolvió un directorio de Transporte vacío.");
+            }
+            identities.addAll(batch);
+            if (batch.size() < TRANSPORT_DIRECTORY_PAGE_SIZE) {
+                return identities;
+            }
+            page++;
+        }
         if (identities == null) {
             throw new IllegalStateException("Acceso devolvió un directorio de Transporte vacío.");
         }
@@ -137,8 +158,9 @@ public class AccessIdentityClient {
         }
         List<String> uniqueIds = ids.stream().distinct().toList();
         List<AccessUser> users = new ArrayList<>();
-        for (int start = 0; start < uniqueIds.size(); start += 200) {
-            List<String> batch = uniqueIds.subList(start, Math.min(start + 200, uniqueIds.size()));
+        for (int start = 0; start < uniqueIds.size(); start += TRANSPORT_USER_BATCH_SIZE) {
+            List<String> batch = uniqueIds.subList(
+                    start, Math.min(start + TRANSPORT_USER_BATCH_SIZE, uniqueIds.size()));
             List<AccessUser> batchUsers = authorizedPost()
                     .uri(accesoUrl + "/api/auth/transport-identities")
                     .body(batch)

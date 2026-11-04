@@ -35,6 +35,7 @@ public class Usuario {
     private LocalDateTime fechaRegistro;
 
     @Field("role")
+    @Indexed
     private String role = ROLE_USER;
 
     @Field("servicio_asignado")

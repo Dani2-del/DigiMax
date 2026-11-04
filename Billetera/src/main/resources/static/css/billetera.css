@@ -1691,6 +1691,19 @@ legend {
     min-height: 42px;
 }
 
+.admin-status-form .admin-role-confirm {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+}
+
+.admin-status-form .admin-role-confirm input {
+    width: 16px;
+    min-height: 16px;
+    margin: 0;
+    padding: 0;
+}
+
 .admin-movements {
     padding: 0 22px;
     border-top: 1px solid #edf1f4;

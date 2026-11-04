@@ -29,6 +29,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
@@ -53,6 +55,7 @@ public class AdminTarjetasController {
     private String accesoUrl;
 
     private static final int MOVEMENT_PAGE_SIZE = 5;
+    private static final int ACCOUNT_PAGE_SIZE = 10;
 
     public AdminTarjetasController(
             BilleteraService billeteraService,
@@ -153,53 +156,27 @@ public class AdminTarjetasController {
             HttpServletRequest request,
             Model model) {
         String query = buscar.trim();
+        int requestedPage;
+        try {
+            requestedPage = Integer.parseInt(request.getParameter("page"));
+        } catch (NumberFormatException exception) {
+            requestedPage = 0;
+        }
+        requestedPage = Math.max(0, requestedPage);
         boolean invalidBalanceRange = (saldoDesde != null && saldoDesde.signum() < 0)
                 || (saldoHasta != null && saldoHasta.signum() < 0)
                 || (saldoDesde != null && saldoHasta != null && saldoDesde.compareTo(saldoHasta) > 0);
         Map<String, UserSummary> usersById = new LinkedHashMap<>();
-        List<BilleteraUniversal> accounts = invalidBalanceRange ? List.of()
-                : billeteraService.buscarCuentasAdministrativas(
-                        query, List.of(), saldoDesde, saldoHasta, 5);
-        if (accounts.isEmpty() && !invalidBalanceRange && !query.isBlank()) {
-            String token = accessToken(request);
-            Set<String> eligibleWalletIds = Set.copyOf(
-                    billeteraService.idsCuentasAdministrativas(saldoDesde, saldoHasta));
-            int page = 0;
-            WalletUserDirectoryClient.UserPage userPage;
-            do {
-                userPage = userDirectory.search(query, page, token);
-                for (UserSummary user : userPage.content()) {
-                    if (eligibleWalletIds.contains(user.id())) {
-                        usersById.put(user.id(), user);
-                        if (usersById.size() == 5) {
-                            break;
-                        }
-                    }
-                }
-                page++;
-            } while (page < userPage.totalPages() && usersById.size() < 5);
-            if (!usersById.isEmpty()) {
-                accounts = billeteraService.buscarCuentasAdministrativas(
-                        "", List.copyOf(usersById.keySet()), saldoDesde, saldoHasta, 5);
-                Map<String, BilleteraUniversal> accountsById = accounts.stream()
-                        .collect(Collectors.toMap(BilleteraUniversal::getUsuarioId, Function.identity()));
-                accounts = usersById.keySet().stream()
-                        .map(accountsById::get)
-                        .filter(java.util.Objects::nonNull)
-                        .toList();
-            }
-        }
-        if (!accounts.isEmpty()) {
-            List<String> usersToLoad = accounts.stream()
-                    .map(BilleteraUniversal::getUsuarioId)
-                    .filter(userId -> !usersById.containsKey(userId))
-                    .toList();
-            if (!usersToLoad.isEmpty()) {
-                userDirectory.findByIds(usersToLoad, accessToken(request))
-                        .forEach(user -> usersById.put(user.id(), user));
-            }
-        }
-        List<WalletRow> accountRows = accounts.stream()
+        List<String> eligibleWalletIds = invalidBalanceRange ? List.of()
+                : billeteraService.idsCuentasAdministrativas(saldoDesde, saldoHasta);
+        int pageIndex = Math.min(requestedPage,
+                Math.max(0, (eligibleWalletIds.size() - 1) / ACCOUNT_PAGE_SIZE));
+        AccountPage accountPage = query.isBlank()
+                ? accountsForVisibleWalletUsers(
+                        eligibleWalletIds, usersById, request, saldoDesde, saldoHasta, pageIndex)
+                : searchVisibleWalletUsers(
+                        query, eligibleWalletIds, usersById, request, saldoDesde, saldoHasta, pageIndex);
+        List<WalletRow> accountRows = accountPage.accounts().stream()
                 .map(wallet -> toWalletRow(wallet, usersById.get(wallet.getUsuarioId())))
                 .toList();
         model.addAttribute("identity", identity);
@@ -209,8 +186,138 @@ public class AdminTarjetasController {
         model.addAttribute("saldoHasta", saldoHasta);
         model.addAttribute("totalCuentas", billeteraService.totalCuentasAdministrativas());
         model.addAttribute("resultadosCuentas", accountRows.size());
+        model.addAttribute("pageIndex", pageIndex);
+        model.addAttribute("hasPreviousPage", pageIndex > 0);
+        model.addAttribute("hasNextPage", accountPage.hasNext());
         model.addAttribute("errorFiltroSaldo", invalidBalanceRange);
         return "admin-moderador-billetera";
+    }
+
+    private record AccountPage(List<BilleteraUniversal> accounts, boolean hasNext) {}
+
+    private AccountPage accountsForVisibleWalletUsers(
+            List<String> walletIds,
+            Map<String, UserSummary> usersById,
+            HttpServletRequest request,
+            BigDecimal saldoDesde,
+            BigDecimal saldoHasta,
+            int pageIndex) {
+        List<String> orderedWalletIds = walletIds.stream().distinct()
+                .sorted(Comparator.reverseOrder()).toList();
+        List<String> visibleWalletIds = new java.util.ArrayList<>();
+        String token = orderedWalletIds.isEmpty() ? null : accessToken(request);
+        long requiredCount = ((long) pageIndex + 1) * ACCOUNT_PAGE_SIZE + 1;
+        for (int start = 0; start < orderedWalletIds.size()
+                && visibleWalletIds.size() < requiredCount; start += 200) {
+            List<String> batch = orderedWalletIds.subList(
+                    start, Math.min(start + 200, orderedWalletIds.size()));
+            Map<String, UserSummary> batchUsers = loadVisibleWalletUsers(batch, token);
+            batchUsers.forEach(usersById::putIfAbsent);
+            for (String userId : batch) {
+                if (batchUsers.containsKey(userId) && visibleWalletIds.size() < requiredCount) {
+                    visibleWalletIds.add(userId);
+                }
+            }
+        }
+        return pageOfWalletIds(visibleWalletIds, pageIndex, saldoDesde, saldoHasta);
+    }
+
+    private AccountPage searchVisibleWalletUsers(
+            String query,
+            List<String> walletIds,
+            Map<String, UserSummary> usersById,
+            HttpServletRequest request,
+            BigDecimal saldoDesde,
+            BigDecimal saldoHasta,
+            int pageIndex) {
+        String token = accessToken(request);
+        Set<String> eligibleWalletIds = Set.copyOf(walletIds);
+        int requiredCount = (int) Math.min(Integer.MAX_VALUE,
+                ((long) pageIndex + 1) * ACCOUNT_PAGE_SIZE + 1);
+        List<BilleteraUniversal> directMatches = billeteraService.buscarCuentasAdministrativas(
+                query, List.of(), saldoDesde, saldoHasta, Math.max(200, requiredCount));
+        if (!directMatches.isEmpty()) {
+            loadVisibleWalletUsers(
+                    directMatches.stream().map(BilleteraUniversal::getUsuarioId).distinct().toList(), token)
+                    .forEach(usersById::putIfAbsent);
+        }
+        List<BilleteraUniversal> visibleAccounts = directMatches.stream()
+                .filter(wallet -> usersById.containsKey(wallet.getUsuarioId()))
+                .toList();
+        Set<String> selectedIds = visibleAccounts.stream()
+                .map(BilleteraUniversal::getUsuarioId)
+                .collect(Collectors.toSet());
+        List<UserSummary> matchingUsers = new java.util.ArrayList<>();
+        int searchPage = 0;
+        WalletUserDirectoryClient.UserPage userPage;
+        do {
+            userPage = userDirectory.search(query, searchPage, token);
+            for (UserSummary user : userPage.content()) {
+                if (eligibleWalletIds.contains(user.id())
+                        && isVisibleWalletUser(user)
+                        && selectedIds.add(user.id())) {
+                    matchingUsers.add(user);
+                    if (visibleAccounts.size() + matchingUsers.size() >= requiredCount) {
+                        break;
+                    }
+                }
+            }
+            searchPage++;
+        } while (searchPage < userPage.totalPages()
+                && visibleAccounts.size() + matchingUsers.size() < requiredCount);
+        matchingUsers.forEach(user -> usersById.put(user.id(), user));
+        Map<String, BilleteraUniversal> walletsById = matchingUsers.isEmpty() ? Map.of()
+                : billeteraService.buscarCuentasAdministrativas(
+                                "", matchingUsers.stream().map(UserSummary::id).toList(),
+                                saldoDesde, saldoHasta, matchingUsers.size()).stream()
+                        .collect(Collectors.toMap(BilleteraUniversal::getUsuarioId, Function.identity()));
+        List<BilleteraUniversal> orderedMatches = matchingUsers.stream()
+                .map(user -> walletsById.get(user.id()))
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        List<BilleteraUniversal> results = java.util.stream.Stream
+                .concat(visibleAccounts.stream(), orderedMatches.stream()).toList();
+        return pageOfAccounts(results, pageIndex);
+    }
+
+    private AccountPage pageOfWalletIds(
+            List<String> walletIds, int page, BigDecimal saldoDesde, BigDecimal saldoHasta) {
+        long offset = (long) page * ACCOUNT_PAGE_SIZE;
+        if (offset >= walletIds.size()) {
+            return new AccountPage(List.of(), false);
+        }
+        int start = (int) offset;
+        int end = Math.min(start + ACCOUNT_PAGE_SIZE, walletIds.size());
+        List<BilleteraUniversal> accounts = billeteraService.buscarCuentasAdministrativas(
+                "", walletIds.subList(start, end), saldoDesde, saldoHasta, ACCOUNT_PAGE_SIZE);
+        return new AccountPage(accounts, walletIds.size() > end);
+    }
+
+    private AccountPage pageOfAccounts(List<BilleteraUniversal> accounts, int page) {
+        long offset = (long) page * ACCOUNT_PAGE_SIZE;
+        if (offset >= accounts.size()) {
+            return new AccountPage(List.of(), false);
+        }
+        int start = (int) offset;
+        int end = Math.min(start + ACCOUNT_PAGE_SIZE, accounts.size());
+        return new AccountPage(accounts.subList(start, end), accounts.size() > end);
+    }
+
+    private Map<String, UserSummary> loadVisibleWalletUsers(List<String> userIds, String token) {
+        Map<String, UserSummary> users = new LinkedHashMap<>();
+        for (int start = 0; start < userIds.size(); start += 200) {
+            List<String> batch = userIds.subList(start, Math.min(start + 200, userIds.size()));
+            userDirectory.findByIds(batch, token).stream()
+                    .filter(AdminTarjetasController::isVisibleWalletUser)
+                    .forEach(user -> users.put(user.id(), user));
+        }
+        return users;
+    }
+
+    private static boolean isVisibleWalletUser(UserSummary user) {
+        return user != null && ("ROLE_USER".equals(user.role())
+                || ("ROLE_MODERATOR".equals(user.role())
+                        && "BILLETERA".equals(user.serviceAssignment())));
     }
 
     @GetMapping("/movimientos")
@@ -255,9 +362,12 @@ public class AdminTarjetasController {
                 .toList();
         if (!usersToLoad.isEmpty()) {
             userDirectory.findByIds(usersToLoad, token)
+                    .stream()
+                    .filter(AdminTarjetasController::isVisibleWalletUser)
                     .forEach(user -> pageUsers.put(user.id(), user));
         }
         List<WalletMovementRow> visible = rows.stream()
+                .filter(row -> pageUsers.containsKey(row.userId()))
                 .map(row -> enrichMovement(row, pageUsers))
                 .toList();
         int lastMovement = firstMovement == 0 ? 0 : firstMovement + visible.size() - 1;
@@ -288,7 +398,9 @@ public class AdminTarjetasController {
         WalletUserDirectoryClient.UserPage result;
         do {
             result = userDirectory.search(query, page, token);
-            result.content().forEach(user -> matches.put(user.id(), user));
+            result.content().stream()
+                    .filter(AdminTarjetasController::isVisibleWalletUser)
+                    .forEach(user -> matches.put(user.id(), user));
             page++;
         } while (page < result.totalPages());
         return matches;
@@ -335,22 +447,64 @@ public class AdminTarjetasController {
             @AuthenticationPrincipal AuthenticatedIdentity identity,
             HttpServletRequest request,
             Model model) {
+        UserSummary user = visibleWalletUser(usuarioId, request);
         BilleteraUniversal wallet = billeteraService.billeteraAdministrativa(usuarioId);
-        UserSummary user = userDirectory.findById(usuarioId, accessToken(request));
         model.addAttribute("identity", identity);
         model.addAttribute("usuarioSeleccionado", user);
+        boolean esPropiaCuenta = identity != null && identity.id() != null
+                && identity.id().equals(user.id());
+        model.addAttribute("esPropiaCuenta", esPropiaCuenta);
+        model.addAttribute("puedeCambiarRol", !esPropiaCuenta && identity != null
+                && ("ROLE_ADMIN".equals(identity.role()) || "ROLE_MODERATOR".equals(identity.role())));
         model.addAttribute("tarjetas", List.of(wallet));
         return "admin-billetera";
+    }
+
+    @PostMapping("/cuentas/{usuarioId}/rol")
+    public String updateUserRole(
+            @PathVariable String usuarioId,
+            HttpServletRequest request,
+            @RequestParam String rol,
+            @RequestParam(name = "confirmar", required = false) boolean confirmar,
+            RedirectAttributes redirectAttributes) {
+        try {
+            if (!confirmar) {
+                throw new IllegalArgumentException("Confirma el cambio de rol para continuar.");
+            }
+            if (!"ROLE_USER".equals(rol) && !"ROLE_MODERATOR".equals(rol)) {
+                throw new IllegalArgumentException("El rol seleccionado no es válido para Billetera.");
+            }
+            UserSummary user = visibleWalletUser(usuarioId, request);
+            String service = "ROLE_MODERATOR".equals(rol) ? "BILLETERA" : null;
+            userDirectory.updateRole(user, rol, service, accessToken(request));
+            redirectAttributes.addFlashAttribute("mensaje", "Rol actualizado correctamente.");
+        } catch (IllegalArgumentException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage());
+        } catch (RestClientResponseException exception) {
+            String serverMessage = exception.getResponseBodyAsString();
+            java.util.regex.Matcher message = java.util.regex.Pattern
+                    .compile("\\\"message\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"")
+                    .matcher(serverMessage);
+            redirectAttributes.addFlashAttribute("error",
+                    message.find() ? message.group(1)
+                            : "Acceso rechazó el cambio de rol (HTTP " + exception.getStatusCode().value() + ").");
+        } catch (RestClientException exception) {
+            redirectAttributes.addFlashAttribute("error",
+                    "No se pudo conectar con Acceso para actualizar el rol.");
+        }
+        return "redirect:/admin/cuentas/" + usuarioId;
     }
 
     @PostMapping("/cuentas/{usuarioId}/ajustar")
     public String adjustBalance(
             @PathVariable String usuarioId,
             @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
             @RequestParam String accion,
             @RequestParam BigDecimal monto,
             @RequestParam String motivo,
             RedirectAttributes redirectAttributes) {
+        visibleWalletUser(usuarioId, request);
         try {
             boolean add = switch (accion) {
                 case "ABONAR" -> true;
@@ -372,9 +526,11 @@ public class AdminTarjetasController {
     public String updateCardStatus(
             @PathVariable String usuarioId,
             @AuthenticationPrincipal AuthenticatedIdentity identity,
+            HttpServletRequest request,
             @RequestParam EstadoTarjeta estado,
             @RequestParam String motivo,
             RedirectAttributes redirectAttributes) {
+        visibleWalletUser(usuarioId, request);
         try {
             billeteraService.cambiarEstadoAdministrativamente(
                     usuarioId, estado, identity.email(), motivo);
@@ -401,6 +557,14 @@ public class AdminTarjetasController {
             throw new IllegalStateException("No se encontró la sesión para consultar el directorio de usuarios.");
         }
         return accessToken;
+    }
+
+    private UserSummary visibleWalletUser(String userId, HttpServletRequest request) {
+        UserSummary user = userDirectory.findById(userId, accessToken(request));
+        if (!isVisibleWalletUser(user)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return user;
     }
 
     private static WalletRow toWalletRow(BilleteraUniversal wallet, UserSummary user) {

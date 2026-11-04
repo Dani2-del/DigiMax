@@ -3,12 +3,14 @@ package com.Servicio.Acceso.web;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -82,20 +84,29 @@ public class AuthApiController {
 
     @GetMapping("/transport-directory")
     public ResponseEntity<List<TransportIdentity>> transportDirectory(
-            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization) {
+            @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "100") int size) {
+        if (page < 0 || size < 1 || size > 10000) {
+            return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).build();
+        }
         UserDetails principal = validPrincipal(authorization);
         if (principal == null || !mayReadOperationalContacts(principal)) {
             return ResponseEntity.status(401).cacheControl(CacheControl.noStore()).build();
         }
         List<TransportIdentity> identities = usuarios.findTransportIdentities(List.of(
                         Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
-                        "USER", "MODERATOR", "CONDUCTOR")).stream()
+                        "USER", "MODERATOR", "CONDUCTOR"), PageRequest.of(page, size)).stream()
                 .filter(usuario -> StringUtils.hasText(usuario.getId()))
                 .map(usuario -> new TransportIdentity(
                         usuario.getId(), usuario.getCorreo(), normalizeRole(usuario.getRole()),
                         usuario.getServicioAsignado()))
                 .toList();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identities);
+    }
+
+    public ResponseEntity<List<TransportIdentity>> transportDirectory(String authorization) {
+        return transportDirectory(authorization, 0, 100);
     }
 
     @PostMapping("/transport-identities")
@@ -106,7 +117,7 @@ public class AuthApiController {
         if (principal == null || !mayReadOperationalContacts(principal)) {
             return ResponseEntity.status(401).cacheControl(CacheControl.noStore()).build();
         }
-        if (ids == null || ids.isEmpty() || ids.size() > 200
+        if (ids == null || ids.isEmpty() || ids.size() > 1000
                 || ids.stream().anyMatch(id -> !StringUtils.hasText(id))) {
             return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).build();
         }

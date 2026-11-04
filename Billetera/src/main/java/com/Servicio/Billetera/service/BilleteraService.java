@@ -11,6 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
+import org.bson.types.ObjectId;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -237,7 +238,9 @@ public class BilleteraService {
 
     public List<String> idsCuentasAdministrativas(BigDecimal saldoDesde, BigDecimal saldoHasta) {
         Query query = walletBalanceQuery(saldoDesde, saldoHasta);
-        return mongoOperations.findDistinct(query, "_id", BilleteraUniversal.class, String.class);
+        return mongoOperations.findDistinct(query, "_id", BilleteraUniversal.class, Object.class).stream()
+                .map(id -> id instanceof ObjectId objectId ? objectId.toHexString() : id.toString())
+                .toList();
     }
 
     public List<BilleteraUniversal> buscarCuentasAdministrativas(
@@ -271,7 +274,7 @@ public class BilleteraService {
                 ? new Criteria()
                 : new Criteria().andOperator(filters.toArray(Criteria[]::new));
         Query query = Query.query(criteria)
-                .with(Sort.by(Sort.Direction.ASC, "_id"))
+                .with(Sort.by(Sort.Direction.DESC, "_id"))
                 .limit(Math.max(1, limit));
         query.fields().exclude("movimientos").exclude("tarjetas_desactivadas");
         return mongoOperations.find(query, BilleteraUniversal.class);

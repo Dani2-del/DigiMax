@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -120,7 +121,7 @@ class AuthApiControllerTest {
         when(jwtService.isTokenValid("token-valido", administrator)).thenReturn(true);
         when(usuarios.findTransportIdentities(List.of(
                 Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
-                "USER", "MODERATOR", "CONDUCTOR"))).thenReturn(List.of(target));
+                "USER", "MODERATOR", "CONDUCTOR"), PageRequest.of(0, 100))).thenReturn(List.of(target));
 
         var response = controller.transportDirectory("Bearer token-valido");
 
@@ -128,5 +129,39 @@ class AuthApiControllerTest {
         assertThat(response.getBody()).containsExactly(new AuthApiController.TransportIdentity(
                 "user-1", "persona@example.com", Usuario.ROLE_USER, null));
         verify(usuarios, never()).findAll();
+    }
+
+    @Test
+    void rejectsInvalidTransportDirectoryPage() {
+        var response = controller.transportDirectory("invalid", -1, 100);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(usuarios, never()).findTransportIdentities(
+                org.mockito.ArgumentMatchers.anyList(),
+                org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void allowsLargeTransportDirectoryPagesForEfficientBulkReads() {
+        UserDetails administrator = User.withUsername("admin@example.com")
+                .password("")
+                .authorities(Usuario.ROLE_ADMIN)
+                .build();
+        when(jwtService.extractUsername("token-valido")).thenReturn("admin@example.com");
+        when(userDetailsService.loadUserByUsername("admin@example.com")).thenReturn(administrator);
+        when(jwtService.isTokenValid("token-valido", administrator)).thenReturn(true);
+        when(usuarios.findTransportIdentities(
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(PageRequest.of(0, 10000))))
+                .thenReturn(List.of());
+
+        var response = controller.transportDirectory("Bearer token-valido", 0, 10000);
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+        var invalidResponse = controller.transportDirectory("invalid", 0, 10001);
+        assertThat(invalidResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        verify(usuarios).findTransportIdentities(
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(PageRequest.of(0, 10000)));
+        verify(usuarios, never()).findTransportIdentities(
+                org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(PageRequest.of(0, 10001)));
     }
 }

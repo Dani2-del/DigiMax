@@ -18,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.Decimal128;
+import org.bson.types.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -104,6 +105,18 @@ public class GlobalOperationsService {
             return false;
         }
         return hasUserId("lineas_movil", userId) || hasUserId("recargas_movil", userId);
+    }
+
+    public boolean hasWalletAccount(String userId) {
+        if (userId == null || userId.isBlank()) {
+            return false;
+        }
+        Bson idFilter = Filters.eq("_id", userId);
+        if (ObjectId.isValid(userId)) {
+            idFilter = Filters.or(idFilter, Filters.eq("_id", new ObjectId(userId)));
+        }
+        return billeteraDatabase.getCollection("billeteras_universales")
+                .countDocuments(idFilter) > 0;
     }
 
     private void collectDistinctUserIds(String collectionName, Set<String> userIds) {

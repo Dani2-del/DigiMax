@@ -135,7 +135,7 @@ body.login-page .center-card {
   padding: 10px 18px;
   border-radius: 12px;
   background: var(--tinta);
-  box-shadow: 0 8px 22px rgba(183, 92, 22, 0.22);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--tinta) 22%, transparent);
   border: none;
 }
 
@@ -162,7 +162,7 @@ body.login-page .center-card {
   background: var(--tinta);
   background-image: linear-gradient(120deg, var(--tinta) 0%, #FF7A1A 100%);
   padding: 12px 40px;
-  box-shadow: 0 6px 18px rgba(183, 92, 22, 0.25);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--tinta) 25%, transparent);
   border-radius: 0 0 16px 16px;
   border-bottom: 3px solid var(--caribe);
 }
@@ -244,7 +244,7 @@ body.login-page .center-card {
   background: var(--card-bg);
   border-radius: var(--radius);
   padding: 28px;
-  box-shadow: 0 14px 30px rgba(183, 92, 22, 0.08);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--tinta) 8%, transparent);
   border: 1px solid var(--linea);
   color: var(--text);
   position: relative;
@@ -263,7 +263,7 @@ body.login-page .center-card {
   padding: 15px;
   background: var(--caribe-soft);
   border-radius: 12px;
-  border: 1px solid rgba(14, 167, 194, 0.25);
+  border: 1px solid color-mix(in srgb, var(--caribe) 25%, transparent);
 }
 
 .card-number {
@@ -273,7 +273,7 @@ body.login-page .center-card {
   color: var(--text);
   margin: 0 0 15px 0;
   padding: 10px;
-  background: rgba(183, 92, 22, 0.04);
+  background: color-mix(in srgb, var(--tinta) 4%, transparent);
   border-radius: 8px;
   text-align: center;
   border: 1px solid var(--linea);
@@ -285,7 +285,7 @@ body.login-page .center-card {
   text-align: center;
   margin: 20px 0;
   padding: 15px;
-  background: #E3600F;
+  background: var(--coral-2);
   border-radius: 10px;
 }
 
@@ -320,7 +320,7 @@ body.login-page .center-card {
 
 .form input:focus {
   border-color: var(--caribe);
-  box-shadow: 0 0 0 3px rgba(14, 167, 194, 0.18);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--caribe) 18%, transparent);
   outline: none;
 }
 
@@ -366,7 +366,7 @@ button {
 }
 
 .ghost:hover {
-  background: rgba(183, 92, 22, 0.04) !important;
+  background: color-mix(in srgb, var(--tinta) 4%, transparent) !important;
   border-color: var(--tinta) !important;
   transform: translateY(-2px);
 }
@@ -385,13 +385,13 @@ button {
   font-size: 0.95rem;
   text-decoration: none;
   transition: all 0.18s ease;
-  box-shadow: 0 8px 20px rgba(14, 167, 194, 0.15);
+  box-shadow: 0 8px 20px color-mix(in srgb, var(--caribe) 15%, transparent);
 }
 
 .button-link:hover {
   transform: translateY(-2px);
   background: var(--caribe-soft);
-  box-shadow: 0 12px 24px rgba(14, 167, 194, 0.22);
+  box-shadow: 0 12px 24px color-mix(in srgb, var(--caribe) 22%, transparent);
 }
 
 .register-row { margin-top: 16px; gap: 10px; display: flex; align-items: center; justify-content: center; }
@@ -404,7 +404,7 @@ button {
   border-radius: 12px;
   background: white;
   color: var(--tinta) !important;
-  box-shadow: 0 4px 12px rgba(183, 92, 22, 0.08);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--tinta) 8%, transparent);
   cursor: pointer;
   border: 1px solid var(--linea);
   font-weight: 600;
@@ -498,7 +498,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   margin: 50px auto 80px;
   padding: 36px 32px;
   border-radius: 24px;
-  box-shadow: 0 18px 40px rgba(183, 92, 22, 0.22);
+  box-shadow: 0 18px 40px color-mix(in srgb, var(--tinta) 22%, transparent);
   text-align: center;
   position: relative;
 }
@@ -550,7 +550,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   background: var(--caribe-soft);
   padding: 24px;
   border-radius: var(--radius);
-  border: 1px solid rgba(14, 167, 194, 0.25);
+  border: 1px solid color-mix(in srgb, var(--caribe) 25%, transparent);
   margin-top: 20px;
   width: 100%;
   grid-column: span 2;
@@ -562,7 +562,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   width: 100%;
   padding: 14px;
   border-radius: 12px;
-  border: 1px solid rgba(14, 167, 194, 0.3);
+  border: 1px solid color-mix(in srgb, var(--caribe) 30%, transparent);
   background: white;
   color: var(--text);
   font-size: 1rem;
@@ -675,7 +675,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   transition: background 0.2s;
   cursor: pointer;
 }
-.btn-usuario:hover { background: #FFF1EE; }
+.btn-usuario:hover { background: var(--caribe-soft); }
 .btn-usuario svg,
 .btn-cerrar-sesion svg { width: 16px; height: 16px; flex: 0 0 auto; }
 
@@ -807,14 +807,14 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   text-decoration: none;
   cursor: pointer;
 }
-.btn-pagina:hover { background: #FFF1EE; }
+.btn-pagina:hover { background: var(--caribe-soft); }
 .pagina-info { font-size: 14px; color: var(--piedra); font-weight: 600; }
 
 .excel-modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(183, 92, 22, 0.45);
+  background: color-mix(in srgb, var(--tinta) 45%, transparent);
   align-items: center;
   justify-content: center;
   z-index: 1000;
@@ -825,7 +825,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   padding: 28px;
   border-radius: 16px;
   width: 380px;
-  box-shadow: 0 20px 40px rgba(183,92,22,0.25);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--tinta) 25%, transparent);
 }
 .excel-modal-box h3 { color: var(--tinta); margin: 0 0 6px 0; font-family: var(--font-display); }
 .excel-modal-box p { color: var(--piedra); font-size: 0.9rem; margin: 0 0 20px 0; }
@@ -856,7 +856,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
 .filter-row select:focus, .filter-row input:focus {
   outline: none;
   border-color: var(--caribe);
-  box-shadow: 0 0 0 3px rgba(14,167,194,0.15);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--caribe) 15%, transparent);
 }
 
 .report-options {
@@ -911,7 +911,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   cursor: pointer;
   transition: all 0.2s;
 }
-.btn-cancelar:hover { background: rgba(183,92,22,0.04); }
+.btn-cancelar:hover { background: color-mix(in srgb, var(--tinta) 4%, transparent); }
 
 .granularity-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
 .tab-btn {
@@ -976,7 +976,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
 }
 .admin-module-card:not(:disabled):hover {
   transform: translateY(-3px);
-  border-color: rgba(14,167,194,0.55);
+  border-color: color-mix(in srgb, var(--caribe) 55%, transparent);
   box-shadow: 0 14px 28px rgba(40,55,70,0.09);
 }
 .admin-module-card:focus-visible { outline: 3px solid var(--caribe); outline-offset: 3px; }
@@ -1010,39 +1010,11 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
 .reports-module .admin-module-icon { background: var(--mango-soft); }
 .reports-module .admin-module-icon svg { color: #b56a11; }
 .charts-module .admin-module-icon { background: #e8efff; }
-.charts-module .admin-module-icon svg,
-.predictions-module .admin-module-icon svg { color: #5269bd; }
+.charts-module .admin-module-icon svg { color: #5269bd; }
 .chat-module .admin-module-icon { background: #e7f4ff; }
 .chat-module .admin-module-icon svg { color: #3274a8; }
 .transactions-module .admin-module-icon { background: #fcebe7; }
 .transactions-module .admin-module-icon svg { color: #b64d43; }
-.predictions-module .admin-module-icon { background: #eef0ff; }
-.predictions-module {
-  border-style: dashed;
-}
-.admin-module-card.predictions-module,
-.admin-module-card.predictions-module:disabled {
-  cursor: not-allowed;
-  color: var(--piedra);
-  background: #fafbfc;
-  box-shadow: none;
-  opacity: 0.78;
-}
-.admin-module-card.predictions-module:disabled:hover {
-  transform: none;
-  border-color: var(--linea);
-}
-.predictions-module .admin-module-title { color: #697586; }
-.predictions-module .admin-module-link {
-  display: inline-flex;
-  align-items: center;
-  margin-top: auto;
-  padding: 6px 10px;
-  border-radius: 999px;
-  color: #667085;
-  background: #eef0f3;
-  font-size: 0.78rem;
-}
 .buses-module .admin-module-icon { background: #e8efff; }
 .history-module .admin-module-icon { background: #fff3de; }
 .admin-module-title { font-family: var(--font-display); font-size: 1.1rem; font-weight: 700; }
@@ -1069,7 +1041,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   padding: 18px;
   border: 1px solid var(--linea);
   border-radius: 16px;
-  background: linear-gradient(145deg, #fff 65%, #fff8f1);
+  background: linear-gradient(145deg, #fff 65%, color-mix(in srgb, var(--caribe-soft) 45%, #fff));
 }
 .analytics-kpi-label { color: var(--piedra); font-size: 0.84rem; font-weight: 650; }
 .analytics-kpi strong { color: var(--tinta); font-family: var(--font-display); font-size: 1.8rem; line-height: 1.15; }
@@ -1100,7 +1072,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
 .analytics-chart-mark {
   padding: 5px 8px;
   border-radius: 7px;
-  background: #fff4e7;
+  background: var(--mango-soft);
   color: #ae6422;
   font-size: 0.7rem;
   font-weight: 750;
@@ -1139,7 +1111,7 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
   width: 100%;
   min-height: 0;
   border-radius: 6px 6px 2px 2px;
-  background: linear-gradient(180deg, #f39b54, #d96727);
+  background: linear-gradient(180deg, var(--analytics-bar-start), var(--analytics-bar-end));
   transition: height 0.35s ease;
 }
 .monthly-chart-bar:hover { filter: saturate(1.2); }
@@ -1287,6 +1259,15 @@ table.mod-table .card-btn { margin: 2px 4px; padding: 8px 12px; font-size: 0.9re
 }
 .admin-empty-state { padding: 30px 12px; text-align: center; color: var(--piedra); }
 
+body[data-sistema="TRANSCARIBE"] {
+  --analytics-chart-1: #c45a24;
+  --analytics-chart-2: #4777c8;
+  --analytics-chart-3: #1a9b84;
+  --analytics-chart-4: #d9a441;
+  --analytics-bar-start: #f39b54;
+  --analytics-bar-end: #d96727;
+}
+
 body[data-sistema="TRANSMILENIO"] {
   --tinta: #8f172b;
   --tinta-2: #681020;
@@ -1303,6 +1284,12 @@ body[data-sistema="TRANSMILENIO"] {
   --accent-3: #f2c500;
   --text: #8f172b;
   --text-light: #c8102e;
+  --analytics-chart-1: #c8102e;
+  --analytics-chart-2: #7b1635;
+  --analytics-chart-3: #e57386;
+  --analytics-chart-4: #f2c500;
+  --analytics-bar-start: #ed6a82;
+  --analytics-bar-end: #a50f26;
 }
 
 body[data-sistema="TRANSMILENIO"] .admin-module-card:not(:disabled):hover {
@@ -1353,6 +1340,12 @@ body[data-sistema="TRANSMETRO"] {
   --accent-3: #c5ed36;
   --text: #174b2c;
   --text-light: #087a2e;
+  --analytics-chart-1: #12a842;
+  --analytics-chart-2: #176b3a;
+  --analytics-chart-3: #83bb4b;
+  --analytics-chart-4: #c5a825;
+  --analytics-bar-start: #68c979;
+  --analytics-bar-end: #087a2e;
 }
 
 body[data-sistema="TRANSMETRO"] .admin-module-card:not(:disabled):hover { border-color: rgba(18, 168, 66, .42); }
@@ -1434,7 +1427,7 @@ body[data-sistema="TRANSMETRO"] .module-unavailable .admin-module-link {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  box-shadow: 0 2px 8px rgba(183,92,22,0.06);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--tinta) 6%, transparent);
   border-left: 5px solid var(--mango);
   flex-wrap: wrap;
   gap: 8px;
@@ -1486,4 +1479,48 @@ body[data-sistema="TRANSMETRO"]::before {
 
 body[data-sistema="TRANSMILENIO"]::before {
   background-image: url("/images/fondo_transmilenio.jpg");
+}
+
+/* =============================================================
+   Colores de los módulos por servicio. Los iconos de cada módulo
+   tenían tonos fijos de Transcaribe (naranja, verde azulado, azul);
+   aquí cada servicio usa su propia paleta.
+   ============================================================= */
+body[data-sistema="TRANSMILENIO"] {
+  --mod-a-bg: #fce8eb; --mod-a-fg: #c8102e;
+  --mod-b-bg: #fff8d6; --mod-b-fg: #8a6a00;
+  --mod-c-bg: #f3e4e7; --mod-c-fg: #681020;
+}
+body[data-sistema="TRANSMETRO"] {
+  --mod-a-bg: #e7f7e9; --mod-a-fg: #087a2e;
+  --mod-b-bg: #f5fbdc; --mod-b-fg: #5d7a00;
+  --mod-c-bg: #e3eee6; --mod-c-fg: #103a20;
+}
+body[data-sistema="TRANSMILENIO"] :is(.users-module, .announcements-module, .transactions-module, .buses-module) .admin-module-icon,
+body[data-sistema="TRANSMETRO"] :is(.users-module, .announcements-module, .transactions-module, .buses-module) .admin-module-icon {
+  background: var(--mod-a-bg);
+}
+body[data-sistema="TRANSMILENIO"] :is(.users-module, .announcements-module, .transactions-module, .buses-module) .admin-module-icon svg,
+body[data-sistema="TRANSMETRO"] :is(.users-module, .announcements-module, .transactions-module, .buses-module) .admin-module-icon svg {
+  color: var(--mod-a-fg);
+}
+body[data-sistema="TRANSMILENIO"] :is(.schedules-module, .route-map-module, .history-module, .reports-module) .admin-module-icon,
+body[data-sistema="TRANSMETRO"] :is(.schedules-module, .route-map-module, .history-module, .reports-module) .admin-module-icon {
+  background: var(--mod-b-bg);
+}
+body[data-sistema="TRANSMILENIO"] :is(.schedules-module, .route-map-module, .history-module, .reports-module) .admin-module-icon svg,
+body[data-sistema="TRANSMETRO"] :is(.schedules-module, .route-map-module, .history-module, .reports-module) .admin-module-icon svg {
+  color: var(--mod-b-fg);
+}
+body[data-sistema="TRANSMILENIO"] :is(.charts-module, .chat-module) .admin-module-icon,
+body[data-sistema="TRANSMETRO"] :is(.charts-module, .chat-module) .admin-module-icon {
+  background: var(--mod-c-bg);
+}
+body[data-sistema="TRANSMILENIO"] :is(.charts-module, .chat-module) .admin-module-icon svg,
+body[data-sistema="TRANSMETRO"] :is(.charts-module, .chat-module) .admin-module-icon svg {
+  color: var(--mod-c-fg);
+}
+/* Transcaribe: el borde al pasar el cursor era cian; ahora sigue su naranja */
+body[data-sistema="TRANSCARIBE"] .admin-module-card:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--caribe) 55%, transparent);
 }

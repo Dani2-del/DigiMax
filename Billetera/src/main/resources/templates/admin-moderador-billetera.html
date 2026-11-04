@@ -28,7 +28,7 @@
             <span class="admin-stat-icon is-balance">⌕</span>
             <div><span class="admin-stat-label">Cuentas mostradas</span>
                 <strong th:text="${resultadosCuentas}">0</strong>
-                <small>Máximo 5 resultados por búsqueda</small></div>
+                <small>Máximo 10 cuentas por página</small></div>
         </article>
     </section>
 
@@ -63,7 +63,8 @@
             Revisa el rango de saldo: los valores deben ser positivos y el mínimo no puede superar el máximo.
         </p>
         <p class="wallet-results-caption" th:if="${resultadosCuentas > 0}">
-            Mostrando hasta <strong th:text="${resultadosCuentas}">0</strong> de las cuentas más recientes.
+            Mostrando <strong th:text="${resultadosCuentas}">0</strong> cuentas más recientes
+            · Página <strong th:text="${pageIndex + 1}">1</strong>.
         </p>
         <p th:if="${#lists.isEmpty(cuentas)}" class="empty-state">
             <span th:if="${#strings.isEmpty(buscar) and saldoDesde == null and saldoHasta == null}">
@@ -93,6 +94,26 @@
                 <span class="wallet-account-open">Abrir cuenta <b aria-hidden="true">→</b></span>
             </a>
         </div>
+        <nav class="wallet-movement-pagination" th:if="${hasPreviousPage or hasNextPage}"
+             aria-label="Paginación de cuentas">
+            <a th:if="${hasPreviousPage}" class="movement-page-arrow"
+               aria-label="Ver cuentas más recientes"
+               th:href="@{/admin/cuentas(page=${pageIndex - 1}, buscar=${buscar}, saldoDesde=${saldoDesde}, saldoHasta=${saldoHasta})}">
+                <span aria-hidden="true">←</span> Más recientes
+            </a>
+            <span th:unless="${hasPreviousPage}" class="movement-page-arrow is-disabled" aria-disabled="true">
+                <span aria-hidden="true">←</span> Más recientes
+            </span>
+            <span>Página <strong th:text="${pageIndex + 1}">1</strong></span>
+            <a th:if="${hasNextPage}" class="movement-page-arrow"
+               aria-label="Ver cuentas más antiguas"
+               th:href="@{/admin/cuentas(page=${pageIndex + 1}, buscar=${buscar}, saldoDesde=${saldoDesde}, saldoHasta=${saldoHasta})}">
+                Más antiguas <span aria-hidden="true">→</span>
+            </a>
+            <span th:unless="${hasNextPage}" class="movement-page-arrow is-disabled" aria-disabled="true">
+                Más antiguas <span aria-hidden="true">→</span>
+            </span>
+        </nav>
     </section>
 
 </main>

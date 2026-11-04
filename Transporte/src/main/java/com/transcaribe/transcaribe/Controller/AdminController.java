@@ -172,25 +172,6 @@ public class AdminController {
         return "admin/inicio";
     }
 
-    @GetMapping("/dashboard/usuarios/count")
-    @ResponseBody
-    public ResponseEntity<Long> contarUsuariosDashboard(jakarta.servlet.http.HttpSession session) {
-        Object selectedSystem = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);
-        if (!(selectedSystem instanceof SistemaTransporte sistema) || !sistema.estaDisponible()) {
-            return ResponseEntity.badRequest().build();
-        }
-        try {
-            return ResponseEntity.ok()
-                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                    .body(contarUsuariosSistema(sistema));
-        } catch (org.springframework.web.client.ResourceAccessException exception) {
-            LOGGER.warn("Acceso no respondió a tiempo al consultar el conteo del dashboard.", exception);
-            return ResponseEntity.status(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE)
-                    .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                    .build();
-        }
-    }
-
     @GetMapping("/usuarios")
     public String mostrarUsuarios(
             @RequestParam(defaultValue = "0") int page,
@@ -239,9 +220,8 @@ public class AdminController {
         }
 
         String busquedaNormalizada = busqueda.toLowerCase(Locale.ROOT);
-        List<Usuario> usuariosSistema = usuarioRepository.findAll().stream()
+        List<Usuario> usuariosSistema = usuarioRepository.findBySistemaTransporte(sistemaActual).stream()
                 .filter(AdminController::esPersonalTransporte)
-                .filter(usuario -> perteneceASistema(usuario, sistemaActual))
                 .toList();
         List<Usuario> usuariosFiltrados = filtrosValidos
                 ? usuariosSistema.stream()
@@ -257,8 +237,9 @@ public class AdminController {
                                 && !usuario.getFechaRegistro().toLocalDate().isBefore(desde)))
                         .filter(usuario -> hasta == null || (usuario.getFechaRegistro() != null
                                 && !usuario.getFechaRegistro().toLocalDate().isAfter(hasta)))
-                        .sorted(Comparator.comparing(Usuario::getNombre,
-                                Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER)))
+                        .sorted(Comparator.comparing(
+                                Usuario::getFechaRegistro,
+                                Comparator.nullsLast(Comparator.reverseOrder())))
                         .toList()
                 : List.of();
         long totalFiltrado = usuariosFiltrados.size();
@@ -288,13 +269,7 @@ public class AdminController {
         model.addAttribute("fechaHasta", fechaHasta);
         model.addAttribute("estadoSeleccionado", estado);
         model.addAttribute("verificacionSeleccionada", verificacion);
-        model.addAttribute("buses", busRepository.findAll().stream()
-                .filter(bus -> bus.getSistemaTransporte() == sistemaActual).toList());
         return "admin/dashboard";
-    }
-
-    private long contarUsuariosSistema(SistemaTransporte sistemaActual) {
-        return usuarioRepository.countTransportUsers(sistemaActual);
     }
 
     private static boolean esPersonalTransporte(Usuario usuario) {
@@ -590,6 +565,17 @@ public class AdminController {
                     response.put("status", "error");
                     response.put("message",
                             "Las cuentas moderadoras de otros servicios no se pueden editar desde Transporte.");
+                    return ResponseEntity.status(409).body(response);
+                }
+                SistemaTransporte sistemaConductor = u.getSitm() == null
+                        ? SistemaTransporte.TRANSCARIBE
+                        : u.getSitm();
+                if (Usuario.ROLE_CONDUCTOR.equals(u.getRole())
+                        && Usuario.ROLE_MODERATOR.equals(role)
+                        && sistemaAsignado != sistemaConductor) {
+                    response.put("status", "error");
+                    response.put("message",
+                            "Un conductor no puede ser moderador de un servicio de Transporte diferente.");
                     return ResponseEntity.status(409).body(response);
                 }
                 if (!administradorGlobal && (!moderadorTransporte

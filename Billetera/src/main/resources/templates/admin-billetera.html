@@ -118,6 +118,35 @@
                     </section>
                 </div>
 
+                <section class="admin-tool" th:if="${puedeCambiarRol}"
+                         style="margin: 0 22px 20px; grid-column: 1 / -1;">
+                    <div class="admin-tool-heading">
+                        <span class="admin-tool-icon is-security" aria-hidden="true">♙</span>
+                        <div>
+                            <h4>Rol de la cuenta</h4>
+                            <p>Al asignar el rol de moderador, quedará vinculado automáticamente al servicio Billetera.</p>
+                        </div>
+                    </div>
+                    <form class="admin-status-form" method="post"
+                          th:action="@{/admin/cuentas/{id}/rol(id=${wallet.usuarioId})}">
+                        <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                        <label>Rol
+                            <select name="rol" required>
+                                <option value="ROLE_USER" th:selected="${usuarioSeleccionado.role() == 'ROLE_USER'}">Usuario</option>
+                                <option value="ROLE_MODERATOR" th:selected="${usuarioSeleccionado.role() == 'ROLE_MODERATOR'}">Moderador de Billetera</option>
+                            </select>
+                        </label>
+                        <label class="admin-role-confirm">
+                            <input type="checkbox" name="confirmar" value="true" required>
+                            Confirmo el cambio de rol
+                        </label>
+                        <button type="submit" class="button-secondary">Guardar rol</button>
+                    </form>
+                </section>
+                <p class="admin-note" th:if="${esPropiaCuenta}" style="margin: 0 22px 20px;">
+                    No puedes cambiar tu propio rol desde esta pantalla.
+                </p>
+
                 <details class="admin-movements">
                     <summary>Movimientos recientes
                         <span th:text="${#lists.size(wallet.movimientos)}">0</span>

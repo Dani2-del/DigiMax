@@ -12,6 +12,9 @@ import com.transcaribe.transcaribe.service.CatalogoRutasTransmilenioService;
 import com.transcaribe.transcaribe.service.CatalogoRutasTransmetroService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -23,8 +26,10 @@ import java.time.temporal.WeekFields;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
  
 @Controller
@@ -32,6 +37,7 @@ import java.util.stream.Collectors;
 public class HorarioController {
 
     private static final int TAMANO_PAGINA_HISTORIAL = 5;
+    private static final int TAMANO_PAGINA_PROGRAMADOS = 5;
  
     @Autowired
     private HorarioConductorRepository horarioRepository;
@@ -58,8 +64,8 @@ public class HorarioController {
         model.addAttribute("sistemaActual", sistema);
         model.addAttribute("esTransmilenio", sistema == SistemaTransporte.TRANSMILENIO);
         model.addAttribute("esTransmetro", sistema == SistemaTransporte.TRANSMETRO);
-        boolean esModerador = authentication != null && usuarioRepository.findByCorreo(authentication.getName())
-                .map(usuario -> Usuario.ROLE_MODERATOR.equals(usuario.getRole())).orElse(false);
+        boolean esModerador = authentication != null && authentication.getAuthorities().stream()
+                .anyMatch(authority -> Usuario.ROLE_MODERATOR.equals(authority.getAuthority()));
         model.addAttribute("esModerador", esModerador);
         return "admin/horarios";
     }
@@ -72,10 +78,9 @@ public class HorarioController {
                               @RequestParam(defaultValue = "0") int page,
                               Model model, HttpSession session) {
         SistemaTransporte sistema = sistemaActual(session);
-        List<Usuario> conductores = usuarioRepository.findByRoleAndActivoTrue(Usuario.ROLE_CONDUCTOR)
-                .stream().filter(c -> perteneceAlSistema(c, sistema)).toList();
-        List<Bus> buses = busRepository.findAll().stream()
-                .filter(bus -> bus.getSistemaTransporte() == sistema && bus.isActivo()).toList();
+        List<Usuario> conductores = usuarioRepository.findActiveConductoresDelSistema(sistema);
+        List<Bus> busesDelSistema = busRepository.findBySistema(sistema);
+        List<Bus> buses = busesDelSistema.stream().filter(Bus::isActivo).toList();
  
         Map<String, String> nombreConductor = new HashMap<>();
         for (Usuario c : conductores) {
@@ -100,28 +105,26 @@ public class HorarioController {
                 : sistema == SistemaTransporte.TRANSMETRO
                 ? catalogoRutasTransmetroService.obtenerRutasActivas().stream()
                         .map(com.transcaribe.transcaribe.Model.RutaTransmetro::getEtiqueta).toList()
-                : busRepository.findAll().stream()
-                        .filter(bus -> bus.getSistemaTransporte() == sistema)
-                        .filter(bus -> bus.getRutas() != null)
-                        .flatMap(bus -> bus.getRutas().stream()).distinct().sorted().toList();
+                : rutasDeBuses(busesDelSistema);
         model.addAttribute("rutasDisponibles", rutasDisponibles);
-        List<HorarioConductor> horariosActivos = horarioRepository.findAllByOrderByFechaDescHoraInicioDesc()
-                .stream()
-                .filter(h -> h.getSistemaTransporte() == sistema)
-                .filter(h -> !HorarioConductor.ESTADO_DESACTIVADA.equals(h.getEstado()))
-                .toList();
+        model.addAttribute("ejemploRuta", ejemploRuta(sistema, rutasDisponibles));
         LocalDate fechaReferencia = parseFecha(fechaFiltro);
-        List<HorarioConductor> horariosFiltrados = horariosActivos.stream()
-                .filter(h -> buscarRuta.isBlank() || (h.getRuta() != null
-                        && h.getRuta().toLowerCase().contains(buscarRuta.trim().toLowerCase())))
-                .filter(h -> conductorId.isBlank() || conductorId.equals(h.getConductorId()))
-                .filter(h -> coincidePeriodo(h.getFecha(), periodo, fechaReferencia))
-                .toList();
-        int totalPages = Math.max(1, (int) Math.ceil(horariosFiltrados.size() / 5.0));
-        int paginaSegura = Math.min(Math.max(page, 0), totalPages - 1);
-        int desde = paginaSegura * 5;
-        int hasta = Math.min(desde + 5, horariosFiltrados.size());
-        model.addAttribute("horarios", horariosFiltrados.subList(desde, hasta));
+        LocalDate[] rangoPeriodo = rangoPeriodo(periodo, fechaReferencia);
+        Sort ordenProgramados = Sort.by(Sort.Order.desc("fecha"), Sort.Order.desc("horaInicio"));
+        int paginaSolicitada = Math.max(page, 0);
+        Page<HorarioConductor> paginaHorarios = sistema == null
+                ? Page.empty(PageRequest.of(0, TAMANO_PAGINA_PROGRAMADOS, ordenProgramados))
+                : horarioRepository.buscarProgramados(sistema, conductorId, buscarRuta,
+                        rangoPeriodo[0], rangoPeriodo[1],
+                        PageRequest.of(paginaSolicitada, TAMANO_PAGINA_PROGRAMADOS, ordenProgramados));
+        int totalPages = Math.max(1, paginaHorarios.getTotalPages());
+        int paginaSegura = Math.min(paginaSolicitada, totalPages - 1);
+        if (paginaSegura != paginaSolicitada && sistema != null) {
+            paginaHorarios = horarioRepository.buscarProgramados(sistema, conductorId, buscarRuta,
+                    rangoPeriodo[0], rangoPeriodo[1],
+                    PageRequest.of(paginaSegura, TAMANO_PAGINA_PROGRAMADOS, ordenProgramados));
+        }
+        model.addAttribute("horarios", paginaHorarios.getContent());
         model.addAttribute("buscarRuta", buscarRuta);
         model.addAttribute("conductorSeleccionado", conductorId);
         model.addAttribute("periodoSeleccionado", periodo);
@@ -143,8 +146,8 @@ public class HorarioController {
         SistemaTransporte sistema = sistemaActual(session);
         boolean esModerador = authentication != null && usuarioRepository.findByCorreo(authentication.getName())
                 .map(usuario -> Usuario.ROLE_MODERATOR.equals(usuario.getRole())).orElse(false);
-        List<Bus> busesFiltrados = busRepository.findAll().stream()
-                .filter(bus -> bus.getSistemaTransporte() == sistema)
+        List<Bus> busesDelSistema = busRepository.findBySistema(sistema);
+        List<Bus> busesFiltrados = busesDelSistema.stream()
                 .filter(bus -> buscarBus.isBlank() || (bus.getPlaca() != null
                         && bus.getPlaca().toLowerCase().contains(buscarBus.trim().toLowerCase())))
                 .filter(bus -> tipoBus.isBlank() || (bus.getTipo() != null
@@ -168,10 +171,7 @@ public class HorarioController {
                 : sistema == SistemaTransporte.TRANSMETRO
                 ? catalogoRutasTransmetroService.obtenerRutasActivas().stream()
                         .map(com.transcaribe.transcaribe.Model.RutaTransmetro::getEtiqueta).toList()
-                : busRepository.findAll().stream()
-                        .filter(bus -> bus.getSistemaTransporte() == sistema)
-                        .filter(bus -> bus.getRutas() != null)
-                        .flatMap(bus -> bus.getRutas().stream()).distinct().sorted().toList();
+                : rutasDeBuses(busesDelSistema);
         model.addAttribute("rutasDisponibles", rutasDisponibles);
         model.addAttribute("buscarBus", buscarBus);
         model.addAttribute("tipoBusSeleccionado", tipoBus);
@@ -180,20 +180,47 @@ public class HorarioController {
         return "admin/buses";
     }
 
-    private boolean coincidePeriodo(LocalDate fecha, String periodo, LocalDate referencia) {
-        if (periodo == null || periodo.isBlank() || referencia == null || fecha == null) {
-            return periodo == null || periodo.isBlank();
+    /** Rango de fechas [desde, hasta] del período pedido; sin período o sin fecha de referencia no filtra. */
+    private LocalDate[] rangoPeriodo(String periodo, LocalDate referencia) {
+        if (periodo == null || periodo.isBlank() || referencia == null) {
+            return new LocalDate[] {null, null};
         }
         return switch (periodo) {
-            case "dia" -> fecha.equals(referencia);
-            case "semana" -> {
-                WeekFields semanas = WeekFields.ISO;
-                yield fecha.get(semanas.weekBasedYear()) == referencia.get(semanas.weekBasedYear())
-                        && fecha.get(semanas.weekOfWeekBasedYear()) == referencia.get(semanas.weekOfWeekBasedYear());
-            }
-            case "mes" -> fecha.getYear() == referencia.getYear() && fecha.getMonth() == referencia.getMonth();
-            default -> true;
+            case "dia" -> new LocalDate[] {referencia, referencia};
+            case "semana" -> new LocalDate[] {
+                    referencia.with(java.time.DayOfWeek.MONDAY),
+                    referencia.with(java.time.DayOfWeek.SUNDAY)};
+            case "mes" -> new LocalDate[] {
+                    referencia.withDayOfMonth(1),
+                    referencia.withDayOfMonth(referencia.lengthOfMonth())};
+            default -> new LocalDate[] {null, null};
         };
+    }
+
+    private List<String> rutasDeBuses(List<Bus> buses) {
+        return buses.stream()
+                .filter(bus -> bus.getRutas() != null)
+                .flatMap(bus -> bus.getRutas().stream())
+                .distinct().sorted().toList();
+    }
+
+    /** Ejemplo de ruta para los campos de búsqueda, según el servicio que se está gestionando. */
+    private String ejemploRuta(SistemaTransporte sistema, List<String> rutasDisponibles) {
+        if (sistema == SistemaTransporte.TRANSCARIBE || rutasDisponibles == null || rutasDisponibles.isEmpty()) {
+            return sistema == SistemaTransporte.TRANSCARIBE ? "T100E" : "";
+        }
+        String ejemplo = null;
+        for (String etiqueta : rutasDisponibles) {
+            int separador = etiqueta.indexOf(" · ");
+            String codigo = separador > 0 ? etiqueta.substring(0, separador) : etiqueta;
+            if (ejemplo == null) {
+                ejemplo = codigo;
+            }
+            if (codigo.length() >= 2) {
+                return codigo;
+            }
+        }
+        return ejemplo == null ? "" : ejemplo;
     }
 
     @GetMapping("/historial")
@@ -204,9 +231,11 @@ public class HorarioController {
                                @RequestParam(defaultValue = "0") int page,
                                Model model, HttpSession session) {
         SistemaTransporte sistema = sistemaActual(session);
-        List<Usuario> conductores = usuarioRepository.findByRoleAndActivoTrue(Usuario.ROLE_CONDUCTOR)
-                .stream().filter(c -> perteneceAlSistema(c, sistema)).toList();
-        List<HorarioConductor> historial = horarioRepository.findAllByOrderByFechaAscHoraInicioAsc();
+        List<String> rutasPermitidas = rutasPermitidasEnSistema(sistema);
+        List<String> idsConductoresHistorial = sistema == null
+                ? List.of() : horarioRepository.buscarIdsConductoresHistorial(sistema, rutasPermitidas);
+        List<Usuario> conductores = usuarioRepository.findActiveConductoresBySistemaTransporte(
+                sistema, idsConductoresHistorial);
         LocalDate desde = parseFecha(fechaDesde);
         LocalDate hasta = parseFecha(fechaHasta);
 
@@ -220,43 +249,83 @@ public class HorarioController {
             model.addAttribute("error", "La fecha inicial no puede ser posterior a la fecha final.");
         }
 
-        String rutaFiltro = ruta == null ? "" : ruta.trim().toLowerCase();
-        List<HorarioConductor> horariosFiltrados = historial.stream()
-                .filter(h -> h.getSistemaTransporte() == sistema)
-                .filter(h -> conductorId == null || conductorId.isBlank() || conductorId.equals(h.getConductorId()))
-                .filter(h -> rutaFiltro.isEmpty() || (h.getRuta() != null && h.getRuta().toLowerCase().contains(rutaFiltro)))
-                .filter(h -> desde == null || (h.getFecha() != null && !h.getFecha().isBefore(desde)))
-                .filter(h -> hasta == null || (h.getFecha() != null && !h.getFecha().isAfter(hasta)))
-                .toList();
-
-        int totalPages = Math.max(1,
-                (int) Math.ceil((double) horariosFiltrados.size() / TAMANO_PAGINA_HISTORIAL));
-        int paginaSegura = Math.min(Math.max(page, 0), totalPages - 1);
-        int desdeIndice = paginaSegura * TAMANO_PAGINA_HISTORIAL;
-        int hastaIndice = Math.min(desdeIndice + TAMANO_PAGINA_HISTORIAL, horariosFiltrados.size());
-        List<HorarioConductor> horariosPagina = horariosFiltrados.subList(desdeIndice, hastaIndice);
+        int paginaSolicitada = Math.max(page, 0);
+        Sort orden = Sort.by(Sort.Order.asc("fecha"), Sort.Order.asc("horaInicio"));
+        PageRequest solicitudPagina = PageRequest.of(
+                paginaSolicitada, TAMANO_PAGINA_HISTORIAL, orden);
+        Page<HorarioConductor> paginaHistorial = sistema == null
+                ? Page.empty(solicitudPagina)
+                : horarioRepository.buscarHistorial(
+                        sistema, conductorId, ruta, desde, hasta, rutasPermitidas, solicitudPagina);
+        int totalPages = Math.max(1, paginaHistorial.getTotalPages());
+        int paginaSegura = Math.min(paginaSolicitada, totalPages - 1);
+        if (paginaSegura != paginaSolicitada && sistema != null) {
+            solicitudPagina = PageRequest.of(paginaSegura, TAMANO_PAGINA_HISTORIAL, orden);
+            paginaHistorial = horarioRepository.buscarHistorial(
+                    sistema, conductorId, ruta, desde, hasta, rutasPermitidas, solicitudPagina);
+        }
+        List<HorarioConductor> horariosPagina = paginaHistorial.getContent();
 
         Map<String, String> nombreConductor = new HashMap<>();
         Map<String, String> busConductor = new HashMap<>();
         Map<String, String> busPorHorario = new HashMap<>();
+        Map<String, String> busIdPorConductor = new HashMap<>();
+        Set<String> conductoresActivos = new HashSet<>();
+        Set<String> conductoresPagina = horariosPagina.stream()
+                .map(HorarioConductor::getConductorId)
+                .filter(id -> id != null && !id.isBlank())
+                .collect(Collectors.toSet());
         for (Usuario conductor : conductores) {
+            conductoresActivos.add(conductor.getId());
             nombreConductor.put(conductor.getId(),
                     conductor.getNombre() != null ? conductor.getNombre() : conductor.getCorreo());
             String busId = conductor.getBusAsignado();
+            if (conductoresPagina.contains(conductor.getId()) && busId != null && !busId.isBlank()) {
+                busIdPorConductor.put(conductor.getId(), busId);
+            }
+        }
+
+        Set<String> conductoresConsultados = new HashSet<>();
+        Set<String> idsBuses = new HashSet<>(busIdPorConductor.values());
+        for (HorarioConductor horario : horariosPagina) {
+            String busId = horario.getBusId();
+            if (busId == null || busId.isBlank()) {
+                String conductor = horario.getConductorId();
+                busId = busIdPorConductor.get(conductor);
+                if (busId == null && conductor != null && !conductoresActivos.contains(conductor)
+                        && conductoresConsultados.add(conductor)) {
+                    usuarioRepository.findById(conductor)
+                            .map(Usuario::getBusAsignado)
+                            .filter(id -> id != null && !id.isBlank())
+                            .ifPresent(id -> busIdPorConductor.put(conductor, id));
+                    busId = busIdPorConductor.get(conductor);
+                }
+            }
             if (busId != null && !busId.isBlank()) {
-                busRepository.findById(busId).ifPresent(bus -> busConductor.put(conductor.getId(), bus.getPlaca()));
+                idsBuses.add(busId);
+            }
+        }
+
+        Map<String, Bus> busesPorId = new HashMap<>();
+        if (!idsBuses.isEmpty()) {
+            busRepository.findAllById(idsBuses).forEach(bus -> busesPorId.put(bus.getId(), bus));
+        }
+        for (Usuario conductor : conductores) {
+            if (conductoresPagina.contains(conductor.getId())) {
+                Bus bus = busesPorId.get(busIdPorConductor.get(conductor.getId()));
+                if (bus != null) {
+                    busConductor.put(conductor.getId(), bus.getPlaca());
+                }
             }
         }
         for (HorarioConductor horario : horariosPagina) {
-            String busId = busIdDelHorario(horario);
-            if (busId != null) {
-                busRepository.findById(busId).ifPresentOrElse(
-                        bus -> busPorHorario.put(horario.getId(), bus.getPlaca()),
-                        () -> {
-                            if (horario.getBusPlaca() != null && !horario.getBusPlaca().isBlank()) {
-                                busPorHorario.put(horario.getId(), horario.getBusPlaca());
-                            }
-                        });
+            String busId = horario.getBusId();
+            if (busId == null || busId.isBlank()) {
+                busId = busIdPorConductor.get(horario.getConductorId());
+            }
+            Bus bus = busesPorId.get(busId);
+            if (bus != null) {
+                busPorHorario.put(horario.getId(), bus.getPlaca());
             } else if (horario.getBusPlaca() != null && !horario.getBusPlaca().isBlank()) {
                 busPorHorario.put(horario.getId(), horario.getBusPlaca());
             }
@@ -264,6 +333,7 @@ public class HorarioController {
 
         model.addAttribute("conductores", conductores);
         model.addAttribute("sistemaActual", sistema);
+        model.addAttribute("ejemploRuta", ejemploRuta(sistema, rutasPermitidas));
         model.addAttribute("esTransmilenio", sistema == SistemaTransporte.TRANSMILENIO);
         model.addAttribute("esTransmetro", sistema == SistemaTransporte.TRANSMETRO);
         model.addAttribute("historial", horariosPagina);
@@ -274,10 +344,25 @@ public class HorarioController {
         model.addAttribute("rutaSeleccionada", ruta == null ? "" : ruta);
         model.addAttribute("fechaDesde", fechaDesde == null ? "" : fechaDesde);
         model.addAttribute("fechaHasta", fechaHasta == null ? "" : fechaHasta);
-        model.addAttribute("totalHistorial", horariosFiltrados.size());
+        model.addAttribute("totalHistorial", paginaHistorial.getTotalElements());
         model.addAttribute("currentPage", paginaSegura);
         model.addAttribute("totalPages", totalPages);
         return "admin/historial-horarios";
+    }
+
+    private List<String> rutasPermitidasEnSistema(SistemaTransporte sistema) {
+        if (sistema == null || sistema == SistemaTransporte.TRANSCARIBE) {
+            return List.of();
+        }
+        return switch (sistema) {
+            case TRANSMILENIO -> catalogoRutasTransmilenioService.obtenerRutasActivas().stream()
+                    .map(com.transcaribe.transcaribe.Model.RutaTransmilenio::getEtiqueta)
+                    .toList();
+            case TRANSMETRO -> catalogoRutasTransmetroService.obtenerRutas().stream()
+                    .map(com.transcaribe.transcaribe.Model.RutaTransmetro::getEtiqueta)
+                    .toList();
+            case TRANSCARIBE -> List.of();
+        };
     }
 
     private LocalDate parseFecha(String fecha) {
@@ -328,9 +413,8 @@ public class HorarioController {
                                                    LocalTime inicio, LocalTime fin,
                                                    String horarioExcluido, SistemaTransporte sistema) {
         if (fecha == null || inicio == null || fin == null) return false;
-        return horarioRepository.findAll().stream()
-                .filter(h -> conductorId.equals(h.getConductorId()))
-                .filter(h -> h.getSistemaTransporte() == sistema && fecha.equals(h.getFecha()))
+        return horarioRepository.findByConductorIdAndFecha(conductorId, fecha).stream()
+                .filter(h -> h.getSistemaTransporte() == sistema)
                 .filter(h -> horarioExcluido == null || !horarioExcluido.equals(h.getId()))
                 .filter(h -> !HorarioConductor.ESTADO_FINALIZADA.equals(h.getEstado())
                         && !HorarioConductor.ESTADO_DESACTIVADA.equals(h.getEstado()))
@@ -366,9 +450,11 @@ public class HorarioController {
 
     private boolean busTieneHorarioSolapado(String busId, LocalDate fecha, LocalTime inicio,
                                              LocalTime fin, String horarioExcluido) {
-        return horarioRepository.findAll().stream()
+        // Los horarios con bus_id se buscan directo; los antiguos sin bus_id se resuelven por su conductor.
+        List<HorarioConductor> delDia = new ArrayList<>(horarioRepository.findByBusIdAndFecha(busId, fecha));
+        delDia.addAll(horarioRepository.findByBusIdIsNullAndFecha(fecha));
+        return delDia.stream()
                 .filter(h -> busId.equals(busIdDelHorario(h)))
-                .filter(h -> fecha.equals(h.getFecha()))
                 .filter(h -> horarioExcluido == null || !horarioExcluido.equals(h.getId()))
                 .filter(h -> !HorarioConductor.ESTADO_FINALIZADA.equals(h.getEstado())
                         && !HorarioConductor.ESTADO_DESACTIVADA.equals(h.getEstado()))
@@ -497,8 +583,8 @@ public class HorarioController {
         model.addAttribute("horario", horario);
         model.addAttribute("conductor", conductor);
         model.addAttribute("rutas", rutas);
-        List<Bus> buses = busRepository.findAll().stream()
-                .filter(bus -> bus.getSistemaTransporte() == sistema && bus.isActivo()).toList();
+        List<Bus> buses = busRepository.findBySistema(sistema).stream()
+                .filter(Bus::isActivo).toList();
         model.addAttribute("buses", buses);
         Map<String, List<String>> busRutasPorId = new HashMap<>();
         buses.forEach(bus -> busRutasPorId.put(bus.getId(),
