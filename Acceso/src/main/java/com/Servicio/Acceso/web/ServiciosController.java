@@ -1,10 +1,13 @@
 package com.Servicio.Acceso.web;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 public class ServiciosController {
@@ -23,7 +26,11 @@ public class ServiciosController {
     }
 
     @GetMapping("/servicios")
-    public String servicios(Model model, Authentication authentication) {
+    public String servicios(Model model, Authentication authentication, HttpServletRequest request) {
+        Object csrfAttribute = request.getAttribute(CsrfToken.class.getName());
+        if (csrfAttribute instanceof CsrfToken csrfToken) {
+            csrfToken.getToken();
+        }
         model.addAttribute("transporteUrl", transporteUrl);
         model.addAttribute("recargasUrl", recargasUrl);
         model.addAttribute("billeteraUrl", billeteraUrl);

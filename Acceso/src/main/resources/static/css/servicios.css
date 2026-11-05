@@ -4,6 +4,7 @@ body.services-page {
   --services-line: #e5ebf1;
   min-height: 100vh;
   align-items: stretch;
+  justify-content: flex-start;
   background: #f4f7fb;
 }
 
@@ -17,16 +18,27 @@ body.services-page::before {
 }
 
 .services-page-shell {
-  width: 100vw;
+  width: 100%;
   max-width: none;
-  margin-inline: calc(50% - 50vw);
+  min-width: 0;
+  flex: 0 0 auto;
+  margin-inline: 0;
   min-height: 100vh;
   justify-content: space-between;
   gap: 0;
   padding: 28px clamp(18px, 4vw, 52px) 10px;
 }
 
+/* Override the shared login layout: this page can exceed the viewport height. */
+body.login-page .services-page-shell {
+  flex: 0 0 auto;
+  justify-content: space-between;
+  padding-bottom: 10px;
+}
+
 .services-center {
+  width: 100%;
+  min-width: 0;
   max-width: 1120px;
   flex: 1;
   align-items: center;
@@ -34,6 +46,7 @@ body.services-page::before {
 }
 
 .services-panel {
+  min-width: 0;
   max-width: 1020px;
   padding: clamp(24px, 4.5vw, 52px);
   overflow: hidden;
@@ -193,6 +206,8 @@ body.services-page::before {
 
 .service-choices {
   display: grid;
+  width: 100%;
+  min-width: 0;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin: 2px 0 28px;
@@ -254,6 +269,53 @@ body.services-page::before {
 .service-choice-wallet {
   --service-color: #0b7f88;
   --service-tint: #e4f3f3;
+}
+
+.service-choice-streaming {
+  --service-color: #d34b85;
+  --service-tint: #fdebf3;
+}
+
+.service-choice-banks {
+  --service-color: #267b63;
+  --service-tint: #e7f5ef;
+}
+
+.service-choice-games {
+  --service-color: #b77b17;
+  --service-tint: #fff4dc;
+}
+
+.service-choice-upcoming {
+  --service-color: #667085;
+  --service-tint: #edf0f3;
+  cursor: default;
+  border-color: #e1e5e9;
+  background: #f7f8fa;
+}
+
+.service-choice-upcoming:hover {
+  border-color: var(--services-line);
+  box-shadow: 0 5px 14px rgba(16, 35, 56, 0.035);
+  transform: none;
+}
+
+.service-choice-upcoming:hover::after {
+  transform: none;
+}
+
+.service-coming-soon {
+  position: relative;
+  z-index: 1;
+  margin-top: auto;
+  align-self: center;
+  padding: 6px 10px;
+  border: 1px solid #d9dee4;
+  border-radius: 999px;
+  background: #e9edf1;
+  color: var(--service-color);
+  font-size: 0.72rem;
+  font-weight: 750;
 }
 
 .service-icon {
