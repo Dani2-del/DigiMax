@@ -74,9 +74,27 @@ function Get-PortOwners([int]$Port) {
     }
 }
 
+function Test-LocalPort([int]$Port) {
+    $client = New-Object System.Net.Sockets.TcpClient
+    try {
+        $pending = $client.BeginConnect('127.0.0.1', $Port, $null, $null)
+        if (-not $pending.AsyncWaitHandle.WaitOne(500)) {
+            return $false
+        }
+        $client.EndConnect($pending)
+        return $client.Connected
+    }
+    catch {
+        return $false
+    }
+    finally {
+        $client.Close()
+    }
+}
+
 function Wait-ForPort([int]$Port, [int]$TimeoutSeconds = 120) {
     for ($attempt = 0; $attempt -lt $TimeoutSeconds; $attempt++) {
-        if (@(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count -gt 0) {
+        if (Test-LocalPort -Port $Port) {
             return
         }
         Start-Sleep -Seconds 1
@@ -86,7 +104,7 @@ function Wait-ForPort([int]$Port, [int]$TimeoutSeconds = 120) {
 
 function Wait-ForPortFree([int]$Port, [int]$TimeoutSeconds = 15) {
     for ($attempt = 0; $attempt -lt $TimeoutSeconds; $attempt++) {
-        if (@(Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue).Count -eq 0) {
+        if (-not (Test-LocalPort -Port $Port)) {
             return
         }
         Start-Sleep -Seconds 1
@@ -125,12 +143,14 @@ try {
     }
     $env:MAIL_SERVICE_API_KEY = $mailApiKey
 
-    $lectorApiKey = $env:LECTOR_API_KEY
+    # Keep a stable key between full launches and individual module restarts.
+    $lectorApiKey = [Environment]::GetEnvironmentVariable('LECTOR_API_KEY', 'User')
     if ([string]::IsNullOrWhiteSpace($lectorApiKey)) {
-        $lectorApiKey = [Environment]::GetEnvironmentVariable('LECTOR_API_KEY', 'User')
+        $lectorApiKey = $env:LECTOR_API_KEY
     }
     if ([string]::IsNullOrWhiteSpace($lectorApiKey)) {
         $lectorApiKey = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+        [Environment]::SetEnvironmentVariable('LECTOR_API_KEY', $lectorApiKey, 'User')
     }
     $env:LECTOR_API_KEY = $lectorApiKey
     $env:LECTOR_BASE_URL = 'http://localhost:8086'

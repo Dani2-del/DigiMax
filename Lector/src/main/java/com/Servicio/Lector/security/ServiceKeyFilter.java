@@ -3,6 +3,11 @@ package com.Servicio.Lector.security;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -17,9 +22,10 @@ import jakarta.servlet.http.HttpServletResponse;
 @Component
 public class ServiceKeyFilter extends OncePerRequestFilter {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(ServiceKeyFilter.class);
     private final byte[] expectedKey;
 
-    public ServiceKeyFilter(@Value("${app.lector.api-key:}") String apiKey) {
+    public ServiceKeyFilter(@Value("${app.billetera.api-key:}") String apiKey) {
         expectedKey = apiKey == null ? new byte[0] : apiKey.getBytes(StandardCharsets.UTF_8);
     }
 
@@ -34,9 +40,21 @@ public class ServiceKeyFilter extends OncePerRequestFilter {
         String supplied = request.getHeader("X-Service-Key");
         if (expectedKey.length == 0 || supplied == null
                 || !MessageDigest.isEqual(expectedKey, supplied.getBytes(StandardCharsets.UTF_8))) {
+            LOGGER.warn("Rechazó solicitud interna: claveConfigurada={}, huellaConfigurada={}, "
+                            + "claveRecibida={}, huellaRecibida={}",
+                    expectedKey.length > 0, fingerprint(expectedKey), supplied != null,
+                    fingerprint(supplied == null ? new byte[0] : supplied.getBytes(StandardCharsets.UTF_8)));
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
         filterChain.doFilter(request, response);
+    }
+
+    private static String fingerprint(byte[] key) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(key), 0, 4);
+        } catch (NoSuchAlgorithmException exception) {
+            return "no-disponible";
+        }
     }
 }
