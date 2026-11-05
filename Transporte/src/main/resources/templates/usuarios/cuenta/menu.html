@@ -219,31 +219,35 @@
           <input type="hidden" name="operationId" th:value="${rideOperationId}" />
           <fieldset class="ride-payment-mode">
             <legend>Forma de pago</legend>
-            <label><input type="radio" name="modoPago" value="NORMAL" checked> Tarjeta de transporte o Digitrans</label>
+            <label>
+              <input type="radio" name="modoPago" value="NORMAL" checked>
+              <span th:text="${'Tarjeta ' + sistemaActual.nombre + ' / Tarjeta Digitrans'}">Tarjeta Transcaribe / Tarjeta Digitrans</span>
+            </label>
             <label th:if="${billeteraDisponible and !billeteraCongelada}">
-              <input type="radio" name="modoPago" value="RFID"> Tarjeta física RFID
+              <input type="radio" name="modoPago" value="RFID">
+              <span>Tarjeta Digitrans (RFID)</span>
             </label>
           </fieldset>
           <div id="normal-card-payment">
-          <label for="rideCard">Tarjeta Digitrans</label>
+          <label for="rideCard" th:text="${'Tarjeta ' + sistemaActual.nombre}">Tarjeta Transcaribe</label>
           <select id="rideCard" name="numeroTarjeta" class="select-bus" required>
-            <option value="" disabled selected>Selecciona una tarjeta</option>
+            <option value="" disabled selected th:text="${'Selecciona una tarjeta ' + sistemaActual.nombre}">Selecciona una tarjeta Transcaribe</option>
             <option th:each="t : ${tarjetasSistemaActual}"
                     th:value="${t.numeroTarjeta}"
-                    th:text="${t.numeroTarjeta + ' · Saldo $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT')}">
+                    th:text="${'Tarjeta ' + sistemaActual.nombre + ' · ' + t.numeroTarjeta + ' · Saldo $' + #numbers.formatDecimal(t.saldo, 0, 'COMMA', 0, 'POINT')}">
             </option>
             <option th:if="${billeteraDisponible and !billeteraCongelada}"
                     value="UNIVERSAL"
-                    th:text="${'Tarjeta universal · Saldo $' + #numbers.formatDecimal(tarjetaUniversal.balance, 0, 'COMMA', 0, 'POINT')}">
+                    th:text="${'Billetera Digitrans · Saldo $' + #numbers.formatDecimal(tarjetaUniversal.balance, 0, 'COMMA', 0, 'POINT')}">
             </option>
           </select>
           <p th:if="${billeteraCongelada}" class="muted" role="status">
-            Tu tarjeta Digitrans está congelada y no se puede usar para viajes.
+            Tu Billetera Digitrans está congelada y no se puede usar para viajes.
             <a th:href="${billeteraUrl}" target="_blank" rel="noopener">Descongelarla en Billetera</a>.
           </p>
           <p th:if="${errorTarjetaUniversal}" class="muted" th:text="${errorTarjetaUniversal}" role="status"></p>
           <a th:if="${billeteraDisponible}" th:href="${billeteraUrl}" target="_blank" rel="noopener">
-            Consultar o cargar saldo de tu tarjeta Digitrans
+            Consultar o cargar saldo en Billetera Digitrans
           </a>
           </div>
           <div id="rfid-card-payment" hidden>

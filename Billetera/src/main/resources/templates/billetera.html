@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Tarjeta universal | Digitrans</title>
+    <title th:text="${rfidProfile != null ? 'Tarjeta RFID | Digitrans' : 'Tarjeta universal | Digitrans'}">Tarjeta Digitrans</title>
     <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261027-1)}">
 </head>
 <body>
@@ -24,7 +24,7 @@
     <header class="page-header" id="inicio">
         <div>
             <p class="eyebrow">DIGITRANS · BILLETERA</p>
-            <h1>Tu tarjeta universal</h1>
+            <h1 th:text="${rfidProfile != null ? 'Tu tarjeta Digitrans RFID' : 'Tu tarjeta universal'}">Tu tarjeta Digitrans</h1>
             <p class="welcome" th:text="${'Hola, ' + (identity.name() != null ? identity.name() : identity.email()) + '.'}"></p>
         </div>
         <nav class="header-links" aria-label="Navegación de Billetera">
@@ -66,14 +66,16 @@
 
     <section th:if="${walletExists}" id="mi-tarjeta" class="universal-card"
              th:classappend="${'theme-' + wallet.diseno.name().toLowerCase()}"
-             aria-label="Tarjeta universal Digitrans">
+             th:attr="aria-label=${rfidProfile != null ? 'Tarjeta RFID principal Digitrans' : 'Tarjeta universal Digitrans'}">
         <span class="card-glow" aria-hidden="true"></span>
         <div class="card-heading">
-            <p class="card-title">DIGITRANS <span>· UNIVERSAL</span></p>
+            <p class="card-title">DIGITRANS
+                <span th:text="${rfidProfile != null ? '· RFID' : '· UNIVERSAL'}">· UNIVERSAL</span>
+            </p>
             <span class="card-mark" aria-hidden="true">●</span>
         </div>
         <span class="card-chip" aria-hidden="true"></span>
-        <p class="number" th:text="${wallet.numeroTarjeta}"></p>
+        <p class="number" th:text="${rfidProfile != null ? rfidProfile.uid() : wallet.numeroTarjeta}"></p>
         <span class="card-status"
               th:classappend="${' status-' + wallet.estado.name().toLowerCase()}"
               th:text="${wallet.estado.name() == 'CONGELADA' ? 'CONGELADA' : 'ACTIVA'}"></span>
@@ -96,18 +98,17 @@
             <span class="section-icon" aria-hidden="true">▣</span>
         </div>
         <div th:if="${rfidProfile != null}">
-            <p>Tu tarjeta física está vinculada a esta cuenta.</p>
-            <p class="number" th:text="${rfidProfile.uid()}"></p>
+            <p>Tu RFID es la tarjeta principal de tu cuenta Digitrans. Las recargas y los viajes usan el mismo saldo de Billetera.</p>
             <form th:action="@{/rfid/desvincular}" method="post">
                 <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <button type="submit" class="button-secondary">Desvincular tarjeta RFID</button>
+                <button type="submit" class="button-secondary">Desvincular RFID y volver a tarjeta Digitrans</button>
             </form>
         </div>
         <div th:if="${rfidProfile == null and lectorDisponible}">
-            <p class="muted">Puedes pedir una de las tarjetas físicas que el administrador agregó al inventario de Lector.</p>
+            <p class="muted">Vincula una tarjeta física disponible para convertirla en tu tarjeta principal. Se conservarán el saldo y el historial de Billetera.</p>
             <form th:action="@{/rfid/registrar}" method="post">
                 <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-                <button type="submit">Registrar una tarjeta RFID disponible</button>
+                <button type="submit">Usar RFID como tarjeta principal</button>
             </form>
         </div>
         <p th:if="${rfidProfile == null and !lectorDisponible}" class="muted">
@@ -115,7 +116,7 @@
         </p>
         <p th:if="${rfidProfile == null and !lectorDisponible and lectorEstado != null}"
            class="muted" th:text="${lectorEstado}"></p>
-        <p class="muted">La tarjeta RFID identifica tu perfil en Lector. Los cobros usan el saldo de esta Billetera.</p>
+        <p th:if="${rfidProfile == null}" class="muted">La tarjeta RFID identifica tu perfil en Lector; los cobros usan el saldo de esta Billetera.</p>
     </section>
 
     <section th:if="${walletExists}" id="diseno-seguridad" class="card-controls">

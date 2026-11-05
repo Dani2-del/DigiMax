@@ -37,10 +37,12 @@ public class AccessIdentityClient {
     public AccessIdentityClient(@Value("${app.acceso.base-url:http://localhost:8080}") String accesoUrl) {
         this.accesoUrl = accesoUrl;
         HttpClient httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(2))
+                .connectTimeout(Duration.ofSeconds(5))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        requestFactory.setReadTimeout(Duration.ofSeconds(3));
+        // El directorio de transporte puede devolver miles de perfiles y consultar Atlas.
+        // Tres segundos provocaban un 500 en páginas administrativas durante cargas normales.
+        requestFactory.setReadTimeout(Duration.ofSeconds(20));
         this.restClient = RestClient.builder().requestFactory(requestFactory).build();
     }
 
@@ -123,14 +125,21 @@ public class AccessIdentityClient {
     }
 
     public List<TransportIdentity> findTransportDirectory() {
+        return findTransportDirectory(null);
+    }
+
+    public List<TransportIdentity> findTransportDirectory(String role) {
         List<TransportIdentity> identities = new ArrayList<>();
         int page = 0;
         while (page < Integer.MAX_VALUE) {
-            java.net.URI uri = UriComponentsBuilder.fromUriString(accesoUrl)
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromUriString(accesoUrl)
                     .path("/api/auth/transport-directory")
                     .queryParam("page", page)
-                    .queryParam("size", TRANSPORT_DIRECTORY_PAGE_SIZE)
-                    .build()
+                    .queryParam("size", TRANSPORT_DIRECTORY_PAGE_SIZE);
+            if (StringUtils.hasText(role)) {
+                uriBuilder.queryParam("role", role);
+            }
+            java.net.URI uri = uriBuilder.build()
                     .encode()
                     .toUri();
             List<TransportIdentity> batch = authorizedGet()
@@ -256,7 +265,13 @@ public class AccessIdentityClient {
             String name, String email, String role, boolean active, String serviceAssignment) {
     }
 
-    public record TransportIdentity(String id, String email, String role, String serviceAssignment) {
+    public record TransportIdentity(
+            String id, String email, String name, String role, String serviceAssignment,
+            boolean active, boolean verified, java.time.LocalDateTime registeredAt, String phone) {
+        public TransportIdentity(String id, String email, String role, String serviceAssignment) {
+            this(id, email, null, role, serviceAssignment, true, false, null, null);
+        }
+
         public boolean isTransportModerator() {
             return Usuario.ROLE_MODERATOR.equals(role)
                     && SistemaTransporte.disponibles().stream()

@@ -40,7 +40,8 @@ public interface UsuarioRepository extends MongoRepository<Usuario, String> {
     List<Usuario> findByRoleAndActivoTrue(String role);
 
     @Query(value = "{ 'role': { '$in': ?0 } }",
-            fields = "{ '_id': 1, 'correo': 1, 'role': 1, 'servicio_asignado': 1 }")
+            fields = "{ '_id': 1, 'correo': 1, 'nombre': 1, 'telefono': 1, 'fecha_registro': 1, "
+                    + "'role': 1, 'servicio_asignado': 1, 'activo': 1, 'verificado': 1 }")
     List<Usuario> findTransportIdentities(List<String> roles, Pageable pageable);
 
     long countByActivoTrue();

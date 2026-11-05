@@ -219,40 +219,63 @@ public class AdminController {
             filtrosValidos = false;
         }
 
-        String busquedaNormalizada = busqueda.toLowerCase(Locale.ROOT);
-        List<Usuario> usuariosSistema = usuarioRepository.findBySistemaTransporte(sistemaActual).stream()
-                .filter(AdminController::esPersonalTransporte)
-                .toList();
-        List<Usuario> usuariosFiltrados = filtrosValidos
-                ? usuariosSistema.stream()
-                        .filter(usuario -> busquedaNormalizada.isBlank()
-                                || contieneIgnoreCase(usuario.getNombre(), busquedaNormalizada)
-                                || contieneIgnoreCase(usuario.getCorreo(), busquedaNormalizada))
-                        .filter(usuario -> role.isBlank() || role.equals(usuario.getRole()))
-                        .filter(usuario -> estado.isBlank()
-                                || ("activos".equals(estado) == usuario.isActivo()))
-                        .filter(usuario -> verificacion.isBlank()
-                                || ("verificados".equals(verificacion) == usuario.isVerificado()))
-                        .filter(usuario -> desde == null || (usuario.getFechaRegistro() != null
-                                && !usuario.getFechaRegistro().toLocalDate().isBefore(desde)))
-                        .filter(usuario -> hasta == null || (usuario.getFechaRegistro() != null
-                                && !usuario.getFechaRegistro().toLocalDate().isAfter(hasta)))
-                        .sorted(Comparator.comparing(
-                                Usuario::getFechaRegistro,
-                                Comparator.nullsLast(Comparator.reverseOrder())))
-                        .toList()
-                : List.of();
-        long totalFiltrado = usuariosFiltrados.size();
-        int totalPaginas = Math.max(1, (int) Math.ceil((double) totalFiltrado / TAMANO_PAGINA));
-        int paginaSegura = Math.min(Math.max(page, 0), totalPaginas - 1);
-        int inicio = paginaSegura * TAMANO_PAGINA;
-        int fin = Math.min(inicio + TAMANO_PAGINA, usuariosFiltrados.size());
-        List<Usuario> usuarios = usuariosFiltrados.subList(inicio, fin);
+        List<Usuario> usuarios;
+        long totalUsuarios;
+        long totalFiltrado;
+        int totalPaginas;
+        int paginaSegura;
+        boolean listadoInicialSinFiltros = filtrosValidos && busqueda.isBlank() && role.isBlank()
+                && fechaDesde.isBlank() && fechaHasta.isBlank() && estado.isBlank()
+                && verificacion.isBlank();
+        if (listadoInicialSinFiltros) {
+            var paginaUsuarios = usuarioRepository.findPageBySistemaTransporte(
+                    sistemaActual, Math.max(page, 0), TAMANO_PAGINA);
+            totalUsuarios = paginaUsuarios.getTotalElements();
+            totalFiltrado = totalUsuarios;
+            totalPaginas = Math.max(1, paginaUsuarios.getTotalPages());
+            paginaSegura = Math.min(Math.max(page, 0), totalPaginas - 1);
+            if (paginaSegura != Math.max(page, 0)) {
+                paginaUsuarios = usuarioRepository.findPageBySistemaTransporte(
+                        sistemaActual, paginaSegura, TAMANO_PAGINA);
+            }
+            usuarios = paginaUsuarios.getContent();
+        } else {
+            String busquedaNormalizada = busqueda.toLowerCase(Locale.ROOT);
+            List<Usuario> usuariosSistema = usuarioRepository.findBySistemaTransporte(sistemaActual).stream()
+                    .filter(AdminController::esPersonalTransporte)
+                    .toList();
+            List<Usuario> usuariosFiltrados = filtrosValidos
+                    ? usuariosSistema.stream()
+                            .filter(usuario -> busquedaNormalizada.isBlank()
+                                    || contieneIgnoreCase(usuario.getNombre(), busquedaNormalizada)
+                                    || contieneIgnoreCase(usuario.getCorreo(), busquedaNormalizada))
+                            .filter(usuario -> role.isBlank() || role.equals(usuario.getRole()))
+                            .filter(usuario -> estado.isBlank()
+                                    || ("activos".equals(estado) == usuario.isActivo()))
+                            .filter(usuario -> verificacion.isBlank()
+                                    || ("verificados".equals(verificacion) == usuario.isVerificado()))
+                            .filter(usuario -> desde == null || (usuario.getFechaRegistro() != null
+                                    && !usuario.getFechaRegistro().toLocalDate().isBefore(desde)))
+                            .filter(usuario -> hasta == null || (usuario.getFechaRegistro() != null
+                                    && !usuario.getFechaRegistro().toLocalDate().isAfter(hasta)))
+                            .sorted(Comparator.comparing(
+                                    Usuario::getFechaRegistro,
+                                    Comparator.nullsLast(Comparator.reverseOrder())))
+                            .toList()
+                    : List.of();
+            totalUsuarios = usuariosSistema.size();
+            totalFiltrado = usuariosFiltrados.size();
+            totalPaginas = Math.max(1, (int) Math.ceil((double) totalFiltrado / TAMANO_PAGINA));
+            paginaSegura = Math.min(Math.max(page, 0), totalPaginas - 1);
+            int inicio = paginaSegura * TAMANO_PAGINA;
+            int fin = Math.min(inicio + TAMANO_PAGINA, usuariosFiltrados.size());
+            usuarios = usuariosFiltrados.subList(inicio, fin);
+        }
 
         model.addAttribute("usuarios", usuarios);
         model.addAttribute("currentPage", paginaSegura);
         model.addAttribute("totalPages", totalPaginas);
-        model.addAttribute("totalUsuarios", usuariosSistema.size());
+        model.addAttribute("totalUsuarios", totalUsuarios);
         model.addAttribute("sistemaActual", sistemaActual);
         boolean administradorGlobal = authentication.getAuthorities().stream()
                 .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));

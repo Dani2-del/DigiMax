@@ -85,6 +85,7 @@ public class AuthApiController {
     @GetMapping("/transport-directory")
     public ResponseEntity<List<TransportIdentity>> transportDirectory(
             @RequestHeader(value = HttpHeaders.AUTHORIZATION, required = false) String authorization,
+            @RequestParam(required = false) String role,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "100") int size) {
         if (page < 0 || size < 1 || size > 10000) {
@@ -94,19 +95,32 @@ public class AuthApiController {
         if (principal == null || !mayReadOperationalContacts(principal)) {
             return ResponseEntity.status(401).cacheControl(CacheControl.noStore()).build();
         }
-        List<TransportIdentity> identities = usuarios.findTransportIdentities(List.of(
-                        Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
-                        "USER", "MODERATOR", "CONDUCTOR"), PageRequest.of(page, size)).stream()
+        List<String> roles;
+        if (!StringUtils.hasText(role)) {
+            roles = List.of(Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR,
+                    "USER", "MODERATOR", "CONDUCTOR");
+        } else {
+            String normalizedRole = normalizeRole(role);
+            if (!List.of(Usuario.ROLE_USER, Usuario.ROLE_MODERATOR, Usuario.ROLE_CONDUCTOR)
+                    .contains(normalizedRole)) {
+                return ResponseEntity.badRequest().cacheControl(CacheControl.noStore()).build();
+            }
+            roles = List.of(normalizedRole, normalizedRole.substring("ROLE_".length()));
+        }
+        List<TransportIdentity> identities = usuarios.findTransportIdentities(
+                        roles, PageRequest.of(page, size)).stream()
                 .filter(usuario -> StringUtils.hasText(usuario.getId()))
                 .map(usuario -> new TransportIdentity(
-                        usuario.getId(), usuario.getCorreo(), normalizeRole(usuario.getRole()),
-                        usuario.getServicioAsignado()))
+                        usuario.getId(), usuario.getCorreo(), usuario.getNombre(),
+                        normalizeRole(usuario.getRole()), usuario.getServicioAsignado(),
+                        usuario.isActivo(), usuario.isVerificado(), usuario.getFechaRegistro(),
+                        usuario.getTelefono()))
                 .toList();
         return ResponseEntity.ok().cacheControl(CacheControl.noStore()).body(identities);
     }
 
     public ResponseEntity<List<TransportIdentity>> transportDirectory(String authorization) {
-        return transportDirectory(authorization, 0, 100);
+        return transportDirectory(authorization, null, 0, 100);
     }
 
     @PostMapping("/transport-identities")
@@ -195,6 +209,8 @@ public class AuthApiController {
     public record AdministrativeContact(String id, String email, String role) {
     }
 
-    public record TransportIdentity(String id, String email, String role, String serviceAssignment) {
+    public record TransportIdentity(
+            String id, String email, String name, String role, String serviceAssignment,
+            boolean active, boolean verified, java.time.LocalDateTime registeredAt, String phone) {
     }
 }

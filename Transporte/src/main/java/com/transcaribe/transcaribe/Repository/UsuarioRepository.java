@@ -10,6 +10,10 @@ import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.bson.Document;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -141,6 +145,39 @@ public class UsuarioRepository {
         return usuarios;
     }
 
+    public Page<Usuario> findPageBySistemaTransporte(
+            SistemaTransporte sistema, int page, int pageSize) {
+        if (sistema == null) {
+            return Page.empty();
+        }
+        Page<PerfilTransporte> profilePage = perfiles.findMembershipBySitmOrSistemaAsignado(
+                sistema, sistema, PageRequest.of(Math.max(page, 0), pageSize,
+                        Sort.by(Sort.Direction.ASC, "usuarioId")));
+        if (profilePage.isEmpty()) {
+            return new PageImpl<>(List.of(), profilePage.getPageable(), profilePage.getTotalElements());
+        }
+
+        Map<String, PerfilTransporte> profilesByUserId = new HashMap<>();
+        List<String> userIds = profilePage.getContent().stream()
+                .map(PerfilTransporte::getUsuarioId)
+                .filter(id -> id != null && !id.isBlank())
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return new PageImpl<>(List.of(), profilePage.getPageable(), profilePage.getTotalElements());
+        }
+        profilePage.getContent().forEach(profile ->
+                profilesByUserId.put(profile.getUsuarioId(), profile));
+        List<Usuario> pageUsers = acceso.findTransportUsers(userIds).stream()
+                .filter(identity -> identity.id() != null && profilesByUserId.containsKey(identity.id()))
+                .map(identity -> toUsuario(identity, profilesByUserId.get(identity.id())))
+                .filter(usuario -> Usuario.ROLE_USER.equals(usuario.getRole())
+                        || Usuario.ROLE_MODERATOR.equals(usuario.getRole())
+                        || Usuario.ROLE_CONDUCTOR.equals(usuario.getRole()))
+                .toList();
+        return new PageImpl<>(pageUsers, profilePage.getPageable(), profilePage.getTotalElements());
+    }
+
     /**
      * Conductores activos de un servicio. Consulta solo a los conductores del directorio,
      * en lugar de cargar todos los usuarios de Acceso como hacía findByRoleAndActivoTrue.
@@ -153,13 +190,19 @@ public class UsuarioRepository {
         if (guardado != null && guardado.expiraEn() > System.currentTimeMillis()) {
             return guardado.usuarios();
         }
-        List<String> conductorIds = acceso.findTransportDirectory().stream()
+        List<TransportIdentity> conductoresAcceso = acceso.findTransportDirectory(
+                        Usuario.ROLE_CONDUCTOR).stream()
                 .filter(identity -> Usuario.ROLE_CONDUCTOR.equals(identity.role()))
-                .map(TransportIdentity::id)
-                .filter(id -> id != null && !id.isBlank())
+                .filter(TransportIdentity::active)
+                .filter(identity -> identity.id() != null && !identity.id().isBlank())
                 .toList();
-        List<Usuario> conductores = List.copyOf(
-                findActiveConductoresBySistemaTransporte(sistema, conductorIds));
+        Map<String, PerfilTransporte> profilesByUserId = findProfilesForUsers(conductoresAcceso);
+        List<Usuario> conductores = List.copyOf(conductoresAcceso.stream()
+                .filter(identity -> belongsToSystem(
+                        identity, profilesByUserId.get(identity.id()), sistema))
+                .map(identity -> toUsuario(identity, profilesByUserId.get(identity.id())))
+                .filter(Usuario::isActivo)
+                .toList());
         cacheConductoresPorSistema.put(sistema,
                 new ListadoEnCache(System.currentTimeMillis() + CACHE_TTL_MILLIS, conductores));
         return conductores;
@@ -184,11 +227,11 @@ public class UsuarioRepository {
                 .toList();
         Map<String, PerfilTransporte> profilesByUserId =
                 findProfilesForUsers(usersWithProfileMembership);
-        List<String> userIds = identities.stream()
-                .filter(identity -> belongsToSystem(identity, profilesByUserId.get(identity.id()), sistema))
-                .map(TransportIdentity::id)
+        return identities.stream()
+                .filter(identity -> belongsToSystem(
+                        identity, profilesByUserId.get(identity.id()), sistema))
+                .map(identity -> toUsuario(identity, profilesByUserId.get(identity.id())))
                 .toList();
-        return userIds.isEmpty() ? List.of() : toUsuarios(acceso.findTransportUsers(userIds));
     }
 
     public Map<String, Long> countRolesBySistemaTransporte(SistemaTransporte sistema) {
@@ -441,6 +484,11 @@ public class UsuarioRepository {
     }
 
     private Usuario toUsuario(AccessUser identity, PerfilTransporte profile) {
+        if (profile == null) {
+            profile = new PerfilTransporte();
+            profile.setId(identity.id());
+            profile.setUsuarioId(identity.id());
+        }
         Usuario usuario = new Usuario();
         usuario.setId(identity.id());
         usuario.setCorreo(identity.email());
@@ -462,6 +510,13 @@ public class UsuarioRepository {
         usuario.setPreferenciasNotificacionRutas(profile.getPreferenciasNotificacionRutas());
         usuario.setBusAsignado(profile.getBusAsignado());
         return usuario;
+    }
+
+    private Usuario toUsuario(TransportIdentity identity, PerfilTransporte profile) {
+        AccessUser accessUser = new AccessUser(
+                identity.id(), identity.name(), identity.email(), identity.role(), identity.active(),
+                identity.verified(), identity.registeredAt(), identity.phone(), identity.serviceAssignment());
+        return toUsuario(accessUser, profile);
     }
 
     private SistemaTransporte sistemaAsignado(AccessUser identity, PerfilTransporte profile) {

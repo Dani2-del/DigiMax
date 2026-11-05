@@ -6,6 +6,8 @@ import java.util.Collection;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 import org.springframework.data.mongodb.repository.Query;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import com.transcaribe.transcaribe.Model.PerfilTransporte;
 import com.transcaribe.transcaribe.Model.SistemaTransporte;
@@ -19,6 +21,11 @@ public interface PerfilTransporteRepository extends MongoRepository<PerfilTransp
     @Query(value = "{ 'usuarioId': { '$in': ?0 } }",
             fields = "{ '_id': 1, 'usuarioId': 1, 'sitm': 1, 'sistema_asignado': 1 }")
     List<PerfilTransporte> findMembershipByUsuarioIdIn(Collection<String> usuarioIds);
+
+    @Query(value = "{ '$or': [ { 'sitm': ?0 }, { 'sistema_asignado': ?1 } ] }",
+            fields = "{ '_id': 1, 'usuarioId': 1, 'sitm': 1, 'sistema_asignado': 1 }")
+    Page<PerfilTransporte> findMembershipBySitmOrSistemaAsignado(
+            SistemaTransporte sitm, SistemaTransporte sistemaAsignado, Pageable pageable);
 
     @Query("{ 'tarjetas.numeroTarjeta': ?0 }")
     Optional<PerfilTransporte> findByNumeroTarjetaEnLista(String numeroTarjeta);
