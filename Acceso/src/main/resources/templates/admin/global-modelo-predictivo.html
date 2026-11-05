@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101f35">
   <title>Modelo predictivo — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261025-4)}">
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261105-1)}">
 </head>
-<body class="global-admin-page">
+<body class="global-admin-page global-model-page">
 <div class="global-admin-shell">
   <aside class="global-sidebar">
     <a class="global-brand" th:href="@{/admin/global}">
@@ -45,80 +45,60 @@
       </div>
     </section>
 
-    <section class="global-section" th:unless="${metricas == null}">
+    <section class="global-section model-section" th:unless="${metricas == null}">
 
-      <!-- Idea del modelo -->
-      <div class="audit-panel">
-        <h2>¿Qué hace este modelo?</h2>
-        <p>Mira lo que hizo cada pasajero en el pasado y estima si volverá a recargar saldo en los próximos 7 días.
-           Luego ordena a los pasajeros de más a menos probables.</p>
-        <p class="audit-note">Está entrenado con datos de prueba generados por el equipo. Muestra el patrón de esos datos,
-           no el comportamiento real de los pasajeros.</p>
-        <p>Semana de referencia: <strong th:text="${semanaReferencia}">—</strong></p>
-      </div>
-
-      <!-- Grupos de riesgo: dona + leyenda -->
-      <div class="audit-panel">
-        <h2>¿Cuántos pasajeros hay en cada grupo?</h2>
-        <div class="global-donut-layout">
-          <div class="global-donut" th:style="${donutStyle}" aria-hidden="true">
-            <div class="global-donut-hole">
-              <strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong>
-              <span>pasajeros</span>
-            </div>
-          </div>
-          <ul class="global-donut-legend" aria-label="Pasajeros por grupo de riesgo">
-            <li>
-              <span class="global-donut-swatch" style="--slice-color:#c2410c"></span>
-              <span class="global-donut-label"><strong>Alto</strong>
-                <small>Probablemente recargará la próxima semana</small></span>
-              <b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b>
-            </li>
-            <li>
-              <span class="global-donut-swatch" style="--slice-color:#d97706"></span>
-              <span class="global-donut-label"><strong>Medio</strong>
-                <small>Podría recargar, pero no es lo más probable</small></span>
-              <b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b>
-            </li>
-            <li>
-              <span class="global-donut-swatch" style="--slice-color:#94a3b8"></span>
-              <span class="global-donut-label"><strong>Bajo</strong>
-                <small>Es poco probable que recargue pronto</small></span>
-              <b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b>
-            </li>
-          </ul>
+      <div class="model-intro audit-panel">
+        <div>
+          <p class="model-kicker">PREDICCIÓN DE RECARGA · PRÓXIMOS 7 DÍAS</p>
+          <h2>Una lectura anticipada de la actividad</h2>
+          <p>La regresión logística usa el historial de recargas de Billetera y señales recientes para ordenar a los pasajeros según su probabilidad estimada de volver a recargar.</p>
+          <p class="model-source">Evaluación temporal con datos exportados de Atlas. El periodo de prueba es posterior al periodo de entrenamiento.</p>
         </div>
+        <div class="model-reference"><span>Semana proyectada</span><strong th:text="${semanaReferencia}">—</strong><small>Los grupos son posiciones relativas en esta población.</small></div>
       </div>
 
-      <!-- Comparacion: modelo vs regla simple -->
-      <div class="audit-panel">
-        <h2>¿El modelo le gana a una regla simple?</h2>
-        <p>La regla simple dice: "si recargó la semana pasada, volverá a recargar". Se compara con el modelo usando
-           el F1, un número que combina qué tan bien acierta y qué tan bien encuentra a los pasajeros que recargan.
-           Entre más alto, mejor.</p>
-        <div class="global-month-chart" role="img" aria-label="Comparación del F1 entre el modelo y la regla simple"
-             th:style="|grid-template-columns:repeat(${barrasF1.size()},minmax(120px,1fr))|">
-          <div class="global-month-column" th:each="b : ${barrasF1}">
-            <strong th:text="${b['valor']}">0</strong>
-            <div class="global-bar-track"><span class="global-bar" th:style="'height:' + ${b['porcentaje']} + '%;' + (${b['etiqueta']} == 'Modelo' ? 'background:#c2410c' : 'background:#94a3b8')"></span></div>
-            <small th:text="${b['etiqueta']}">Modelo</small>
+      <div class="model-kpis" aria-label="Métricas de evaluación">
+        <article class="model-kpi model-kpi-primary"><span>F1 del modelo</span><strong th:text="${#numbers.formatDecimal(metricas['f1'], 1, 3)}">0.231</strong><small>Equilibra precisión y recall</small></article>
+        <article class="model-kpi"><span>Precisión</span><strong th:text="|${#numbers.formatDecimal(metricas['precision'] * 100, 1, 1)}%|">16.6%</strong><small>Predicciones de recarga que acertaron</small></article>
+        <article class="model-kpi"><span>Recall</span><strong th:text="|${#numbers.formatDecimal(metricas['recall'] * 100, 1, 1)}%|">38.2%</strong><small>Recargas reales que logró detectar</small></article>
+        <article class="model-kpi"><span>AUC-ROC</span><strong th:text="${#numbers.formatDecimal(metricas['auc_roc'], 1, 4)}">0.7495</strong><small>Capacidad de ordenar positivos sobre negativos</small></article>
+        <article class="model-kpi"><span>AUC-PR</span><strong th:text="${#numbers.formatDecimal(metricas['auc_pr'], 1, 4)}">0.1588</strong><small>Útil cuando las recargas positivas son pocas</small></article>
+      </div>
+
+      <div class="model-analysis-grid">
+        <section class="audit-panel model-risk-panel">
+          <div class="model-panel-heading"><div><p class="model-kicker">SEGMENTACIÓN ACTUAL</p><h2>Pasajeros por nivel estimado</h2></div><span class="model-total" th:text="|${#numbers.formatInteger(total, 1, 'POINT')} pasajeros|">0 pasajeros</span></div>
+          <div class="global-donut-layout">
+            <div class="global-donut" th:style="${donutStyle}" role="img" th:attr="aria-label=|Distribución de ${total} pasajeros por nivel de riesgo|"><div class="global-donut-hole"><strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong><span>pasajeros</span></div></div>
+            <ul class="global-donut-legend" aria-label="Pasajeros por nivel estimado">
+              <li><span class="global-donut-swatch" style="--slice-color:#c2410c"></span><span class="global-donut-label"><strong>Alto · 10 %</strong><small>Mayor probabilidad estimada dentro del grupo</small></span><b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#d97706"></span><span class="global-donut-label"><strong>Medio · 30 %</strong><small>Siguiente grupo por probabilidad estimada</small></span><b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#94a3b8"></span><span class="global-donut-label"><strong>Bajo · 60 %</strong><small>Menor probabilidad estimada relativa</small></span><b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b></li>
+            </ul>
           </div>
-        </div>
+          <p class="model-footnote">Alto, medio y bajo son segmentos relativos: no garantizan que una persona recargue ni representan una probabilidad individual calibrada.</p>
+        </section>
+
+        <section class="audit-panel model-compare-panel">
+          <div class="model-panel-heading"><div><p class="model-kicker">PRUEBA TEMPORAL</p><h2>Frente a una regla sencilla</h2></div></div>
+          <p>La referencia marca como futuro recargador a quien recargó la semana anterior. Un F1 más alto indica mejor equilibrio entre aciertos y recargas detectadas.</p>
+          <div class="model-f1-chart" role="img" aria-label="Comparación del F1 del modelo y la regla simple" th:style="${estiloBarrasF1}">
+            <div class="model-f1-row"><span>Regresión logística</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasF1[0]['valor']}">0.231</strong></div>
+            <div class="model-f1-row"><span>Regla simple</span><div><i class="model-f1-bar is-baseline"></i></div><strong th:text="${barrasF1[1]['valor']}">0.128</strong></div>
+          </div>
+          <p class="model-footnote">Evaluación: 5 ene. – 19 oct. 2026 · prevalencia de recarga: 4,35 %.</p>
+        </section>
       </div>
 
-      <!-- Lo que significan las medidas -->
-      <div class="audit-panel">
-        <h2>¿Qué tan bien acierta el modelo?</h2>
-        <p class="audit-note">Medido con datos nuevos que el modelo nunca vio durante su ajuste.</p>
-        <ul>
-          <li><strong>Precisión:</strong> cuando predice que un pasajero recargará, acierta
-              <strong th:text="${#numbers.formatInteger(metricas['precision'] * 10, 1)}">2</strong> de cada 10 veces.</li>
-          <li><strong>Recall:</strong> de los pasajeros que sí recargaron, el modelo logra identificar
-              <strong th:text="${#numbers.formatInteger(metricas['recall'] * 10, 1)}">4</strong> de cada 10.</li>
-          <li><strong>AUC-ROC:</strong> qué tan bien separa a quienes recargan de quienes no.
-              Un 0,5 sería adivinar al azar y un 1 sería perfecto. Resultado: <strong th:text="${metricas['auc_roc']}">0</strong>.</li>
-        </ul>
-      </div>
+      <section class="audit-panel model-glossary">
+        <div><p class="model-kicker">CÓMO LEER LOS RESULTADOS</p><h2>Qué significa cada métrica</h2></div>
+        <div class="model-glossary-grid">
+          <p><strong>Precisión</strong><span>De quienes el modelo marcó, qué proporción recargó después.</span></p>
+          <p><strong>Recall</strong><span>De quienes sí recargaron, qué proporción encontró el modelo.</span></p>
+          <p><strong>AUC-ROC</strong><span>Qué tan bien ordena a quienes recargan por encima de quienes no; 0,5 equivale al azar.</span></p>
+          <p><strong>AUC-PR</strong><span>Resume precisión y recall y permite valorar mejor resultados con pocos positivos.</span></p>
+        </div>
+      </section>
 
     </section>
   </main>

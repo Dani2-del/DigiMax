@@ -4,7 +4,7 @@ en los 7 dias siguientes.
 - Solo usuarios ROLE_USER.
 - Una fila por usuario y por semana (cada lunes), desde que se registro.
 - Variables: solo usan recargas ANTERIORES a la fecha de la foto (sin mirar el futuro).
-- Etiqueta y: 1 si hubo recarga en (T, T+7 dias], 0 si no.
+- Etiqueta y: 1 si hubo una recarga exitosa de Billetera en (T, T+7 dias], 0 si no.
 Entrada:  usuarios_atlas.csv, eventos_atlas.csv  (en la misma carpeta)
 Salida:   tabla_usuario_semana.csv
 Requisitos: python -m pip install pandas numpy
@@ -15,7 +15,7 @@ import pandas as pd
 
 ARCHIVO_USUARIOS = "usuarios_atlas.csv"
 ARCHIVO_EVENTOS = "eventos_atlas.csv"
-SALIDA = "tabla_usuario_semana.csv"
+SALIDA = "tabla_usuario_semana_v2.csv"
 INICIO = "2024-01-01"
 FIN_ETIQUETA = "2026-10-29"   # ultima fecha con datos: la etiqueta necesita 7 dias futuros
 ESCALA = 10**10               # clave = indice_usuario * ESCALA + segundos (evita mezclar usuarios)
@@ -27,6 +27,8 @@ def main():
     ap.add_argument("--usuarios", default=ARCHIVO_USUARIOS)
     ap.add_argument("--eventos", default=ARCHIVO_EVENTOS)
     ap.add_argument("--salida", default=SALIDA)
+    ap.add_argument("--fin-etiqueta", default=FIN_ETIQUETA,
+                    help="ultimo dia con ventana futura completa (AAAA-MM-DD)")
     args = ap.parse_args()
     usuarios = pd.read_csv(args.usuarios)
     usuarios = usuarios[usuarios["rol"] == "ROLE_USER"].copy()
@@ -43,9 +45,12 @@ def main():
     e = e.sort_values(["uidx", "t"])
     claves = (e["uidx"].values * ESCALA + e["t"].values).astype(np.int64)
     fuente_movil = (e["fuente"].values == "movil")
+    claves_tarjeta = claves[e["fuente"].values == "billetera"]
 
-    semanas = pd.date_range(INICIO, FIN_ETIQUETA, freq="W-MON", tz="UTC")
-    semanas = semanas[semanas + pd.Timedelta(days=7) <= pd.Timestamp(FIN_ETIQUETA, tz="UTC") + pd.Timedelta(days=1)]
+    inicio = pd.Timestamp(INICIO, tz="UTC")
+    fin_etiqueta = pd.Timestamp(args.fin_etiqueta, tz="UTC")
+    semanas = pd.date_range(inicio, fin_etiqueta, freq="W-MON")
+    semanas = semanas[semanas + pd.Timedelta(days=7) <= fin_etiqueta + pd.Timedelta(days=1)]
 
     dia = 86400
     uidx = usuarios["uidx"].values
@@ -71,11 +76,26 @@ def main():
         rec_14_7 = cuenta(Ts - 14 * dia, Ts - 7 * dia)
         rec_30 = cuenta(Ts - 30 * dia, Ts)
         rec_90 = cuenta(Ts - 90 * dia, Ts)
+        rec_180 = cuenta(Ts - 180 * dia, Ts)
+        rec_365 = cuenta(Ts - 365 * dia, Ts)
+
+        tarjeta_7 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                     - np.searchsorted(claves_tarjeta, base + Ts - 7 * dia, side="right"))
+        tarjeta_30 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                      - np.searchsorted(claves_tarjeta, base + Ts - 30 * dia, side="right"))
+        tarjeta_90 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                      - np.searchsorted(claves_tarjeta, base + Ts - 90 * dia, side="right"))
+        tarjeta_180 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                       - np.searchsorted(claves_tarjeta, base + Ts - 180 * dia, side="right"))
+        tarjeta_365 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                       - np.searchsorted(claves_tarjeta, base + Ts - 365 * dia, side="right"))
 
         # Recargas moviles en los ultimos 30 dias (mismo conteo, solo fuente movil)
         ini = np.searchsorted(claves, base + Ts - 30 * dia, side="right")
         fin = np.searchsorted(claves, base + Ts, side="right")
         movil_30 = np.array([fuente_movil[a:b].sum() for a, b in zip(ini, fin)], dtype=np.int32)
+        ini_90 = np.searchsorted(claves, base + Ts - 90 * dia, side="right")
+        movil_90 = np.array([fuente_movil[a:b].sum() for a, b in zip(ini_90, fin)], dtype=np.int32)
 
         # Dias desde la ultima recarga (999 si nunca hubo)
         pos_fin = np.searchsorted(claves, base + Ts, side="right") - 1
@@ -85,8 +105,9 @@ def main():
 
         antiguedad = (Ts - reg_seg.values[mask]) // dia
 
-        # Etiqueta: hubo recarga en (T, T+7 dias]
-        y = (cuenta(Ts, Ts + 7 * dia) > 0).astype(np.int8)
+        # Las recargas moviles son señales auxiliares; no cuentan como recarga de tarjeta.
+        y = ((np.searchsorted(claves_tarjeta, base + Ts + 7 * dia, side="right")
+              - np.searchsorted(claves_tarjeta, base + Ts, side="right")) > 0).astype(np.int8)
 
         tabla = pd.DataFrame({
             "usuario_id": usuarios["usuario_id"].values[mask],
@@ -95,7 +116,15 @@ def main():
             "rec_7d_anterior": rec_14_7,
             "rec_30d": rec_30,
             "rec_90d": rec_90,
+            "rec_180d": rec_180,
+            "rec_365d": rec_365,
+            "tarjeta_7d": tarjeta_7,
+            "tarjeta_30d": tarjeta_30,
+            "tarjeta_90d": tarjeta_90,
+            "tarjeta_180d": tarjeta_180,
+            "tarjeta_365d": tarjeta_365,
             "movil_30d": movil_30,
+            "movil_90d": movil_90,
             "dias_desde_ultima": dias_ultima,
             "antiguedad_dias": antiguedad,
             "tendencia_7d": rec_7 - rec_14_7,
@@ -105,6 +134,8 @@ def main():
         primera = False
         filas_total += len(tabla)
         positivas += int(y.sum())
+        if (len(tabla) and T.weekday() == 0 and (T.isocalendar().week % 13 == 0)):
+            print(f"  Semanas procesadas: {T.strftime('%Y-%m-%d')} | filas acumuladas: {filas_total}", flush=True)
 
     print(f"Filas: {filas_total}")
     print(f"Semanas: {len(semanas)} | Proporcion y=1: {positivas / max(filas_total, 1):.3f}")

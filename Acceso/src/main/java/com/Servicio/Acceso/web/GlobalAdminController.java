@@ -79,7 +79,9 @@ public class GlobalAdminController {
         model.addAttribute("conteoBajo", bajo);
         model.addAttribute("total", alto + medio + bajo);
         model.addAttribute("donutStyle", estiloDonutRiesgo(alto, medio, bajo));
-        model.addAttribute("barrasF1", barrasF1(metricas));
+        List<Map<String, Object>> barras = barrasF1(metricas);
+        model.addAttribute("barrasF1", barras);
+        model.addAttribute("estiloBarrasF1", estiloBarrasF1(barras));
 
 
         org.bson.Document referencia = mongoTemplate.findOne(new Query(), org.bson.Document.class, coleccion);
@@ -109,6 +111,11 @@ public class GlobalAdminController {
         barras.add(barra("Modelo", f1, f1 / maximo * 100));
         barras.add(barra("Regla simple", base, base / maximo * 100));
         return barras;
+    }
+
+    private static String estiloBarrasF1(List<Map<String, Object>> barras) {
+        return "--f1-modelo:" + barras.get(0).get("porcentaje")
+                + "%;--f1-base:" + barras.get(1).get("porcentaje") + "%";
     }
 
     private static Map<String, Object> barra(String etiqueta, double valor, double porcentaje) {
