@@ -32,6 +32,7 @@ import com.Servicio.Billetera.model.EstadoTarjeta;
 import com.Servicio.Billetera.model.MovimientoBilletera;
 import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.service.BilleteraService;
+import com.Servicio.Billetera.service.LectorClient;
 import com.Servicio.Billetera.service.MailDeliveryException;
 import com.Servicio.Billetera.service.SaldoInsuficienteException;
 import com.Servicio.Billetera.service.VerificacionTarjetaService;
@@ -52,14 +53,17 @@ public class BilleteraController {
     private final BilleteraService billeteraService;
     private final VerificacionTarjetaService verificacionService;
     private final String accesoUrl;
+    private final LectorClient lectorClient;
 
     public BilleteraController(
             BilleteraService billeteraService,
             VerificacionTarjetaService verificacionService,
-            @Value("${app.acceso.base-url}") String accesoUrl) {
+            @Value("${app.acceso.base-url}") String accesoUrl,
+            LectorClient lectorClient) {
         this.billeteraService = billeteraService;
         this.verificacionService = verificacionService;
         this.accesoUrl = accesoUrl;
+        this.lectorClient = lectorClient;
     }
 
     @GetMapping("/")
@@ -68,6 +72,28 @@ public class BilleteraController {
         model.addAttribute("identity", identity);
         model.addAttribute("wallet", wallet.orElse(null));
         model.addAttribute("walletExists", wallet.isPresent());
+        LectorClient.Profile rfidProfile = null;
+        boolean lectorDisponible = false;
+        String lectorEstado = null;
+        if (wallet.isPresent()) {
+            try {
+                rfidProfile = lectorClient.profile(identity.id());
+                lectorDisponible = true;
+            } catch (RestClientResponseException exception) {
+                lectorDisponible = exception.getStatusCode().value() == 404;
+                if (!lectorDisponible) {
+                    lectorEstado = "Lector respondió HTTP " + exception.getStatusCode().value()
+                            + ". Verifica que ambos servicios tengan la misma LECTOR_API_KEY.";
+                }
+            } catch (ResourceAccessException | IllegalStateException exception) {
+                lectorEstado = exception instanceof IllegalStateException
+                        ? exception.getMessage()
+                        : "No se pudo conectar con Lector. Revisa LECTOR_BASE_URL y que el puerto 8086 esté activo.";
+            }
+        }
+        model.addAttribute("rfidProfile", rfidProfile);
+        model.addAttribute("lectorDisponible", lectorDisponible);
+        model.addAttribute("lectorEstado", lectorEstado);
         AccionVerificacionTarjeta pendingAction =
                 verificacionService.accionPendiente(identity.id()).orElse(null);
         model.addAttribute("verificacionPendiente", pendingAction);
@@ -89,6 +115,46 @@ public class BilleteraController {
         model.addAttribute("accesoUrl", accesoUrl);
         model.addAttribute("adminUrl", "/admin/dashboard");
         return "billetera";
+    }
+
+    @PostMapping("/rfid/registrar")
+    public String registerRfid(@AuthenticationPrincipal AuthenticatedIdentity identity,
+            RedirectAttributes redirectAttributes) {
+        try {
+            BilleteraUniversal wallet = billeteraService.obtener(identity.id());
+            if (wallet.getEstado() != EstadoTarjeta.ACTIVA) {
+                throw new IllegalStateException("Activa tu tarjeta Digitrans antes de registrar una RFID.");
+            }
+            LectorClient.Profile profile = lectorClient.claim(identity.id());
+            redirectAttributes.addFlashAttribute("mensaje", "Tarjeta RFID " + profile.uid()
+                    + " vinculada a tu perfil.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getStatusCode().value() == 409
+                    ? "No hay tarjetas RFID disponibles. Consulta al administrador del proyecto."
+                    : "Lector respondió con un error (HTTP " + exception.getStatusCode().value() + ").");
+        } catch (ResourceAccessException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage() == null
+                    ? "No se pudo conectar con Lector." : exception.getMessage());
+        } catch (BilleteraService.WalletNotFoundException exception) {
+            redirectAttributes.addFlashAttribute("error", "Activa primero tu tarjeta Digitrans.");
+        }
+        return "redirect:/";
+    }
+
+    @PostMapping("/rfid/desvincular")
+    public String unlinkRfid(@AuthenticationPrincipal AuthenticatedIdentity identity,
+            RedirectAttributes redirectAttributes) {
+        try {
+            lectorClient.unlink(identity.id());
+            redirectAttributes.addFlashAttribute("mensaje",
+                    "Tarjeta RFID desvinculada. Quedó disponible para otro usuario.");
+        } catch (RestClientResponseException exception) {
+            redirectAttributes.addFlashAttribute("error", "No se pudo desvincular la tarjeta RFID.");
+        } catch (ResourceAccessException | IllegalStateException exception) {
+            redirectAttributes.addFlashAttribute("error", exception.getMessage() == null
+                    ? "No se pudo conectar con Lector." : exception.getMessage());
+        }
+        return "redirect:/";
     }
 
     @PostMapping("/tarjeta/crear")

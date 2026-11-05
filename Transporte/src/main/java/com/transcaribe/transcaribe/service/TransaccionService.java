@@ -47,6 +47,24 @@ public class TransaccionService {
         return repositorioTransacciones.save(transaccion);
     }
 
+    public Transaccion registrarViajeRfid(Usuario usuario, double monto, String numeroTarjetaUniversal,
+            String operationId, SistemaTransporte sistemaTransporte) {
+        if (usuario == null || usuario.getId() == null) {
+            throw new IllegalArgumentException("No se encontró la cuenta del viaje RFID.");
+        }
+        Optional<Transaccion> existing = repositorioTransacciones
+                .findByUsuarioIdAndOperationId(usuario.getId(), operationId);
+        if (existing.isPresent()) return existing.get();
+        Transaccion transaccion = new Transaccion(monto, LocalDateTime.now(),
+                "Pasaje simulado con tarjeta RFID", usuario);
+        transaccion.setMetodoPago("RFID");
+        transaccion.setTarjetaTranscaribe(numeroTarjetaUniversal);
+        transaccion.setOperationId(operationId);
+        transaccion.setCantidadPasajes(1);
+        transaccion.setSistemaTransporte(sistemaTransporte);
+        return repositorioTransacciones.save(transaccion);
+    }
+
     public List<Transaccion> obtenerTransaccionesPorUsuario(Usuario usuario) {
         return usuario == null || usuario.getId() == null
                 ? List.of()

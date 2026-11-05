@@ -12,6 +12,8 @@ import com.transcaribe.transcaribe.service.CatalogoRutasTransmilenioService;
 import com.transcaribe.transcaribe.service.CatalogoRutasTransmetroService;
 import com.transcaribe.transcaribe.service.PlataformaService;
 import com.transcaribe.transcaribe.service.EmailService;
+import com.transcaribe.transcaribe.service.LectorClient;
+import com.transcaribe.transcaribe.service.TransaccionService;
 import com.transcaribe.transcaribe.Util.TarifaTranscaribe;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -47,6 +49,12 @@ public class BusController {
 
     @Autowired
     private EmailService emailService;
+
+    @Autowired
+    private LectorClient lectorClient;
+
+    @Autowired
+    private TransaccionService transaccionService;
 
     @PostMapping("/pagar/{usuarioId}/{busId}")
     @ResponseBody
@@ -117,7 +125,9 @@ public class BusController {
     }
     @PostMapping("/simular-viaje")
     public String simularViaje(@RequestParam String usuarioId,
-                               @RequestParam String numeroTarjeta, 
+                               @RequestParam(required = false) String numeroTarjeta,
+                               @RequestParam(defaultValue = "NORMAL") String modoPago,
+                               @RequestParam(required = false) String uidRfid,
                                @RequestParam(required = false) String operationId,
                                RedirectAttributes redirectAttributes,
                                HttpSession session) {
@@ -140,6 +150,23 @@ public class BusController {
             String safeOperationId = operationId == null || operationId.isBlank()
                     ? UUID.randomUUID().toString()
                     : operationId;
+            if ("RFID".equalsIgnoreCase(modoPago)) {
+                if (uidRfid == null || uidRfid.isBlank()) {
+                    redirectAttributes.addFlashAttribute("error", "Presenta una tarjeta RFID para simular el viaje.");
+                    return "redirect:/menu";
+                }
+                double fare = TarifaTranscaribe.paraSistema(sistema);
+                var ride = lectorClient.charge(uidRfid, usuarioId, safeOperationId, sistema.name(),
+                        java.math.BigDecimal.valueOf(fare));
+                var usuario = usuarioRepository.findById(usuarioId)
+                        .orElseThrow(() -> new RuntimeException("Usuario de Transporte no encontrado."));
+                transaccionService.registrarViajeRfid(usuario, ride.charged().doubleValue(), ride.cardNumber(),
+                        safeOperationId, sistema);
+                redirectAttributes.addFlashAttribute("mensaje", "Viaje RFID aprobado por $"
+                        + String.format(java.util.Locale.forLanguageTag("es-CO"), "%,.0f", fare)
+                        + ". Saldo Billetera: $" + ride.balance());
+                return "redirect:/menu";
+            }
             String resultado;
             if (sistema == SistemaTransporte.TRANSMILENIO) {
                 RutaTransmilenio ruta = catalogoRutasTransmilenioService.obtenerRutaAleatoria().orElse(null);

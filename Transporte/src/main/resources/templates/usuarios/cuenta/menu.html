@@ -217,6 +217,14 @@
           <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}" />
           <input type="hidden" name="usuarioId" th:value="${usuario.id}" />
           <input type="hidden" name="operationId" th:value="${rideOperationId}" />
+          <fieldset class="ride-payment-mode">
+            <legend>Forma de pago</legend>
+            <label><input type="radio" name="modoPago" value="NORMAL" checked> Tarjeta de transporte o Digitrans</label>
+            <label th:if="${billeteraDisponible and !billeteraCongelada}">
+              <input type="radio" name="modoPago" value="RFID"> Tarjeta física RFID
+            </label>
+          </fieldset>
+          <div id="normal-card-payment">
           <label for="rideCard">Tarjeta Digitrans</label>
           <select id="rideCard" name="numeroTarjeta" class="select-bus" required>
             <option value="" disabled selected>Selecciona una tarjeta</option>
@@ -237,12 +245,19 @@
           <a th:if="${billeteraDisponible}" th:href="${billeteraUrl}" target="_blank" rel="noopener">
             Consultar o cargar saldo de tu tarjeta Digitrans
           </a>
+          </div>
+          <div id="rfid-card-payment" hidden>
+            <label for="rfidUid">Presenta tu tarjeta RFID</label>
+            <input id="rfidUid" name="uidRfid" maxlength="40" autocomplete="off"
+                   placeholder="Conecta el lector y acerca la tarjeta" disabled>
+            <small>El lector USB escribe el UID en este campo. Lector valida el titular y cobra en Billetera.</small>
+          </div>
           <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}"
-                  onclick="return confirm('¿Confirmas la simulación del viaje por $' + new Intl.NumberFormat('es-CO').format(Number(this.dataset.fare)) + '?')">
+                  data-normal-label="Simular viaje" data-rfid-label="Leer tarjeta y simular viaje">
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M2.5 10h13m-4.5-4.5L15.5 10 11 14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            Simular viaje · $<span th:text="${#numbers.formatDecimal(valorPasaje, 0, 'POINT', 0, 'COMMA')}">3.550</span>
+            <span id="ride-submit-label">Simular viaje</span> · $<span th:text="${#numbers.formatDecimal(valorPasaje, 0, 'POINT', 0, 'COMMA')}">3.550</span>
           </button>
         </form>
       </section>
@@ -286,5 +301,33 @@
   </div>
   <div th:replace="~{fragments/aviso-administrativo :: modal}"></div>
     <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+  <script>
+    const rideForm = document.querySelector('.ride-form');
+    if (rideForm) {
+      const modeInputs = rideForm.querySelectorAll('input[name="modoPago"]');
+      const normalPayment = document.querySelector('#normal-card-payment');
+      const rfidPayment = document.querySelector('#rfid-card-payment');
+      const normalCard = document.querySelector('#rideCard');
+      const rfidUid = document.querySelector('#rfidUid');
+      const label = document.querySelector('#ride-submit-label');
+      const submit = rideForm.querySelector('.ride-submit');
+      const updateMode = () => {
+        const rfid = rideForm.querySelector('input[name="modoPago"]:checked').value === 'RFID';
+        normalPayment.hidden = rfid;
+        rfidPayment.hidden = !rfid;
+        normalCard.disabled = rfid;
+        normalCard.required = !rfid;
+        rfidUid.disabled = !rfid;
+        rfidUid.required = rfid;
+        label.textContent = rfid ? submit.dataset.rfidLabel : submit.dataset.normalLabel;
+        if (rfid) rfidUid.focus();
+      };
+      modeInputs.forEach(input => input.addEventListener('change', updateMode));
+      rideForm.addEventListener('submit', event => {
+        const fare = new Intl.NumberFormat('es-CO').format(Number(submit.dataset.fare));
+        if (!window.confirm(`¿Confirmas la simulación del viaje por $${fare}?`)) event.preventDefault();
+      });
+    }
+  </script>
 </body>
 </html>

@@ -9,6 +9,7 @@ $mongoDatabases = [ordered]@{
     ACCESO_MONGODB_URI = 'digitrans_acceso'
     TRANSPORTE_MONGODB_URI = 'digitrans_transporte'
     BILLETERA_MONGODB_URI = 'digitrans_billetera'
+    LECTOR_MONGODB_URI = 'digitrans_lector'
     RECARGAS_MONGODB_URI = 'digitrans_recargas'
 }
 
@@ -40,6 +41,13 @@ $services = @(
         MainClass = 'com.transcaribe.transcaribe.DigitransMaxApplication'
         Folder = 'Transporte'
         Command = '.\mvnw.cmd spring-boot:run'
+    },
+    @{
+        Name = 'Lector'
+        Port = 8086
+        MainClass = 'com.Servicio.Lector.LectorApplication'
+        Folder = 'Lector'
+        Command = '.\gradlew.bat --no-daemon bootRun'
     },
     @{
         Name = 'RecargasMovil'
@@ -117,12 +125,32 @@ try {
     }
     $env:MAIL_SERVICE_API_KEY = $mailApiKey
 
+    $lectorApiKey = $env:LECTOR_API_KEY
+    if ([string]::IsNullOrWhiteSpace($lectorApiKey)) {
+        $lectorApiKey = [Environment]::GetEnvironmentVariable('LECTOR_API_KEY', 'User')
+    }
+    if ([string]::IsNullOrWhiteSpace($lectorApiKey)) {
+        $lectorApiKey = [guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
+    }
+    $env:LECTOR_API_KEY = $lectorApiKey
+    $env:LECTOR_BASE_URL = 'http://localhost:8086'
+
     $env:SPRING_PROFILES_ACTIVE = "db-$DatabaseProfile"
     if ($DatabaseProfile -eq 'atlas') {
         foreach ($variable in $mongoDatabases.Keys) {
             $uri = [Environment]::GetEnvironmentVariable($variable, 'User')
             if ([string]::IsNullOrWhiteSpace($uri)) {
                 $uri = [Environment]::GetEnvironmentVariable($variable, 'Process')
+            }
+            if ($variable -eq 'LECTOR_MONGODB_URI' -and [string]::IsNullOrWhiteSpace($uri)) {
+                $accessUri = [Environment]::GetEnvironmentVariable('ACCESO_MONGODB_URI', 'Process')
+                if ([string]::IsNullOrWhiteSpace($accessUri)) {
+                    $accessUri = [Environment]::GetEnvironmentVariable('ACCESO_MONGODB_URI', 'User')
+                }
+                if (-not [string]::IsNullOrWhiteSpace($accessUri)) {
+                    $uri = ([regex]'^(mongodb\+srv://[^/]+/)[^/?]+').Replace(
+                        $accessUri, '${1}digitrans_lector', 1)
+                }
             }
             $expectedDatabase = [regex]::Escape($mongoDatabases[$variable])
             $atlasUriPattern = "^mongodb\+srv://[^/]+/$expectedDatabase(?:\?|$)"
@@ -208,7 +236,7 @@ try {
         Write-Warning "No se encontró publicar_predicciones.py en $carpetaModelo. Se omite el modelo predictivo."
     }
 
-    Write-Host "Los seis módulos están iniciados usando MongoDB $DatabaseProfile."
+    Write-Host "Los siete módulos están iniciados usando MongoDB $DatabaseProfile."
 }
 catch {
     Write-Error $_

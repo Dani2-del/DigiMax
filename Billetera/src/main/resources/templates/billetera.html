@@ -13,6 +13,7 @@
         <strong>Digitrans</strong>
     </a>
     <a th:if="${walletExists}" href="#mi-tarjeta">Mi tarjeta</a>
+    <a th:if="${walletExists}" href="#tarjeta-rfid">Tarjeta RFID</a>
     <a th:if="${walletExists}" href="#diseno-seguridad">Diseño y seguridad</a>
     <a th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" href="#cargar-saldo">Cargar saldo</a>
     <a th:if="${walletExists}" href="#movimientos">Movimientos</a>
@@ -84,6 +85,37 @@
             <div class="balance"
                  th:text="${'$ ' + #numbers.formatDecimal(wallet.saldo, 0, 'COMMA', 2, 'POINT')}"></div>
         </div>
+    </section>
+
+    <section th:if="${walletExists}" id="tarjeta-rfid" class="panel">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">MÓDULO LECTOR</p>
+                <h2>Tarjeta RFID</h2>
+            </div>
+            <span class="section-icon" aria-hidden="true">▣</span>
+        </div>
+        <div th:if="${rfidProfile != null}">
+            <p>Tu tarjeta física está vinculada a esta cuenta.</p>
+            <p class="number" th:text="${rfidProfile.uid()}"></p>
+            <form th:action="@{/rfid/desvincular}" method="post">
+                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit" class="button-secondary">Desvincular tarjeta RFID</button>
+            </form>
+        </div>
+        <div th:if="${rfidProfile == null and lectorDisponible}">
+            <p class="muted">Puedes pedir una de las tarjetas físicas que el administrador agregó al inventario de Lector.</p>
+            <form th:action="@{/rfid/registrar}" method="post">
+                <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <button type="submit">Registrar una tarjeta RFID disponible</button>
+            </form>
+        </div>
+        <p th:if="${rfidProfile == null and !lectorDisponible}" class="muted">
+            El módulo Lector no está disponible ahora. Tu Billetera sigue funcionando; inténtalo cuando Lector esté iniciado.
+        </p>
+        <p th:if="${rfidProfile == null and !lectorDisponible and lectorEstado != null}"
+           class="muted" th:text="${lectorEstado}"></p>
+        <p class="muted">La tarjeta RFID identifica tu perfil en Lector. Los cobros usan el saldo de esta Billetera.</p>
     </section>
 
     <section th:if="${walletExists}" id="diseno-seguridad" class="card-controls">

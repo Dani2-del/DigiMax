@@ -11,6 +11,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 @Configuration
 public class SecurityConfig {
 
@@ -34,21 +36,36 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http,
             @Value("${app.acceso.base-url}") String accesoUrl,
             @Value("${app.cookie.secure:false}") boolean secureCookie,
+            @Value("${app.lector.api-key:}") String lectorApiKey,
             RemoteAccessAuthenticationFilter authenticationFilter) throws Exception {
         http
                 .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**", "/internal/**", "/logout"))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/error", "/error/**").permitAll()
-                        .requestMatchers("/internal/**").permitAll()
+                        .requestMatchers("/internal/**").hasAuthority("SERVICE_LECTOR")
                         .requestMatchers("/admin/tarjetas-desactivadas/**")
                         .hasAnyAuthority("MODERATOR_BILLETERA", "ROLE_ADMIN")
                         .requestMatchers("/admin/**").hasAnyAuthority("MODERATOR_BILLETERA", "ROLE_ADMIN")
                         .anyRequest().authenticated())
                 .addFilterBefore(authenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(new ServiceKeyAuthenticationFilter(lectorApiKey),
+                        RemoteAccessAuthenticationFilter.class)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
                 .exceptionHandling(exception -> exception.authenticationEntryPoint(
-                        (request, response, authException) -> response.sendRedirect(accesoUrl + "/login"))
-                        .accessDeniedPage("/error/403"))
+                        (request, response, authException) -> {
+                            if (request.getServletPath().startsWith("/internal/")) {
+                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
+                            } else {
+                                response.sendRedirect(accesoUrl + "/login");
+                            }
+                        })
+                        .accessDeniedHandler((request, response, accessDeniedException) -> {
+                            if (request.getServletPath().startsWith("/internal/")) {
+                                response.sendError(HttpServletResponse.SC_FORBIDDEN);
+                            } else {
+                                response.sendRedirect("/error/403");
+                            }
+                        }))
                 .logout(logout -> logout
                         .logoutUrl("/logout")
                         .addLogoutHandler((request, response, authentication) -> {
