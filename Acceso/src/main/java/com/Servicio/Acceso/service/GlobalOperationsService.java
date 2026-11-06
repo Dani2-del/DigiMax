@@ -13,7 +13,11 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 
 import org.bson.Document;
 import org.bson.conversions.Bson;
@@ -51,6 +55,11 @@ public class GlobalOperationsService {
     private final MongoDatabase transporteDatabase;
     private final MongoDatabase billeteraDatabase;
     private final MongoDatabase recargasDatabase;
+    private final ExecutorService transactionReaders = Executors.newFixedThreadPool(3, task -> {
+        Thread thread = new Thread(task, "global-transaction-reader");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public GlobalOperationsService(
             @Value("${app.global.mongo.transporte-uri}") String transporteUri,
@@ -71,26 +80,50 @@ public class GlobalOperationsService {
                         .map(service -> service.toUpperCase(Locale.ROOT))
                         .filter(SUPPORTED_SERVICES::contains)
                         .collect(java.util.stream.Collectors.toUnmodifiableSet());
-        List<GlobalTransaction> transactions = new ArrayList<>();
-        Map<String, String> unavailable = new LinkedHashMap<>();
+        List<CompletableFuture<SourceTransactions>> reads = new ArrayList<>();
 
         if (selected.contains("TRANSCARIBE") || selected.contains("TRANSMILENIO")
                 || selected.contains("TRANSMETRO")) {
-            readTransportTransactions(transactions, unavailable, selected, from, through);
+            reads.add(readInParallel((transactions, unavailable) ->
+                    readTransportTransactions(transactions, unavailable, selected, from, through)));
         }
         if (selected.contains("BILLETERA") || selected.contains("TRANSCARIBE")
                 || selected.contains("TRANSMILENIO") || selected.contains("TRANSMETRO")
                 || selected.contains("RECARGAS_MOVIL")) {
-            readWalletMovements(transactions, unavailable, selected, from, through);
+            reads.add(readInParallel((transactions, unavailable) ->
+                    readWalletMovements(transactions, unavailable, selected, from, through)));
         }
         if (selected.contains("RECARGAS_MOVIL")) {
-            readMobileRecharges(transactions, unavailable, from, through);
+            reads.add(readInParallel((transactions, unavailable) ->
+                    readMobileRecharges(transactions, unavailable, from, through)));
+        }
+
+        List<GlobalTransaction> transactions = new ArrayList<>();
+        Map<String, String> unavailable = new LinkedHashMap<>();
+        for (CompletableFuture<SourceTransactions> read : reads) {
+            SourceTransactions result = read.join();
+            transactions.addAll(result.transactions());
+            unavailable.putAll(result.unavailable());
         }
 
         List<GlobalTransaction> unique = deduplicate(transactions);
         unique.sort(Comparator.comparing(
                 GlobalTransaction::occurredAt, Comparator.nullsLast(Comparator.reverseOrder())));
         return new TransactionSnapshot(List.copyOf(unique), Map.copyOf(unavailable));
+    }
+
+    private CompletableFuture<SourceTransactions> readInParallel(
+            BiConsumer<List<GlobalTransaction>, Map<String, String>> reader) {
+        return CompletableFuture.supplyAsync(() -> {
+            List<GlobalTransaction> transactions = new ArrayList<>();
+            Map<String, String> unavailable = new LinkedHashMap<>();
+            reader.accept(transactions, unavailable);
+            return new SourceTransactions(transactions, unavailable);
+        }, transactionReaders);
+    }
+
+    private record SourceTransactions(
+            List<GlobalTransaction> transactions, Map<String, String> unavailable) {
     }
 
     public List<String> mobileRechargeUserIds() {
@@ -198,9 +231,12 @@ public class GlobalOperationsService {
         if (!walletDateFilters.isEmpty()) {
             pipeline.add(new Document("$match", Filters.or(walletDateFilters)));
         }
+        Document rawMovements = new Document("$ifNull", List.of("$movimientos", "$movements"));
+        Document projectedMovements = new Document("$filter", new Document("input", rawMovements)
+                .append("as", "movement")
+                .append("cond", movementRangeCondition(from, through)));
         pipeline.add(new Document("$project", new Document("_id", 1)
-                .append("_movements", new Document("$ifNull",
-                        List.of("$movimientos", "$movements")))));
+                .append("_movements", projectedMovements)));
         pipeline.add(new Document("$unwind", "$_movements"));
         if (!movementDateFilters.isEmpty()) {
             pipeline.add(new Document("$match", Filters.or(movementDateFilters)));
@@ -310,6 +346,27 @@ public class GlobalOperationsService {
             stringBounds.add(Filters.lt(field, upperBound.atStartOfDay().toString()));
         }
         return Filters.or(Filters.and(dateBounds), Filters.and(stringBounds));
+    }
+
+    private static Document movementRangeCondition(LocalDate from, LocalDate through) {
+        if (from == null && through == null) {
+            return new Document("$literal", true);
+        }
+        Document rawDate = new Document("$ifNull", List.of("$$movement.fecha", "$$movement.date"));
+        Document convertedDate = new Document("$convert", new Document("input", rawDate)
+                .append("to", "date")
+                .append("onError", null)
+                .append("onNull", null));
+        List<Document> conditions = new ArrayList<>();
+        if (from != null) {
+            Date lowerBound = Date.from(from.minusDays(1).atStartOfDay().toInstant(ZoneOffset.UTC));
+            conditions.add(new Document("$gte", List.of(convertedDate, lowerBound)));
+        }
+        if (through != null) {
+            Date upperBound = Date.from(through.plusDays(2).atStartOfDay().toInstant(ZoneOffset.UTC));
+            conditions.add(new Document("$lt", List.of(convertedDate, upperBound)));
+        }
+        return conditions.size() == 1 ? conditions.get(0) : new Document("$and", conditions);
     }
 
     static List<GlobalTransaction> deduplicate(List<GlobalTransaction> transactions) {
@@ -423,6 +480,7 @@ public class GlobalOperationsService {
 
     @PreDestroy
     public void close() {
+        transactionReaders.shutdownNow();
         transporteClient.close();
         billeteraClient.close();
         recargasClient.close();

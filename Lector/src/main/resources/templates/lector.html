@@ -4,42 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Lector RFID | Digitrans</title>
-    <link rel="stylesheet" th:href="@{/css/lector.css}">
+    <link rel="stylesheet" th:href="@{/css/lector.css(v=20261106-3)}">
 </head>
 <body>
+<nav class="wallet-section-nav" aria-label="Secciones del panel">
+    <a class="wallet-section-brand" th:href="${adminPanelUrl}" aria-label="Digitrans, panel de Billetera">
+        <span class="wallet-section-mark" aria-hidden="true">D</span>
+        <strong>Digitrans</strong>
+    </a>
+    <a th:href="${adminPanelUrl}">Panel moderador</a>
+    <a th:href="${usuarioBilleteraUrl}">Vista usuario</a>
+    <a th:href="${serviciosUrl}">Volver a servicios</a>
+</nav>
 <main class="page">
     <header class="hero">
         <div class="brand-mark">D</div>
         <div>
             <p class="eyebrow">DIGITRANS · MÓDULO DE DISPOSITIVO</p>
             <h1>Lector RFID</h1>
-            <p>Acerca una tarjeta al lector USB para simular el cobro de un pasaje.</p>
+            <p>Registra tarjetas RFID y consulta sus titulares y estados.</p>
         </div>
-        <span class="local-badge">Ejecución local</span>
+        <div class="hero-actions">
+            <a class="exit-button" th:href="${adminPanelUrl}">Salir</a>
+            <span class="local-badge">Ejecución local</span>
+        </div>
     </header>
-
-    <section class="panel scan-panel">
-        <div>
-            <p class="eyebrow">SIMULADOR DE VALIDACIÓN</p>
-            <h2>Presenta tu tarjeta</h2>
-            <p class="muted">Haz clic en el campo y acerca la tarjeta. También puedes escribir el UID y pulsar Enter.</p>
-        </div>
-        <form id="scan-form">
-            <label for="scan-uid">UID de la tarjeta</label>
-            <label for="scan-system">Sistema de transporte</label>
-            <select id="scan-system" name="sistema">
-                <option value="TRANSCARIBE">Transcaribe · $3.900</option>
-                <option value="TRANSMILENIO">TransMilenio · $3.550</option>
-                <option value="TRANSMETRO">Transmetro · $3.700</option>
-            </select>
-            <div class="input-row">
-                <input id="scan-uid" name="uid" maxlength="40" autocomplete="off"
-                       placeholder="Esperando lectura…" required autofocus>
-                <button type="submit">Leer y cobrar</button>
-            </div>
-        </form>
-        <div id="scan-result" class="result" role="status" aria-live="polite">Lector listo.</div>
-    </section>
 
     <section class="panel">
         <p class="eyebrow">CONFIGURACIÓN DE DEMOSTRACIÓN</p>
@@ -57,21 +46,108 @@
     <section class="panel">
         <div class="section-heading">
             <div><p class="eyebrow">TARJETAS REGISTRADAS</p><h2>Tarjetas vinculadas</h2></div>
-            <button id="refresh-cards" class="button-light" type="button">Actualizar</button>
+            <div class="section-actions">
+                <a class="button-light-link" href="#historial-duenos">Historial de dueños</a>
+                <button id="refresh-cards" class="button-light" type="button">Actualizar</button>
+            </div>
+        </div>
+        <div class="card-filters" th:if="${!#lists.isEmpty(tarjetas)}">
+            <label>Buscar UID, propietario o ID
+                <input id="card-search" type="search" placeholder="Escribe para filtrar">
+            </label>
+            <label>Estado
+                <select id="card-state">
+                    <option value="">Todos</option>
+                    <option value="Asignada">Asignada</option>
+                    <option value="Disponible">Disponible</option>
+                    <option value="Inactiva">Inactiva</option>
+                </select>
+            </label>
+            <label>Desde
+                <input id="card-from" type="date">
+            </label>
+            <label>Hasta
+                <input id="card-to" type="date">
+            </label>
         </div>
         <div class="table-wrap">
             <table>
                 <thead><tr><th>UID</th><th>Propietario</th><th>Estado</th><th>Registrada / vinculada</th></tr></thead>
                 <tbody>
-                <tr th:each="card : ${tarjetas}">
+                <tr th:each="card : ${tarjetas}" data-card-row
+                    th:attr="data-uid=${card.uid},data-owner=${card.usuarioId},data-name=${card.usuarioId != null ? propietariosPorId.get(card.usuarioId) : ''},data-state=${!card.activa ? 'Inactiva' : (card.disponible ? 'Disponible' : 'Asignada')},data-date=${#temporals.format(card.vinculadaEn, 'yyyy-MM-dd')}">
                     <td class="mono" th:text="${card.uid}"></td>
-                    <td class="mono" th:text="${card.usuarioId != null ? card.usuarioId : '—'}"></td>
+                    <td>
+                        <span class="owner-name" th:if="${card.usuarioId != null}"
+                              th:text="${propietariosPorId[card.usuarioId] != null ? propietariosPorId[card.usuarioId] : card.usuarioId}"></span>
+                        <span class="mono owner-id" th:if="${card.usuarioId != null}" th:text="${card.usuarioId}"></span>
+                        <span th:if="${card.usuarioId == null}">—</span>
+                    </td>
                     <td><span class="status" th:text="${!card.activa ? 'Inactiva' : (card.disponible ? 'Disponible' : 'Asignada')}"></span></td>
                     <td th:text="${#temporals.format(card.vinculadaEn, 'dd/MM/yyyy HH:mm')}"></td>
                 </tr>
                 <tr th:if="${#lists.isEmpty(tarjetas)}"><td colspan="4" class="empty">Aún no hay tarjetas vinculadas.</td></tr>
+                <tr id="card-no-results" th:if="${!#lists.isEmpty(tarjetas)}" hidden><td colspan="4" class="empty">No hay tarjetas para estos filtros.</td></tr>
                 </tbody>
             </table>
+        </div>
+        <div class="pagination" th:if="${!#lists.isEmpty(tarjetas)}" aria-label="Paginaci&#243;n de tarjetas">
+            <button id="previous-page" class="button-light page-arrow" type="button" aria-label="P&#225;gina anterior">&#8592;</button>
+            <span id="page-indicator" aria-live="polite"></span>
+            <button id="next-page" class="button-light page-arrow" type="button" aria-label="P&#225;gina siguiente">&#8594;</button>
+        </div>
+    </section>
+    <section id="historial-duenos" class="panel history-panel">
+        <div class="section-heading">
+            <div>
+                <p class="eyebrow">TRAZABILIDAD</p>
+                <h2>Historial de dueños</h2>
+                <p class="muted">Consulta las vinculaciones y desvinculaciones de cada tarjeta.</p>
+            </div>
+        </div>
+        <div class="history-filters" th:if="${!#lists.isEmpty(historialPropietarios)}">
+            <label>Buscar UID, propietario o ID
+                <input id="history-search" type="search" placeholder="Escribe para filtrar">
+            </label>
+            <label>Movimiento
+                <select id="history-action">
+                    <option value="">Todos</option>
+                    <option value="Vinculada">Vinculada</option>
+                    <option value="Desvinculada">Desvinculada</option>
+                    <option value="Vínculo inicial">Vínculo inicial</option>
+                </select>
+            </label>
+            <label>Desde
+                <input id="history-from" type="date">
+            </label>
+            <label>Hasta
+                <input id="history-to" type="date">
+            </label>
+        </div>
+        <p class="history-note">El historial se conserva desde que se habilitó el registro de cambios. Las tarjetas que ya estaban vinculadas aparecen con su vínculo inicial.</p>
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>UID</th><th>Propietario</th><th>Movimiento</th><th>Fecha</th></tr></thead>
+                <tbody id="history-rows">
+                <tr th:each="event : ${historialPropietarios}" data-history-row
+                    th:attr="data-uid=${event.uid},data-owner=${event.usuarioId},data-name=${propietariosPorId[event.usuarioId]},data-action=${event.accion},data-date=${#temporals.format(event.fecha, 'yyyy-MM-dd')}">
+                    <td class="mono" th:text="${event.uid}"></td>
+                    <td>
+                        <span class="owner-name" th:text="${propietariosPorId[event.usuarioId] != null ? propietariosPorId[event.usuarioId] : event.usuarioId}"></span>
+                        <span class="mono owner-id" th:text="${event.usuarioId}"></span>
+                    </td>
+                    <td><span class="status" th:text="${event.accion}"></span></td>
+                    <td th:text="${#temporals.format(event.fecha, 'dd/MM/yyyy HH:mm')}"></td>
+                </tr>
+                <tr id="history-empty" th:if="${#lists.isEmpty(historialPropietarios)}"><td colspan="4" class="empty">Aún no hay cambios de propietario registrados.</td></tr>
+                <tr id="history-no-results" hidden><td colspan="4" class="empty">No hay resultados para estos filtros.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" th:if="${!#lists.isEmpty(historialPropietarios)}" aria-label="Paginación del historial">
+            <button id="history-previous" class="button-light page-arrow" type="button" aria-label="Página anterior">&#8592;</button>
+            <span id="history-page-indicator" aria-live="polite"></span>
+            <button id="history-next" class="button-light page-arrow" type="button" aria-label="Página siguiente">&#8594;</button>
         </div>
     </section>
     <footer>El módulo Lector administra los UID. Billetera procesa los saldos y los movimientos.</footer>
@@ -81,30 +157,6 @@
         target.textContent = text;
         target.className = `result ${ok ? 'success' : 'failure'}`;
     };
-    const scanForm = document.querySelector('#scan-form');
-    const scanInput = document.querySelector('#scan-uid');
-    scanForm.addEventListener('submit', async event => {
-        event.preventDefault();
-        const target = document.querySelector('#scan-result');
-        const uid = scanInput.value.trim();
-        if (!uid) return;
-        message(target, 'Procesando lectura…', true);
-        try {
-            const sistema = document.querySelector('#scan-system').value;
-            const response = await fetch('/api/rfid/lecturas', {
-                method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({uid, sistema})
-            });
-            const data = await response.json();
-            if (!response.ok) throw new Error(data.message || 'No se pudo procesar la tarjeta.');
-            message(target, `${data.message} Cobro: $${Number(data.charged).toLocaleString('es-CO')} · Saldo: $${Number(data.balance).toLocaleString('es-CO')}`, true);
-        } catch (error) {
-            message(target, error.message, false);
-        } finally {
-            scanInput.value = '';
-            scanInput.focus();
-        }
-    });
-
     document.querySelector('#inventory-form').addEventListener('submit', async event => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -125,6 +177,110 @@
     });
 
     document.querySelector('#refresh-cards').addEventListener('click', () => window.location.reload());
+
+    const cardRows = [...document.querySelectorAll('[data-card-row]')];
+    const pageSize = 5;
+    let currentPage = 0;
+    let filteredCards = cardRows;
+    const previousPage = document.querySelector('#previous-page');
+    const nextPage = document.querySelector('#next-page');
+    const pageIndicator = document.querySelector('#page-indicator');
+    const cardNoResults = document.querySelector('#card-no-results');
+    const cardSearch = document.querySelector('#card-search');
+    const cardState = document.querySelector('#card-state');
+    const cardFrom = document.querySelector('#card-from');
+    const cardTo = document.querySelector('#card-to');
+    const renderPage = () => {
+        cardRows.forEach((row, index) => {
+            row.hidden = true;
+        });
+        filteredCards.slice(currentPage * pageSize, (currentPage + 1) * pageSize)
+            .forEach(row => { row.hidden = false; });
+        if (cardNoResults) cardNoResults.hidden = filteredCards.length > 0;
+        if (!pageIndicator) return;
+        const pageCount = Math.max(1, Math.ceil(filteredCards.length / pageSize));
+        const firstCard = currentPage * pageSize + 1;
+        const lastCard = Math.min((currentPage + 1) * pageSize, filteredCards.length);
+        pageIndicator.textContent = `${filteredCards.length ? firstCard : 0}-${lastCard} de ${filteredCards.length}`;
+        previousPage.disabled = currentPage === 0;
+        nextPage.disabled = currentPage >= pageCount - 1;
+    };
+    const filterCards = () => {
+        const query = cardSearch?.value.trim().toLocaleLowerCase('es') || '';
+        const state = cardState?.value || '';
+        const from = cardFrom?.value || '';
+        const to = cardTo?.value || '';
+        filteredCards = cardRows.filter(row => {
+            const haystack = [row.dataset.uid, row.dataset.owner, row.dataset.name]
+                .filter(Boolean).join(' ').toLocaleLowerCase('es');
+            return (!query || haystack.includes(query))
+                && (!state || row.dataset.state === state)
+                && (!from || row.dataset.date >= from)
+                && (!to || row.dataset.date <= to);
+        });
+        currentPage = 0;
+        renderPage();
+    };
+    [cardSearch, cardState, cardFrom, cardTo].forEach(control => {
+        control?.addEventListener('input', filterCards);
+        control?.addEventListener('change', filterCards);
+    });
+    previousPage?.addEventListener('click', () => {
+        if (currentPage > 0) { currentPage--; renderPage(); }
+    });
+    nextPage?.addEventListener('click', () => {
+        if ((currentPage + 1) * pageSize < filteredCards.length) { currentPage++; renderPage(); }
+    });
+    renderPage();
+
+    const historyRows = [...document.querySelectorAll('[data-history-row]')];
+    const historySearch = document.querySelector('#history-search');
+    const historyAction = document.querySelector('#history-action');
+    const historyFrom = document.querySelector('#history-from');
+    const historyTo = document.querySelector('#history-to');
+    const historyPrevious = document.querySelector('#history-previous');
+    const historyNext = document.querySelector('#history-next');
+    const historyPageIndicator = document.querySelector('#history-page-indicator');
+    const historyNoResults = document.querySelector('#history-no-results');
+    let historyPage = 0;
+    let filteredHistory = historyRows;
+    const renderHistory = () => {
+        const query = historySearch?.value.trim().toLocaleLowerCase('es') || '';
+        const action = historyAction?.value || '';
+        const from = historyFrom?.value || '';
+        const to = historyTo?.value || '';
+        filteredHistory = historyRows.filter(row => {
+            const haystack = [row.dataset.uid, row.dataset.owner, row.dataset.name]
+                .filter(Boolean).join(' ').toLocaleLowerCase('es');
+            return (!query || haystack.includes(query))
+                && (!action || row.dataset.action === action)
+                && (!from || row.dataset.date >= from)
+                && (!to || row.dataset.date <= to);
+        });
+        const historyPageCount = Math.max(1, Math.ceil(filteredHistory.length / pageSize));
+        historyPage = Math.min(historyPage, historyPageCount - 1);
+        historyRows.forEach(row => { row.hidden = true; });
+        filteredHistory.slice(historyPage * pageSize, (historyPage + 1) * pageSize)
+            .forEach(row => { row.hidden = false; });
+        if (historyNoResults) historyNoResults.hidden = filteredHistory.length > 0;
+        if (!historyPageIndicator) return;
+        const first = filteredHistory.length ? historyPage * pageSize + 1 : 0;
+        const last = Math.min((historyPage + 1) * pageSize, filteredHistory.length);
+        historyPageIndicator.textContent = `${first}-${last} de ${filteredHistory.length}`;
+        historyPrevious.disabled = historyPage === 0;
+        historyNext.disabled = historyPage >= historyPageCount - 1;
+    };
+    [historySearch, historyAction, historyFrom, historyTo].forEach(control => {
+        control?.addEventListener('input', () => { historyPage = 0; renderHistory(); });
+        control?.addEventListener('change', () => { historyPage = 0; renderHistory(); });
+    });
+    historyPrevious?.addEventListener('click', () => {
+        if (historyPage > 0) { historyPage--; renderHistory(); }
+    });
+    historyNext?.addEventListener('click', () => {
+        if ((historyPage + 1) * pageSize < filteredHistory.length) { historyPage++; renderHistory(); }
+    });
+    renderHistory();
 </script>
 </body>
 </html>

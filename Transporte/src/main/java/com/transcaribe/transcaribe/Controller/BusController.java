@@ -19,6 +19,7 @@ import com.transcaribe.transcaribe.Util.TarifaTranscaribe;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.client.RestClientResponseException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -229,6 +230,14 @@ public class BusController {
                 redirectAttributes.addFlashAttribute("error", resultado + " ❌");
             }
 
+        } catch (RestClientResponseException e) {
+            String responseBody = e.getResponseBodyAsString();
+            if (responseBody.contains("no está vinculada a una cuenta")
+                    || responseBody.contains("pertenece a otra cuenta")) {
+                redirectAttributes.addFlashAttribute("error", "La tarjeta no está asociada a tu cuenta.");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Error en la simulación: " + e.getMessage());
+            }
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", "Error en la simulación: " + e.getMessage());
         }

@@ -327,7 +327,16 @@
         if (rfid) rfidUid.focus();
       };
       modeInputs.forEach(input => input.addEventListener('change', updateMode));
+      rfidUid.addEventListener('keydown', event => {
+        if (event.key !== 'Enter'
+            || rideForm.querySelector('input[name="modoPago"]:checked').value !== 'RFID'
+            || !rfidUid.value.trim()) return;
+        event.preventDefault();
+        rideForm.requestSubmit();
+      });
       rideForm.addEventListener('submit', event => {
+        const rfid = rideForm.querySelector('input[name="modoPago"]:checked').value === 'RFID';
+        if (rfid) return;
         const fare = new Intl.NumberFormat('es-CO').format(Number(submit.dataset.fare));
         if (!window.confirm(`¿Confirmas la simulación del viaje por $${fare}?`)) event.preventDefault();
       });

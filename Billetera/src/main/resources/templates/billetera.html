@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${rfidProfile != null ? 'Tarjeta RFID | Digitrans' : 'Tarjeta universal | Digitrans'}">Tarjeta Digitrans</title>
+    <title th:text="${rfidProfile != null ? 'Tarjeta Digitrans (RFID) | Digitrans' : 'Tarjeta universal | Digitrans'}">Tarjeta Digitrans</title>
     <link rel="stylesheet" th:href="@{/css/billetera.css(v=20261027-1)}">
 </head>
 <body>
@@ -13,7 +13,7 @@
         <strong>Digitrans</strong>
     </a>
     <a th:if="${walletExists}" href="#mi-tarjeta">Mi tarjeta</a>
-    <a th:if="${walletExists}" href="#tarjeta-rfid">Tarjeta RFID</a>
+    <a th:if="${walletExists}" href="#tarjeta-rfid">Tarjeta Digitrans (RFID)</a>
     <a th:if="${walletExists}" href="#diseno-seguridad">Diseño y seguridad</a>
     <a th:if="${walletExists and wallet.estado.name() == 'ACTIVA'}" href="#cargar-saldo">Cargar saldo</a>
     <a th:if="${walletExists}" href="#movimientos">Movimientos</a>
@@ -93,7 +93,7 @@
         <div class="section-heading">
             <div>
                 <p class="eyebrow">MÓDULO LECTOR</p>
-                <h2>Tarjeta RFID</h2>
+                <h2>Tarjeta Digitrans (RFID)</h2>
             </div>
             <span class="section-icon" aria-hidden="true">▣</span>
         </div>
@@ -416,7 +416,7 @@
     const autoReviewForms = [...document.querySelectorAll("[data-auto-review-form]")];
     autoReviewForms.forEach((form) => {
         const label = form.querySelector("[data-auto-review-label]");
-        let remainingSeconds = 12;
+        let remainingSeconds = 10;
         const counter = window.setInterval(() => {
             remainingSeconds -= 1;
             label.textContent = `Revisión automática en ${remainingSeconds}s`;

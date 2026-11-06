@@ -127,13 +127,14 @@ class AuthApiControllerTest {
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsExactly(new AuthApiController.TransportIdentity(
-                "user-1", "persona@example.com", Usuario.ROLE_USER, null));
+                "user-1", "persona@example.com", "Persona", Usuario.ROLE_USER,
+                null, true, false, target.getFechaRegistro(), null));
         verify(usuarios, never()).findAll();
     }
 
     @Test
     void rejectsInvalidTransportDirectoryPage() {
-        var response = controller.transportDirectory("invalid", -1, 100);
+        var response = controller.transportDirectory("invalid", null, -1, 100);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(usuarios, never()).findTransportIdentities(
@@ -154,10 +155,10 @@ class AuthApiControllerTest {
                 org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(PageRequest.of(0, 10000))))
                 .thenReturn(List.of());
 
-        var response = controller.transportDirectory("Bearer token-valido", 0, 10000);
+        var response = controller.transportDirectory("Bearer token-valido", null, 0, 10000);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-        var invalidResponse = controller.transportDirectory("invalid", 0, 10001);
+        var invalidResponse = controller.transportDirectory("invalid", null, 0, 10001);
         assertThat(invalidResponse.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         verify(usuarios).findTransportIdentities(
                 org.mockito.ArgumentMatchers.anyList(), org.mockito.ArgumentMatchers.eq(PageRequest.of(0, 10000)));

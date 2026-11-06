@@ -81,6 +81,14 @@
                 <p>Exporta movimientos de Billetera con columnas y filtros seleccionables.</p>
                 <a class="wallet-tool-action" th:href="@{/admin/reportes}">Generar reporte <b aria-hidden="true">→</b></a>
             </article>
+            <article class="wallet-tool-card">
+                <span class="wallet-tool-icon is-archive" aria-hidden="true">RFID</span>
+                <h3>Tarjetas (RFID)</h3>
+                <p>Abre el lector RFID para registrar tarjetas y revisar las lecturas.</p>
+                <a class="wallet-tool-action" th:href="${lectorUrl}" target="_blank" rel="noopener noreferrer">
+                    Abrir lector <b aria-hidden="true">↗</b>
+                </a>
+            </article>
         </div>
     </section>
     <div th:replace="~{fragments/admin-wallet-footer :: servicesFooter}"></div>

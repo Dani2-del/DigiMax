@@ -4,10 +4,12 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.Id;
+import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.Indexed;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "recargas_movil")
+@CompoundIndex(name = "recargas_estado_fecha_idx", def = "{'estado': 1, 'fecha': 1}")
 public class RecargaMovil {
 
     public static final String STATUS_PROCESSING = "PROCESANDO";

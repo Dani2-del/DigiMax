@@ -15,6 +15,9 @@
             <h1>Tarjetas desactivadas</h1>
             <p class="welcome">Registro de tarjetas históricas y trazabilidad del saldo transferido.</p>
         </div>
+        <div class="header-links">
+            <a class="button-secondary" th:href="@{/admin/dashboard}">Salir</a>
+        </div>
     </header>
     <section id="tarjetas-desactivadas" class="panel">
         <p class="muted">
@@ -46,6 +49,25 @@
                 </tbody>
             </table>
         </div>
+        <nav class="wallet-movement-pagination" th:if="${firstCard > 0}"
+             aria-label="Paginación de tarjetas desactivadas">
+            <a th:if="${hasPreviousPage}" class="movement-page-arrow"
+               th:href="@{/admin/tarjetas-desactivadas(page=${pageIndex - 1})}">
+                <span aria-hidden="true">←</span> Anteriores
+            </a>
+            <span th:unless="${hasPreviousPage}" class="movement-page-arrow is-disabled"
+                  aria-disabled="true">← Anteriores</span>
+            <span>
+                Mostrando <strong th:text="${firstCard}">1</strong>–<strong th:text="${lastCard}">10</strong>
+                · Página <strong th:text="${pageIndex + 1}">1</strong>
+            </span>
+            <a th:if="${hasNextPage}" class="movement-page-arrow"
+               th:href="@{/admin/tarjetas-desactivadas(page=${pageIndex + 1})}">
+                Siguientes <span aria-hidden="true">→</span>
+            </a>
+            <span th:unless="${hasNextPage}" class="movement-page-arrow is-disabled"
+                  aria-disabled="true">Siguientes →</span>
+        </nav>
     </section>
 </main>
 </body>

@@ -12,6 +12,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.bson.types.ObjectId;
+import org.bson.Document;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -213,16 +214,31 @@ public class BilleteraService {
         return wallet;
     }
 
-    public List<TarjetaDesactivadaAdmin> tarjetasDesactivadasAdmin() {
-        return billeteras.findAll().stream()
-                .flatMap(wallet -> wallet.getTarjetasDesactivadas().stream()
-                        .map(card -> new TarjetaDesactivadaAdmin(
-                                wallet.getUsuarioId(), card.getNumeroTarjeta(),
-                                card.getSaldoAlDesactivar(), card.getDiseno(),
-                                card.getDesactivadaEn(), card.isSaldoTransferido())))
-                .sorted(Comparator.comparing(TarjetaDesactivadaAdmin::desactivadaEn,
-                        Comparator.nullsLast(Comparator.reverseOrder())))
-                .toList();
+    public ArchivedCardPage tarjetasDesactivadasAdmin(int page, int pageSize) {
+        int safePage = Math.max(0, page);
+        int safePageSize = Math.max(1, pageSize);
+        Aggregation aggregation = Aggregation.newAggregation(
+                BilleteraUniversal.class,
+                Aggregation.unwind("tarjetasDesactivadas"),
+                Aggregation.sort(Sort.by(Sort.Direction.DESC, "tarjetasDesactivadas.desactivadaEn")
+                        .and(Sort.by(Sort.Direction.ASC, "_id"))
+                        .and(Sort.by(Sort.Direction.ASC, "tarjetasDesactivadas.numeroTarjeta"))),
+                Aggregation.skip((long) safePage * safePageSize),
+                Aggregation.limit((long) safePageSize + 1),
+                Aggregation.project()
+                        .and("_id").as("usuarioId")
+                        .and("tarjetasDesactivadas.numeroTarjeta").as("numeroTarjeta")
+                        .and("tarjetasDesactivadas.saldoAlDesactivar").as("saldoAlDesactivar")
+                        .and("tarjetasDesactivadas.diseno").as("diseno")
+                        .and("tarjetasDesactivadas.desactivadaEn").as("desactivadaEn")
+                        .and("tarjetasDesactivadas.saldoTransferido").as("saldoTransferido"));
+        List<TarjetaDesactivadaAdmin> results = mongoOperations.aggregate(
+                aggregation, BilleteraUniversal.class, TarjetaDesactivadaAdmin.class).getMappedResults();
+        boolean hasNext = results.size() > safePageSize;
+        List<TarjetaDesactivadaAdmin> cards = hasNext
+                ? List.copyOf(results.subList(0, safePageSize))
+                : results;
+        return new ArchivedCardPage(cards, safePage, safePage > 0, hasNext);
     }
 
     public List<BilleteraUniversal> billeterasAdministrativas() {
@@ -357,12 +373,20 @@ public class BilleteraService {
                 ? new Criteria()
                 : new Criteria().andOperator(filters.toArray(Criteria[]::new));
 
-        Aggregation countAggregation = Aggregation.newAggregation(
-                BilleteraUniversal.class,
-                Aggregation.match(criteria),
-                Aggregation.unwind("movimientos"),
-                Aggregation.match(criteria),
-                Aggregation.count().as("total"));
+        boolean unfiltered = filters.isEmpty();
+        Aggregation countAggregation = unfiltered
+                ? Aggregation.newAggregation(
+                        BilleteraUniversal.class,
+                        rawStage(new Document("$project", new Document("movementCount",
+                                new Document("$size", new Document("$ifNull",
+                                        List.of("$movimientos", List.of())))))),
+                        Aggregation.group().sum("movementCount").as("total"))
+                : Aggregation.newAggregation(
+                        BilleteraUniversal.class,
+                        Aggregation.match(criteria),
+                        Aggregation.unwind("movimientos"),
+                        Aggregation.match(criteria),
+                        Aggregation.count().as("total"));
         MovementCount count = mongoOperations.aggregate(
                 countAggregation, BilleteraUniversal.class, MovementCount.class).getUniqueMappedResult();
         long total = count == null ? 0 : count.total();
@@ -371,45 +395,45 @@ public class BilleteraService {
         int safePageSize = Math.max(1, pageSize);
         int totalPages = (int) Math.ceil((double) total / safePageSize);
         int pageIndex = Math.min(safePage, Math.max(0, totalPages - 1));
-        Aggregation pageAggregation = Aggregation.newAggregation(
-                BilleteraUniversal.class,
-                Aggregation.match(criteria),
-                Aggregation.unwind("movimientos"),
-                Aggregation.match(criteria),
-                Aggregation.sort(Sort.by(Sort.Direction.DESC, "movimientos.fecha")
-                        .and(Sort.by(Sort.Direction.ASC, "_id"))
-                        .and(Sort.by(Sort.Direction.ASC, "movimientos.operacionId"))),
-                Aggregation.skip((long) pageIndex * safePageSize),
-                Aggregation.limit(safePageSize),
-                Aggregation.project()
-                        .and("_id").as("userId")
-                        .and("movimientos").as("movement"));
+        Aggregation pageAggregation = unfiltered
+                ? Aggregation.newAggregation(
+                        BilleteraUniversal.class,
+                        Aggregation.unwind("movimientos"),
+                        Aggregation.sort(Sort.by(Sort.Direction.DESC, "movimientos.fecha")
+                                .and(Sort.by(Sort.Direction.ASC, "_id"))
+                                .and(Sort.by(Sort.Direction.ASC, "movimientos.operacionId"))),
+                        Aggregation.skip((long) pageIndex * safePageSize),
+                        Aggregation.limit(safePageSize),
+                        Aggregation.project().and("_id").as("userId").and("movimientos").as("movement"))
+                : Aggregation.newAggregation(
+                        BilleteraUniversal.class,
+                        Aggregation.match(criteria),
+                        Aggregation.unwind("movimientos"),
+                        Aggregation.match(criteria),
+                        Aggregation.sort(Sort.by(Sort.Direction.DESC, "movimientos.fecha")
+                                .and(Sort.by(Sort.Direction.ASC, "_id"))
+                                .and(Sort.by(Sort.Direction.ASC, "movimientos.operacionId"))),
+                        Aggregation.skip((long) pageIndex * safePageSize),
+                        Aggregation.limit(safePageSize),
+                        Aggregation.project().and("_id").as("userId").and("movimientos").as("movement"));
         List<MovementDocument> movements = mongoOperations.aggregate(
                 pageAggregation, BilleteraUniversal.class, MovementDocument.class).getMappedResults();
         return new MovementPage(total, pageIndex, movements);
     }
 
+    private static org.springframework.data.mongodb.core.aggregation.AggregationOperation rawStage(
+            Document stage) {
+        return context -> stage;
+    }
+
     public List<String> tiposMovimientoAdministrativos() {
-        return mongoOperations.getCollection("billeteras_universales")
-                .distinct("movimientos.tipo", String.class)
-                .into(new ArrayList<>()).stream()
-                .filter(value -> value != null && !value.isBlank())
-                .sorted().toList();
+        return List.of("ABONO", "ABONO_PENDIENTE", "ABONO_RECHAZADO", "AJUSTE_ADMIN",
+                "CAMBIO_ESTADO", "CONSUMO", "RETIRO_ADMIN");
     }
 
     public List<String> serviciosMovimientoAdministrativos() {
-        return mongoOperations.getCollection("billeteras_universales")
-                .distinct("movimientos.servicio", String.class)
-                .into(new ArrayList<>()).stream()
-                .filter(value -> value != null && !value.isBlank())
-                .collect(java.util.stream.Collectors.collectingAndThen(
-                        java.util.stream.Collectors.toCollection(java.util.TreeSet::new),
-                        values -> {
-                            values.addAll(List.of(
-                                    "Billetera", "Otros", "Paquetes y recargas", "Soporte Billetera",
-                                    "Transcaribe", "Transmetro", "TransMilenio", "Transporte"));
-                            return List.copyOf(values);
-                        }));
+        return List.of("Billetera", "Otros", "Paquetes y recargas", "Soporte Billetera",
+                "Transcaribe", "Transmetro", "TransMilenio", "Transporte");
     }
 
     private static Criteria serviceCriteria(String service) {
@@ -632,7 +656,7 @@ public class BilleteraService {
     }
 
     public void revisarCargasPendientesVencidas() {
-        LocalDateTime eligibleSince = LocalDateTime.now().minusSeconds(12);
+        LocalDateTime eligibleSince = LocalDateTime.now().minusSeconds(10);
         Query query = Query.query(Criteria.where("movimientos").elemMatch(
                         Criteria.where("tipo").is(TOP_UP_PENDING)
                                 .and("fecha").lte(eligibleSince)));
@@ -957,6 +981,13 @@ public class BilleteraService {
             DisenoTarjeta diseno,
             LocalDateTime desactivadaEn,
             boolean saldoTransferido) {
+    }
+
+    public record ArchivedCardPage(
+            List<TarjetaDesactivadaAdmin> cards,
+            int pageIndex,
+            boolean hasPrevious,
+            boolean hasNext) {
     }
 
     public record DashboardSummary(

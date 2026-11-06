@@ -13,6 +13,7 @@ Requisitos: python -m pip install pandas numpy scikit-learn pymongo
 Uso:        python publicar_predicciones.py
 """
 import os
+import argparse
 from datetime import datetime, timezone
 from urllib.parse import urlsplit
 
@@ -21,12 +22,12 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 
-ARCHIVO = "tabla_usuario_semana_v2.csv"
+ARCHIVO = "tabla_usuario_semana_v3.csv"
 SALIDA_PRED = "predicciones_recarga.csv"
 SALIDA_MET = "modelo_metricas.csv"
 ARCHIVO_EVALUACION = "evaluacion_final.csv"
 OBJETIVO = "recarga_billetera_en_7_dias"
-VERSION_MODELO = "logistica_historial_365d_v2"
+VERSION_MODELO = "logistica_historial_transporte_v3"
 
 
 def validar_uri_atlas(uri):
@@ -50,7 +51,8 @@ def validar_uri_atlas(uri):
 VARIABLES = ["rec_7d", "rec_7d_anterior", "rec_30d", "rec_90d",
              "rec_180d", "rec_365d", "tarjeta_7d", "tarjeta_30d", "tarjeta_90d",
              "tarjeta_180d", "tarjeta_365d", "movil_30d", "movil_90d",
-             "dias_desde_ultima", "antiguedad_dias", "tendencia_7d"]
+             "viaje_7d", "viaje_30d", "viaje_90d", "viaje_365d",
+             "dias_desde_ultimo_viaje", "dias_desde_ultima", "antiguedad_dias", "tendencia_7d"]
 ENTRENAMIENTO = ("2024-01-01", "2025-12-15")   # entrenamiento + validacion
 ULTIMA_SEMANA_REFERENCIA = None                # None = la ultima semana de la tabla
 PORC_ALTO = 0.10                               # 10 % de pasajeros con mayor riesgo
@@ -67,6 +69,10 @@ def transformar_variables(X):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--prefijo", default="digitrans",
+                    help="prefijo de la base de Acceso donde se publican predicciones")
+    args = ap.parse_args()
     t = pd.read_csv(ARCHIVO, usecols=["usuario_id", "semana"] + VARIABLES + ["y"], parse_dates=["semana"])
     tr = t[(t["semana"] >= ENTRENAMIENTO[0]) & (t["semana"] <= ENTRENAMIENTO[1])]
     X_tr = tr[VARIABLES].values.astype(np.float32)
@@ -135,7 +141,7 @@ def main():
     if uri:
         validar_uri_atlas(uri)
         from pymongo import MongoClient, ReplaceOne
-        db = MongoClient(uri)["digitrans_acceso"]
+        db = MongoClient(uri)[args.prefijo + "_acceso"]
         registros = [{"usuario_id": str(r.usuario_id), "nivel_riesgo": str(r.nivel_riesgo),
                       "decil": int(r.decil), "semana_referencia": str(r.semana_referencia)}
                      for r in pred.itertuples(index=False)]
@@ -150,7 +156,7 @@ def main():
         met_limpio = {k: (float(v) if isinstance(v, (np.floating,)) else (v.item() if hasattr(v, "item") else v))
                       for k, v in met.items()}
         db["modelo_metricas"].insert_one(met_limpio)
-        print("Publicado en Atlas (digitrans_acceso): predicciones_recarga y modelo_metricas")
+        print(f"Publicado en Atlas ({args.prefijo}_acceso): predicciones_recarga y modelo_metricas")
     else:
         print("DIGITRANS_ATLAS_URI no definida: solo se guardaron los CSV; no se publico en MongoDB.")
 

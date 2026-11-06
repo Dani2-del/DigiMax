@@ -310,9 +310,12 @@ public class GlobalOperationsController {
     private void addTransactionModel(
             Model model, TransactionSnapshot snapshot, LocalDate desde, LocalDate hasta, Set<String> selected,
             int pageIndex, int totalPages) {
+        int fromIndex = pageIndex * TRANSACTION_PAGE_SIZE;
+        int toIndex = Math.min(fromIndex + TRANSACTION_PAGE_SIZE, snapshot.transactions().size());
+        List<GlobalTransaction> pageTransactions = snapshot.transactions().subList(fromIndex, toIndex);
         Map<String, Long> counts = snapshot.transactions().stream()
                 .collect(Collectors.groupingBy(GlobalTransaction::service, Collectors.counting()));
-        Map<String, Usuario> usersById = snapshot.transactions().stream()
+        Map<String, Usuario> usersById = pageTransactions.stream()
                 .map(GlobalTransaction::userId)
                 .filter(userId -> userId != null && !userId.isBlank())
                 .distinct()
@@ -321,9 +324,7 @@ public class GlobalOperationsController {
                     usuarios.findAllById(ids).forEach(user -> found.put(user.getId(), user));
                     return found;
                 }));
-        int fromIndex = pageIndex * TRANSACTION_PAGE_SIZE;
-        int toIndex = Math.min(fromIndex + TRANSACTION_PAGE_SIZE, snapshot.transactions().size());
-        model.addAttribute("transactions", snapshot.transactions().subList(fromIndex, toIndex).stream()
+        model.addAttribute("transactions", pageTransactions.stream()
                 .map(transaction -> enrich(transaction, usersById.get(transaction.userId())))
                 .toList());
         model.addAttribute("pageIndex", pageIndex);

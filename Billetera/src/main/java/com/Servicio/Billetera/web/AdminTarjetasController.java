@@ -13,6 +13,8 @@ import java.util.UUID;
 import java.util.Comparator;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.BilleteraUniversal;
@@ -48,14 +51,19 @@ import com.Servicio.Billetera.service.WalletUserDirectoryClient.UserSummary;
 @RequestMapping("/admin")
 public class AdminTarjetasController {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(AdminTarjetasController.class);
+
     private final BilleteraService billeteraService;
     private final WalletUserDirectoryClient userDirectory;
     private final BilleteraExcelReportService excelReportService;
     @Value("${app.acceso.base-url}")
     private String accesoUrl;
+    @Value("${app.lector.base-url:http://localhost:8086}")
+    private String lectorUrl;
 
     private static final int MOVEMENT_PAGE_SIZE = 5;
     private static final int ACCOUNT_PAGE_SIZE = 10;
+    private static final int ARCHIVED_CARD_PAGE_SIZE = 10;
 
     public AdminTarjetasController(
             BilleteraService billeteraService,
@@ -81,6 +89,7 @@ public class AdminTarjetasController {
         model.addAttribute("tarjetasActivas", summary.tarjetasActivas());
         model.addAttribute("tarjetasCongeladas", summary.tarjetasCongeladas());
         model.addAttribute("saldoAdministrado", summary.saldoAdministrado());
+        model.addAttribute("lectorUrl", lectorUrl);
         return "admin-dashboard-billetera";
     }
 
@@ -367,7 +376,6 @@ public class AdminTarjetasController {
                     .forEach(user -> pageUsers.put(user.id(), user));
         }
         List<WalletMovementRow> visible = rows.stream()
-                .filter(row -> pageUsers.containsKey(row.userId()))
                 .map(row -> enrichMovement(row, pageUsers))
                 .toList();
         int lastMovement = firstMovement == 0 ? 0 : firstMovement + visible.size() - 1;
@@ -488,9 +496,15 @@ public class AdminTarjetasController {
             redirectAttributes.addFlashAttribute("error",
                     message.find() ? message.group(1)
                             : "Acceso rechazó el cambio de rol (HTTP " + exception.getStatusCode().value() + ").");
-        } catch (RestClientException exception) {
+        } catch (ResourceAccessException exception) {
+            LOGGER.error("Acceso no respondió al actualizar el rol de la cuenta {}.", usuarioId, exception);
             redirectAttributes.addFlashAttribute("error",
-                    "No se pudo conectar con Acceso para actualizar el rol.");
+                    "Acceso no respondió a tiempo. Intenta guardar el cambio nuevamente.");
+        } catch (RestClientException exception) {
+            LOGGER.error("Billetera no pudo procesar la respuesta de Acceso al actualizar la cuenta {}.",
+                    usuarioId, exception);
+            redirectAttributes.addFlashAttribute("error",
+                    "Acceso respondió, pero Billetera no pudo procesar el cambio de rol.");
         }
         return "redirect:/admin/cuentas/" + usuarioId;
     }
@@ -545,8 +559,20 @@ public class AdminTarjetasController {
     }
 
     @GetMapping("/tarjetas-desactivadas")
-    public String archivedCards(Model model) {
-        model.addAttribute("tarjetas", billeteraService.tarjetasDesactivadasAdmin());
+    public String archivedCards(
+            @RequestParam(defaultValue = "0") int page,
+            Model model) {
+        BilleteraService.ArchivedCardPage archivedPage = billeteraService.tarjetasDesactivadasAdmin(
+                page, ARCHIVED_CARD_PAGE_SIZE);
+        int firstCard = archivedPage.cards().isEmpty()
+                ? 0 : archivedPage.pageIndex() * ARCHIVED_CARD_PAGE_SIZE + 1;
+        int lastCard = firstCard == 0 ? 0 : firstCard + archivedPage.cards().size() - 1;
+        model.addAttribute("tarjetas", archivedPage.cards());
+        model.addAttribute("pageIndex", archivedPage.pageIndex());
+        model.addAttribute("hasPreviousPage", archivedPage.hasPrevious());
+        model.addAttribute("hasNextPage", archivedPage.hasNext());
+        model.addAttribute("firstCard", firstCard);
+        model.addAttribute("lastCard", lastCard);
         return "admin-tarjetas-desactivadas";
     }
 

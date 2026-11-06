@@ -15,7 +15,7 @@
         <div class="admin-global-nav-links">
             <a class="admin-global-nav-link" th:href="@{/menu}">Vista usuario</a>
             <span class="admin-global-nav-separator" aria-hidden="true">·</span>
-            <a class="admin-global-nav-link" th:href="@{/choose-view}">Volver a servicios</a>
+            <a class="admin-global-nav-link" th:href="${serviciosUrl}">Volver a servicios</a>
             <a class="admin-global-nav-link admin-global-nav-switch"
                th:if="${esAdministradorGlobal}"
                th:href="@{/admin/seleccionar-entidad}">

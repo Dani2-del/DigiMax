@@ -67,7 +67,7 @@ public class Transaccion {
         this.monto = monto;
         this.fecha = fecha;
         this.tipo = tipo;
-        this.usuario = usuario;
+        setUsuario(usuario);
     }
 
     public String getId() { return id; }

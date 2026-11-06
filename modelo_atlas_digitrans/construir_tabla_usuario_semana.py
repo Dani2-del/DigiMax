@@ -15,7 +15,7 @@ import pandas as pd
 
 ARCHIVO_USUARIOS = "usuarios_atlas.csv"
 ARCHIVO_EVENTOS = "eventos_atlas.csv"
-SALIDA = "tabla_usuario_semana_v2.csv"
+SALIDA = "tabla_usuario_semana_v3.csv"
 INICIO = "2024-01-01"
 FIN_ETIQUETA = "2026-10-29"   # ultima fecha con datos: la etiqueta necesita 7 dias futuros
 ESCALA = 10**10               # clave = indice_usuario * ESCALA + segundos (evita mezclar usuarios)
@@ -45,7 +45,9 @@ def main():
     e = e.sort_values(["uidx", "t"])
     claves = (e["uidx"].values * ESCALA + e["t"].values).astype(np.int64)
     fuente_movil = (e["fuente"].values == "movil")
+    fuente_transporte = (e["fuente"].values == "transporte")
     claves_tarjeta = claves[e["fuente"].values == "billetera"]
+    claves_transporte = claves[fuente_transporte]
 
     inicio = pd.Timestamp(INICIO, tz="UTC")
     fin_etiqueta = pd.Timestamp(args.fin_etiqueta, tz="UTC")
@@ -78,6 +80,23 @@ def main():
         rec_90 = cuenta(Ts - 90 * dia, Ts)
         rec_180 = cuenta(Ts - 180 * dia, Ts)
         rec_365 = cuenta(Ts - 365 * dia, Ts)
+
+        viaje_7 = (np.searchsorted(claves_transporte, base + Ts, side="right")
+                   - np.searchsorted(claves_transporte, base + Ts - 7 * dia, side="right"))
+        viaje_30 = (np.searchsorted(claves_transporte, base + Ts, side="right")
+                    - np.searchsorted(claves_transporte, base + Ts - 30 * dia, side="right"))
+        viaje_90 = (np.searchsorted(claves_transporte, base + Ts, side="right")
+                    - np.searchsorted(claves_transporte, base + Ts - 90 * dia, side="right"))
+        viaje_365 = (np.searchsorted(claves_transporte, base + Ts, side="right")
+                     - np.searchsorted(claves_transporte, base + Ts - 365 * dia, side="right"))
+        if len(claves_transporte):
+            pos_viaje = np.searchsorted(claves_transporte, base + Ts, side="right") - 1
+            viaje_ok = (pos_viaje >= 0) & (claves_transporte[np.clip(pos_viaje, 0, None)] // ESCALA == u)
+            viaje_ultima = np.where(viaje_ok,
+                                    (Ts - claves_transporte[np.clip(pos_viaje, 0, None)] % ESCALA) // dia,
+                                    999)
+        else:
+            viaje_ultima = np.full(len(u), 999, dtype=np.int64)
 
         tarjeta_7 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
                      - np.searchsorted(claves_tarjeta, base + Ts - 7 * dia, side="right"))
@@ -125,6 +144,11 @@ def main():
             "tarjeta_365d": tarjeta_365,
             "movil_30d": movil_30,
             "movil_90d": movil_90,
+            "viaje_7d": viaje_7,
+            "viaje_30d": viaje_30,
+            "viaje_90d": viaje_90,
+            "viaje_365d": viaje_365,
+            "dias_desde_ultimo_viaje": viaje_ultima,
             "dias_desde_ultima": dias_ultima,
             "antiguedad_dias": antiguedad,
             "tendencia_7d": rec_7 - rec_14_7,

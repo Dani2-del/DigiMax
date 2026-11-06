@@ -703,6 +703,34 @@ legend {
     margin: 22px 0;
 }
 
+.moderator-logout {
+    grid-column: 4;
+    align-self: center;
+    justify-self: end;
+}
+
+.moderator-logout {
+    display: inline-flex;
+    min-width: 132px;
+    align-items: center;
+    justify-content: center;
+    padding: 11px 22px;
+    border: 1px solid #d5e1e8;
+    border-radius: 10px;
+    color: #17324d;
+    background: #fff;
+    font-size: .95rem;
+    font-weight: 750;
+    text-decoration: none;
+    transition: background .15s ease, border-color .15s ease;
+}
+
+.moderator-logout:hover {
+    border-color: #087c86;
+    color: #087c86;
+    background: #f2fafa;
+}
+
 .admin-stat {
     display: flex;
     min-height: 112px;
@@ -1747,6 +1775,11 @@ legend {
 @media (max-width: 900px) {
     .admin-overview {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .moderator-logout {
+        grid-column: 2;
+        justify-self: end;
     }
 
     .wallet-tools-grid {

@@ -1,11 +1,13 @@
 package com.Servicio.Billetera.service;
 
+import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.core.ParameterizedTypeReference;
@@ -17,14 +19,29 @@ public class WalletUserDirectoryClient {
     private static final int PAGE_SIZE = 100;
 
     private final RestClient restClient;
+    private final RestClient roleUpdateClient;
     private final String accesoUrl;
 
     public WalletUserDirectoryClient(@Value("${app.acceso.base-url}") String accesoUrl) {
+        this.restClient = createClient(Duration.ofSeconds(3));
+        this.roleUpdateClient = createRoleUpdateClient();
+        this.accesoUrl = accesoUrl;
+    }
+
+    private static RestClient createClient(Duration readTimeout) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(2));
-        requestFactory.setReadTimeout(Duration.ofSeconds(3));
-        this.restClient = RestClient.builder().requestFactory(requestFactory).build();
-        this.accesoUrl = accesoUrl;
+        requestFactory.setReadTimeout(readTimeout);
+        return RestClient.builder().requestFactory(requestFactory).build();
+    }
+
+    private static RestClient createRoleUpdateClient() {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
+        JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
+        requestFactory.setReadTimeout(Duration.ofSeconds(10));
+        return RestClient.builder().requestFactory(requestFactory).build();
     }
 
     public UserSummary findById(String userId, String token) {
@@ -60,7 +77,7 @@ public class WalletUserDirectoryClient {
 
     public UserSummary updateRole(
             UserSummary user, String role, String serviceAssignment, String token) {
-        return restClient.patch()
+        return roleUpdateClient.patch()
                 .uri(accesoUrl + "/api/admin/users/{id}", user.id())
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .body(new UpdateUserRequest(
@@ -93,7 +110,7 @@ public class WalletUserDirectoryClient {
         }
     }
 
-    private record UpdateUserRequest(
+    public record UpdateUserRequest(
             String name, String email, String role, boolean active, String serviceAssignment) {
     }
 

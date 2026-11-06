@@ -18,6 +18,8 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
 
 import com.Servicio.Lector.model.TarjetaRfid;
+import com.Servicio.Lector.model.HistorialPropietarioRfid;
+import com.Servicio.Lector.repository.HistorialPropietarioRfidRepository;
 import com.Servicio.Lector.repository.TarjetaRfidRepository;
 
 @Service
@@ -27,6 +29,7 @@ public class RfidService {
     private static final long READ_COOLDOWN_MILLIS = 2_000;
 
     private final TarjetaRfidRepository tarjetas;
+    private final HistorialPropietarioRfidRepository historial;
     private final MongoOperations mongoOperations;
     private final BilleteraClient billeteraClient;
     private final BigDecimal tarifaTranscaribe;
@@ -36,12 +39,14 @@ public class RfidService {
 
     public RfidService(
             TarjetaRfidRepository tarjetas,
+            HistorialPropietarioRfidRepository historial,
             MongoOperations mongoOperations,
             BilleteraClient billeteraClient,
             @Value("${app.lector.tarifa.transcaribe:3900}") BigDecimal tarifaTranscaribe,
             @Value("${app.lector.tarifa.transmilenio:3550}") BigDecimal tarifaTransmilenio,
             @Value("${app.lector.tarifa.transmetro:3700}") BigDecimal tarifaTransmetro) {
         this.tarjetas = tarjetas;
+        this.historial = historial;
         this.mongoOperations = mongoOperations;
         this.billeteraClient = billeteraClient;
         this.tarifaTranscaribe = tarifaTranscaribe;
@@ -78,6 +83,7 @@ public class RfidService {
                 new Update().set("usuarioId", id).set("vinculadaEn", LocalDateTime.now()),
                 FindAndModifyOptions.options().returnNew(true), TarjetaRfid.class);
         if (claimed == null) throw new NoAvailableCardException();
+        registrarEvento(claimed, id, "Vinculada");
         return claimed;
     }
 
@@ -88,6 +94,7 @@ public class RfidService {
 
     public void desvincular(String userId) {
         TarjetaRfid card = perfil(userId);
+        registrarEvento(card, userId, "Desvinculada");
         card.setUsuarioId(null);
         card.setVinculadaEn(LocalDateTime.now());
         tarjetas.save(card);
@@ -95,6 +102,31 @@ public class RfidService {
 
     public List<TarjetaRfid> listarTarjetas() {
         return tarjetas.findAllByOrderByVinculadaEnDesc();
+    }
+
+    public List<HistorialPropietarioRfid> listarHistorialPropietarios() {
+        List<TarjetaRfid> asignadas = tarjetas.findAll().stream()
+                .filter(card -> !card.isDisponible())
+                .toList();
+        for (TarjetaRfid card : asignadas) {
+            if (!historial.existsByUid(card.getUid())) {
+                registrarEvento(card, card.getUsuarioId(), "Vínculo inicial", card.getVinculadaEn());
+            }
+        }
+        return historial.findAllByOrderByFechaDesc();
+    }
+
+    private void registrarEvento(TarjetaRfid card, String userId, String action) {
+        registrarEvento(card, userId, action, LocalDateTime.now());
+    }
+
+    private void registrarEvento(TarjetaRfid card, String userId, String action, LocalDateTime date) {
+        HistorialPropietarioRfid event = new HistorialPropietarioRfid();
+        event.setUid(card.getUid());
+        event.setUsuarioId(userId);
+        event.setAccion(action);
+        event.setFecha(date == null ? LocalDateTime.now() : date);
+        historial.save(event);
     }
 
     public ScanResult cobrar(String rawUid) {

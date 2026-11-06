@@ -1,3 +1,7 @@
+param(
+    [string]$Prefijo = 'digitrans'
+)
+
 $ErrorActionPreference = 'Stop'
 
 $directorioScript = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -25,15 +29,16 @@ try {
     if (-not $python) { throw 'No se encontró Python en PATH.' }
 
     $pasos = @(
-        @{ Nombre = 'Exportar datos de Atlas'; Script = 'exportar_datos_atlas.py' },
-        @{ Nombre = 'Construir tabla usuario-semana'; Script = 'construir_tabla_usuario_semana.py' },
-        @{ Nombre = 'Evaluar modelo'; Script = 'evaluar_final.py' },
-        @{ Nombre = 'Publicar predicciones'; Script = 'publicar_predicciones.py' }
+        @{ Nombre = 'Exportar datos de Atlas'; Script = 'exportar_datos_atlas.py'; Argumentos = @('--prefijo', $Prefijo) },
+        @{ Nombre = 'Construir tabla usuario-semana'; Script = 'construir_tabla_usuario_semana.py'; Argumentos = @() },
+        @{ Nombre = 'Evaluar modelo'; Script = 'evaluar_final.py'; Argumentos = @() },
+        @{ Nombre = 'Publicar predicciones'; Script = 'publicar_predicciones.py'; Argumentos = @('--prefijo', $Prefijo) }
     )
 
     foreach ($paso in $pasos) {
         Write-Host "`n=== $($paso.Nombre) ===" -ForegroundColor Cyan
-        & $python.Source $paso.Script
+        $argumentos = @($paso.Argumentos)
+        & $python.Source $paso.Script @argumentos
         if ($LASTEXITCODE -ne 0) {
             throw "Falló $($paso.Script) (código $LASTEXITCODE). Se detuvo el flujo."
         }

@@ -203,7 +203,7 @@ public class ServiceLandingController {
             case RecargaMovil.STATUS_SIMULATED ->
                 "Pago simulado aprobado. La recarga quedó registrada, pero no se envió al operador.";
             case RecargaMovil.STATUS_PAYMENT_PENDING ->
-                "Pago creado y pendiente. Finalízalo desde Pagos y después revisa el estado en el historial.";
+                "Pago pendiente. Recargas consultará automáticamente el resultado en 10 segundos.";
             case RecargaMovil.STATUS_REJECTED ->
                 "El pago fue rechazado o cancelado. La recarga no se completó.";
             default -> "La operación sigue pendiente. Revisa su estado desde el historial.";

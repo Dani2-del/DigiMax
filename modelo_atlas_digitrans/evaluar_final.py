@@ -18,18 +18,21 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, precision_recall_curve, roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
-ORIGINAL = "tabla_usuario_semana_v2.csv"
+ORIGINAL = "tabla_usuario_semana_v3.csv"
 EVALUACION = "tabla_eval.csv"
 SALIDA = "evaluacion_final.csv"
 OBJETIVO = "recarga_billetera_en_7_dias"
-VERSION_MODELO = "logistica_historial_365d_v2"
+VERSION_MODELO = "logistica_historial_transporte_v3"
 VARIABLES = ["rec_7d", "rec_7d_anterior", "rec_30d", "rec_90d",
              "rec_180d", "rec_365d", "tarjeta_7d", "tarjeta_30d", "tarjeta_90d",
              "tarjeta_180d", "tarjeta_365d", "movil_30d", "movil_90d",
-             "dias_desde_ultima", "antiguedad_dias", "tendencia_7d"]
+             "viaje_7d", "viaje_30d", "viaje_90d", "viaje_365d",
+             "dias_desde_ultimo_viaje", "dias_desde_ultima", "antiguedad_dias", "tendencia_7d"]
 ENTRENAMIENTO = ("2024-01-01", "2025-06-16")
 VALIDACION = ("2025-06-30", "2025-12-15")
 PRUEBA = ("2026-01-05", "2026-10-19")   # misma ventana de prueba que antes, para comparar
+PRECISION_OBJETIVO = 0.80
+MIN_PREDICCIONES_VALIDACION = 100
 
 
 def separar(t, ini, fin):
@@ -56,10 +59,38 @@ def validar_conjunto(nombre, X, y, necesita_dos_clases=False):
         raise SystemExit(f"{nombre} debe incluir casos con y=0 y y=1.")
 
 
-def mejor_umbral(y, p):
+def elegir_umbral_precision(y, p):
+    """Busca el mayor recall validado que mantiene precision >= objetivo.
+
+    Requiere un mínimo de predicciones para no declarar éxito con unos pocos casos.
+    Si no se alcanza el objetivo, devuelve el umbral de mayor precisión con ese
+    soporte mínimo para que la prueba temporal muestre el límite real del modelo.
+    """
     prec, rec, umbrales = precision_recall_curve(y, p)
-    f1 = 2 * prec[:-1] * rec[:-1] / np.maximum(prec[:-1] + rec[:-1], 1e-12)
-    return umbrales[int(np.argmax(f1))]
+    p_ordenada = np.sort(p)
+    cantidades = len(p) - np.searchsorted(p_ordenada, umbrales, side="left")
+    soporte = cantidades >= MIN_PREDICCIONES_VALIDACION
+    if not soporte.any():
+        raise SystemExit("Validacion no produjo suficientes predicciones para fijar un umbral estable.")
+
+    objetivo = soporte & (prec[:-1] >= PRECISION_OBJETIVO)
+    if objetivo.any():
+        indices = np.flatnonzero(objetivo)
+        indice = indices[np.argmax(rec[:-1][indices])]
+        alcanzado = True
+    else:
+        indices = np.flatnonzero(soporte)
+        mejor_precision = prec[:-1][indices].max()
+        indices = indices[prec[:-1][indices] == mejor_precision]
+        indice = indices[np.argmax(rec[:-1][indices])]
+        alcanzado = False
+
+    return float(umbrales[indice]), {
+        "precision_validacion": float(prec[indice]),
+        "recall_validacion": float(rec[indice]),
+        "predicciones_validacion": int(cantidades[indice]),
+        "objetivo_precision_alcanzado_validacion": alcanzado,
+    }
 
 
 def metricas(y, p, umbral):
@@ -93,7 +124,8 @@ def main():
     X_tr, X_va, X_ev = map(transformar_variables, (X_tr, X_va, X_ev))
     esc = StandardScaler().fit(X_tr)
     mod = LogisticRegression(max_iter=1000).fit(esc.transform(X_tr), y_tr)
-    umbral = mejor_umbral(y_va, mod.predict_proba(esc.transform(X_va))[:, 1])
+    p_va = mod.predict_proba(esc.transform(X_va))[:, 1]
+    umbral, seleccion = elegir_umbral_precision(y_va, p_va)
 
     # 3: evaluacion sobre datos nuevos, una sola vez
     p_ev = mod.predict_proba(esc.transform(X_ev))[:, 1]
@@ -105,13 +137,25 @@ def main():
 
     nombre_conjunto = "evaluacion independiente" if tiene_eval_independiente else "prueba temporal"
     filas = [{"conjunto": nombre_conjunto, "objetivo": OBJETIVO, "version_modelo": VERSION_MODELO,
-              "modelo": "regresion logistica", "umbral": round(float(umbral), 4), **res},
+              "modelo": "regresion logistica", "umbral": round(umbral, 6),
+              "precision_objetivo": PRECISION_OBJETIVO,
+              "precision_validacion": round(seleccion["precision_validacion"], 4),
+              "recall_validacion": round(seleccion["recall_validacion"], 4),
+              "predicciones_validacion": seleccion["predicciones_validacion"],
+              "objetivo_precision_alcanzado_validacion": seleccion["objetivo_precision_alcanzado_validacion"], **res},
              {"conjunto": nombre_conjunto, "objetivo": OBJETIVO, "version_modelo": VERSION_MODELO,
               "modelo": "linea base (tarjeta_7d > 0)", "umbral": 0.5, **base}]
     tabla = pd.DataFrame(filas)
     tabla.to_csv(SALIDA, index=False)
     print(f"Fuente de prueba: {EVALUACION if tiene_eval_independiente else ORIGINAL} ({nombre_conjunto})")
     print(f"Filas de evaluacion: {len(y_ev)} | proporcion y=1: {y_ev.mean():.4f}")
+    print(f"Objetivo de precision en validacion: {PRECISION_OBJETIVO:.0%} | "
+          f"precision validacion: {seleccion['precision_validacion']:.1%} | "
+          f"recall validacion: {seleccion['recall_validacion']:.1%} | "
+          f"predicciones validadas: {seleccion['predicciones_validacion']}")
+    if not seleccion["objetivo_precision_alcanzado_validacion"]:
+        print("No se alcanzo el 80% de precision en validacion con al menos "
+              f"{MIN_PREDICCIONES_VALIDACION} predicciones; se usa el mejor umbral estable disponible.")
     print(tabla.to_string(index=False))
     print(f"\nArchivo: {SALIDA}")
 
