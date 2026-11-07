@@ -15,7 +15,7 @@ import pandas as pd
 
 ARCHIVO_USUARIOS = "usuarios_atlas.csv"
 ARCHIVO_EVENTOS = "eventos_atlas.csv"
-SALIDA = "tabla_usuario_semana_v3.csv"
+SALIDA = "tabla_usuario_semana_v6.csv"
 INICIO = "2024-01-01"
 FIN_ETIQUETA = "2026-10-29"   # ultima fecha con datos: la etiqueta necesita 7 dias futuros
 ESCALA = 10**10               # clave = indice_usuario * ESCALA + segundos (evita mezclar usuarios)
@@ -36,18 +36,29 @@ def main():
     usuarios = usuarios.reset_index(drop=True)
     usuarios["uidx"] = usuarios.index.astype(np.int64)
     idx_de = dict(zip(usuarios["usuario_id"], usuarios["uidx"]))
+    sitm = usuarios["sitm"].fillna("").astype(str).str.upper().values
     reg_seg = ((usuarios["registro"] - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta("1s")).astype(np.int64)
 
     e = pd.read_csv(args.eventos)
     e = e[e["usuario_id"].isin(idx_de)].copy()
     e["t"] = ((pd.to_datetime(e["fecha"], format="ISO8601", utc=True) - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta("1s")).astype(np.int64)
     e["uidx"] = e["usuario_id"].map(idx_de).astype(np.int64)
+    if "monto" not in e.columns:
+        e["monto"] = 0
+    e["monto"] = pd.to_numeric(e["monto"], errors="coerce").fillna(0).astype(np.float64)
     e = e.sort_values(["uidx", "t"])
-    claves = (e["uidx"].values * ESCALA + e["t"].values).astype(np.int64)
-    fuente_movil = (e["fuente"].values == "movil")
-    fuente_transporte = (e["fuente"].values == "transporte")
-    claves_tarjeta = claves[e["fuente"].values == "billetera"]
-    claves_transporte = claves[fuente_transporte]
+    fuentes = e["fuente"].values
+    # Las consumiciones se mantienen como variables separadas: el evento
+    # equivalente puede aparecer también como viaje o recarga móvil.
+    actividad = e[fuentes != "consumo_billetera"]
+    claves = (actividad["uidx"].values * ESCALA + actividad["t"].values).astype(np.int64)
+    fuente_movil = actividad["fuente"].values == "movil"
+    claves_tarjeta = claves[actividad["fuente"].values == "billetera"]
+    claves_transporte = claves[actividad["fuente"].values == "transporte"]
+    consumos = e[fuentes == "consumo_billetera"]
+    claves_consumo = (consumos["uidx"].values * ESCALA + consumos["t"].values).astype(np.int64)
+    montos_consumo = np.maximum(consumos["monto"].values, 0)
+    suma_consumos = np.concatenate(([0.0], np.cumsum(montos_consumo, dtype=np.float64)))
 
     inicio = pd.Timestamp(INICIO, tz="UTC")
     fin_etiqueta = pd.Timestamp(args.fin_etiqueta, tz="UTC")
@@ -109,6 +120,75 @@ def main():
         tarjeta_365 = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
                        - np.searchsorted(claves_tarjeta, base + Ts - 365 * dia, side="right"))
 
+        # Ventanas sin solapamiento: permiten distinguir recargas recientes de
+        # actividad antigua sin que el modelo deduzca las diferencias entre acumulados.
+        tarjeta_8_30 = (np.searchsorted(claves_tarjeta, base + Ts - 7 * dia, side="right")
+                        - np.searchsorted(claves_tarjeta, base + Ts - 30 * dia, side="right"))
+        tarjeta_31_90 = (np.searchsorted(claves_tarjeta, base + Ts - 30 * dia, side="right")
+                         - np.searchsorted(claves_tarjeta, base + Ts - 90 * dia, side="right"))
+        tarjeta_91_180 = (np.searchsorted(claves_tarjeta, base + Ts - 90 * dia, side="right")
+                          - np.searchsorted(claves_tarjeta, base + Ts - 180 * dia, side="right"))
+        tarjeta_historica = (np.searchsorted(claves_tarjeta, base + Ts, side="right")
+                             - np.searchsorted(claves_tarjeta, base, side="right"))
+
+        # Recencia específica de recargas de Billetera, separada de viajes y
+        # recargas móviles. 999 indica que aún no hay una recarga observada.
+        if len(claves_tarjeta):
+            pos_recarga = np.searchsorted(claves_tarjeta, base + Ts, side="right") - 1
+            recarga_ok = ((pos_recarga >= 0)
+                          & (claves_tarjeta[np.clip(pos_recarga, 0, None)] // ESCALA == u))
+            ultima_recarga_t = np.where(
+                recarga_ok, claves_tarjeta[np.clip(pos_recarga, 0, None)] % ESCALA, 0
+            )
+            dias_ultima_recarga = np.where(
+                recarga_ok, (Ts - ultima_recarga_t) // dia, 999
+            )
+            pos_recarga_previa = np.maximum(pos_recarga - 1, 0)
+            recarga_previa_ok = (recarga_ok & (pos_recarga >= 1)
+                                 & (claves_tarjeta[pos_recarga_previa] // ESCALA == u))
+            recarga_previa_t = np.where(
+                recarga_previa_ok,
+                claves_tarjeta[pos_recarga_previa] % ESCALA,
+                0,
+            )
+            dias_entre_recargas = np.where(
+                recarga_previa_ok, (ultima_recarga_t - recarga_previa_t) // dia, 999
+            )
+        else:
+            dias_ultima_recarga = np.full(len(u), 999, dtype=np.int64)
+            dias_entre_recargas = np.full(len(u), 999, dtype=np.int64)
+
+        viaje_historico = (np.searchsorted(claves_transporte, base + Ts, side="right")
+                           - np.searchsorted(claves_transporte, base, side="right"))
+
+        if len(claves_consumo):
+            pos_consumo = np.searchsorted(claves_consumo, base + Ts, side="right") - 1
+            consumo_ok = ((pos_consumo >= 0)
+                          & (claves_consumo[np.clip(pos_consumo, 0, None)] // ESCALA == u))
+            ultima_consumo_t = np.where(
+                consumo_ok, claves_consumo[np.clip(pos_consumo, 0, None)] % ESCALA, 0
+            )
+            dias_ultimo_consumo = np.where(
+                consumo_ok, (Ts - ultima_consumo_t) // dia, 999
+            )
+            limites_consumo = {}
+            for ventana in (7, 30, 90, 365):
+                limites_consumo[ventana] = (
+                    np.searchsorted(claves_consumo, base + Ts - ventana * dia, side="right"),
+                    np.searchsorted(claves_consumo, base + Ts, side="right"),
+                )
+            consumo_7, consumo_30, consumo_90, consumo_365 = (
+                limites_consumo[d][1] - limites_consumo[d][0] for d in (7, 30, 90, 365)
+            )
+            gasto_30, gasto_90, gasto_365 = (
+                suma_consumos[limites_consumo[d][1]] - suma_consumos[limites_consumo[d][0]]
+                for d in (30, 90, 365)
+            )
+        else:
+            consumo_7 = consumo_30 = consumo_90 = consumo_365 = np.zeros(len(u), dtype=np.int64)
+            gasto_30 = gasto_90 = gasto_365 = np.zeros(len(u), dtype=np.float64)
+            dias_ultimo_consumo = np.full(len(u), 999, dtype=np.int64)
+
         # Recargas moviles en los ultimos 30 dias (mismo conteo, solo fuente movil)
         ini = np.searchsorted(claves, base + Ts - 30 * dia, side="right")
         fin = np.searchsorted(claves, base + Ts, side="right")
@@ -142,6 +222,24 @@ def main():
             "tarjeta_90d": tarjeta_90,
             "tarjeta_180d": tarjeta_180,
             "tarjeta_365d": tarjeta_365,
+            "tarjeta_8_30d": tarjeta_8_30,
+            "tarjeta_31_90d": tarjeta_31_90,
+            "tarjeta_91_180d": tarjeta_91_180,
+            "tarjeta_historica": tarjeta_historica,
+            "dias_desde_ultima_recarga": dias_ultima_recarga,
+            "dias_entre_ultimas_recargas": dias_entre_recargas,
+            "viaje_historico": viaje_historico,
+            "consumo_7d": consumo_7,
+            "consumo_30d": consumo_30,
+            "consumo_90d": consumo_90,
+            "consumo_365d": consumo_365,
+            "gasto_billetera_30d": gasto_30,
+            "gasto_billetera_90d": gasto_90,
+            "gasto_billetera_365d": gasto_365,
+            "dias_desde_ultimo_consumo": dias_ultimo_consumo,
+            "servicio_transcaribe": (sitm[mask] == "TRANSCARIBE").astype(np.int8),
+            "servicio_transmilenio": (sitm[mask] == "TRANSMILENIO").astype(np.int8),
+            "servicio_transmetro": (sitm[mask] == "TRANSMETRO").astype(np.int8),
             "movil_30d": movil_30,
             "movil_90d": movil_90,
             "viaje_7d": viaje_7,

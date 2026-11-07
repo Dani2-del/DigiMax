@@ -32,6 +32,15 @@ def fecha_texto(valor):
     return valor.isoformat() if valor else ""
 
 
+def monto_texto(valor):
+    """Convierte Decimal128 de Mongo a un valor CSV legible por pandas."""
+    if valor is None:
+        return "0"
+    if hasattr(valor, "to_decimal"):
+        valor = valor.to_decimal()
+    return str(valor)
+
+
 def validar_uri_atlas(uri):
     """Rechaza URI locales para que la exportacion no use datos equivocados."""
     uri = uri.strip().strip('"').strip("'")
@@ -173,31 +182,51 @@ def main():
     conteo = Counter()
     with open(f"eventos_{SUFIJO}.csv", "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
-        w.writerow(["usuario_id", "fecha", "fuente"])
+        w.writerow(["usuario_id", "fecha", "fuente", "monto", "servicio"])
         print("Exportando abonos de Billetera desde Atlas...", flush=True)
         # Filtrar en Atlas evita descargar todos los movimientos de cada billetera.
         pipeline = [
             {"$unwind": "$movimientos"},
             {"$match": {"movimientos.tipo": "ABONO", "movimientos.fecha": {"$ne": None}}},
-            {"$project": {"_id": 1, "fecha": "$movimientos.fecha"}},
+            {"$project": {"_id": 1, "fecha": "$movimientos.fecha",
+                          "monto": "$movimientos.monto"}},
         ]
         cursor = billetera["billeteras_universales"].aggregate(
             pipeline, allowDiskUse=True, batchSize=5000
         )
         for d in cursor:
-            w.writerow([str(d["_id"]), fecha_texto(d.get("fecha")), "billetera"])
+            w.writerow([str(d["_id"]), fecha_texto(d.get("fecha")), "billetera",
+                        monto_texto(d.get("monto")), "Billetera"])
             conteo["billetera"] += 1
             if conteo["billetera"] % 10000 == 0:
                 print(f"  Abonos exportados: {conteo['billetera']}", flush=True)
         print(f"Abonos de Billetera listos: {conteo['billetera']}", flush=True)
+        print("Exportando consumos de Billetera desde Atlas...", flush=True)
+        pipeline = [
+            {"$unwind": "$movimientos"},
+            {"$match": {"movimientos.tipo": "CONSUMO", "movimientos.fecha": {"$ne": None}}},
+            {"$project": {"_id": 1, "fecha": "$movimientos.fecha",
+                          "monto": "$movimientos.monto", "servicio": "$movimientos.servicio"}},
+        ]
+        cursor = billetera["billeteras_universales"].aggregate(
+            pipeline, allowDiskUse=True, batchSize=5000
+        )
+        for d in cursor:
+            w.writerow([str(d["_id"]), fecha_texto(d.get("fecha")), "consumo_billetera",
+                        monto_texto(d.get("monto")), d.get("servicio", "")])
+            conteo["consumo_billetera"] += 1
+            if conteo["consumo_billetera"] % 10000 == 0:
+                print(f"  Consumos de Billetera exportados: {conteo['consumo_billetera']}", flush=True)
+        print(f"Consumos de Billetera listos: {conteo['consumo_billetera']}", flush=True)
         # Recargas moviles simuladas
         print("Exportando recargas móviles simuladas desde Atlas...", flush=True)
         cursor = recargas["recargas_movil"].find(
             {"estado": "SIMULADA", "fecha": {"$ne": None}, "usuarioId": {"$ne": None}},
-            {"usuarioId": 1, "fecha": 1},
+            {"usuarioId": 1, "fecha": 1, "monto": 1},
         ).batch_size(5000)
         for r in cursor:
-            w.writerow([r["usuarioId"], fecha_texto(r["fecha"]), "movil"])
+            w.writerow([r["usuarioId"], fecha_texto(r["fecha"]), "movil",
+                        monto_texto(r.get("monto")), "Recargas móviles"])
             conteo["movil"] += 1
             if conteo["movil"] % 10000 == 0:
                 print(f"  Recargas móviles exportadas: {conteo['movil']}", flush=True)
@@ -217,7 +246,8 @@ def main():
             try:
                 cursor = transporte["transacciones"].find(
                     consulta_viajes,
-                    {"usuario_id": 1, "usuario": 1, "operacion_id": 1, "fecha": 1},
+                    {"usuario_id": 1, "usuario": 1, "operacion_id": 1, "fecha": 1,
+                     "monto": 1, "sistema_transporte": 1},
                 ).sort("fecha", 1).batch_size(1000)
 
                 for t in cursor:
@@ -237,7 +267,8 @@ def main():
                             str(t.get("operacion_id", ""))
                         )
                     if usuario_id is not None:
-                        w.writerow([str(usuario_id), fecha_texto(t.get("fecha")), "transporte"])
+                        w.writerow([str(usuario_id), fecha_texto(t.get("fecha")), "transporte",
+                                    monto_texto(t.get("monto")), t.get("sistema_transporte", "")])
                         conteo["transporte"] += 1
                         if conteo["transporte"] % 2000 == 0:
                             print(f"  Viajes exportados: {conteo['transporte']}", flush=True)
@@ -271,7 +302,8 @@ def main():
         print(f"Viajes de Transporte listos: {conteo['transporte']}", flush=True)
 
     print(f"eventos_{SUFIJO}.csv: {sum(conteo.values())} eventos "
-          f"(billetera: {conteo['billetera']}, movil: {conteo['movil']}, "
+          f"(abonos: {conteo['billetera']}, consumos: {conteo['consumo_billetera']}, "
+          f"movil: {conteo['movil']}, "
           f"transporte: {conteo['transporte']})")
 
 

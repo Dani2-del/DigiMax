@@ -124,6 +124,31 @@ def fecha_aleatoria(desde, hasta):
     return desde + dt.timedelta(seconds=random.randint(0, segundos))
 
 
+def fechas_abonos_usuario(registro):
+    """Simula recargas con una cadencia persistente por usuario, sin guardar el perfil latente."""
+    perfil = random.random()
+
+    # Usuarios ocasionales: pocos abonos distribuidos durante su vida de cuenta.
+    if perfil < 0.50:
+        cantidad = random.choices((0, 1, 2, 3, 4), weights=(12, 28, 32, 20, 8), k=1)[0]
+        return [fecha_aleatoria(registro, FECHA_FIN) for _ in range(cantidad)]
+
+    # Usuarios regulares y frecuentes conservan un ciclo propio con variación y
+    # algunos ciclos omitidos. El historial permite inferir hábito, no el perfil.
+    cadencia = random.randint(160, 240) if perfil < 0.85 else random.randint(70, 100)
+    jitter = max(3, cadencia // 10)
+    proxima = registro + dt.timedelta(days=random.randint(0, cadencia))
+    fechas = []
+    while proxima <= FECHA_FIN:
+        fecha = proxima + dt.timedelta(days=random.randint(-jitter, jitter))
+        fecha = min(FECHA_FIN, max(registro, fecha))
+        if random.random() < 0.92:
+            fechas.append(fecha)
+        avance = random.randint(max(30, int(cadencia * 0.85)), int(cadencia * 1.15))
+        proxima += dt.timedelta(days=avance)
+    return fechas
+
+
 def digitos(n):
     return "".join(random.choice(string.digits) for _ in range(n))
 
@@ -331,8 +356,9 @@ def crear_usuario(rol, servicio, u, hash_pw, paquetes, operadores, buses_by_serv
     # Billetera: cargas, pasajes con billetera y recargas moviles en orden de fecha
     tarjeta_u = "UNI-" + hex_mayus(12)
     eventos = []
-    for _ in range(random.randint(0, 30)):
-        eventos.append((fecha_aleatoria(registro, FECHA_FIN), "PASAJE" if random.random() < 0.5 else "ABONO", None))
+    eventos.extend((fecha, "ABONO", None) for fecha in fechas_abonos_usuario(registro))
+    for _ in range(random.randint(0, 15)):
+        eventos.append((fecha_aleatoria(registro, FECHA_FIN), "PASAJE", None))
     for _ in range(random.randint(0, 10)):
         lid_s, telf, op = random.choice(lineas)
         candidatos = [p for p in paquetes if p["operadorId"] == str(op["_id"])] or paquetes

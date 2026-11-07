@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#087f88">
+  <title>Página del Orquestador | Digitrans</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17324d;
+      --muted: #70839b;
+      --teal: #087f88;
+      --teal-dark: #06666f;
+      --line: #dce7ef;
+      --surface: #fff;
+      --page: #f1f6fa;
+      --green: #16734e;
+      --green-bg: #e4f5ed;
+      --amber: #9a6207;
+      --amber-bg: #fff2d5;
+      --red: #a33d37;
+      --red-bg: #ffebe9;
+      font-family: Inter, "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background: radial-gradient(ellipse at 75% 0%, #d8edf0 0, transparent 43%), var(--page);
+    }
+    .topbar { background: #101820; color: white; box-shadow: 0 8px 24px #1018202c; }
+    .topbar-inner, main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar-inner { height: 72px; display: flex; align-items: center; gap: 13px; }
+    .brand-mark {
+      width: 40px; height: 40px; display: grid; place-items: center;
+      border-radius: 13px; background: white; color: #101820;
+      font-size: 23px; font-weight: 900;
+    }
+    .brand { font-weight: 800; letter-spacing: -.02em; }
+    .brand-note { margin-left: 8px; padding-left: 18px; border-left: 1px solid #ffffff65; color: #d8f2f2; font-size: 14px; }
+    main { padding: 54px 0 40px; }
+    .eyebrow { margin: 0 0 12px; color: var(--teal); font-size: 12px; font-weight: 850; letter-spacing: .17em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(34px, 5vw, 52px); letter-spacing: -.045em; line-height: 1.05; }
+    .intro { margin: 14px 0 30px; color: var(--muted); font-size: 17px; line-height: 1.6; }
+    .overview { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-bottom: 20px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 14px 38px #17324d09; }
+    .summary { display: flex; align-items: center; gap: 18px; padding: 24px; }
+    .pulse-icon { width: 54px; height: 54px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 17px; background: #e4f4f3; color: var(--teal); font-size: 25px; }
+    .summary-label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+    .summary-value { display: block; margin-top: 4px; font-size: 27px; font-weight: 850; }
+    .overall { justify-content: space-between; }
+    .pill { display: inline-flex; align-items: center; gap: 8px; padding: 9px 13px; border-radius: 999px; background: var(--amber-bg); color: var(--amber); font-size: 13px; font-weight: 800; white-space: nowrap; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+    .pill.ok { background: var(--green-bg); color: var(--green); }
+    .pill.bad { background: var(--red-bg); color: var(--red); }
+    .module-card { padding: 24px; }
+    .section-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
+    h2 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
+    .updated { color: var(--muted); font-size: 13px; }
+    button { border: 1px solid #bfdae0; border-radius: 11px; padding: 10px 15px; background: #f5fbfb; color: var(--teal-dark); font: inherit; font-weight: 750; cursor: pointer; transition: background .18s, transform .18s; }
+    button:hover { background: #e6f4f4; transform: translateY(-1px); }
+    button:focus-visible { outline: 3px solid #60c3c8; outline-offset: 2px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; }
+    th { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
+    td { padding: 15px 14px; border-bottom: 1px solid #e8eef3; font-size: 14px; }
+    tbody tr:last-child td { border-bottom: 0; }
+    td:first-child { font-weight: 750; }
+    .state { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; background: var(--amber-bg); color: var(--amber); font-size: 12px; font-weight: 800; }
+    .state.ACTIVO { background: var(--green-bg); color: var(--green); }
+    .state.NO_RESPONDE, .state.BLOQUEADO { background: var(--red-bg); color: var(--red); }
+    .state.DETENIDO { background: #edf1f5; color: #66778b; }
+    .restart-button { min-width: 112px; padding: 8px 12px; font-size: 13px; }
+    .action-buttons { display: flex; gap: 8px; }
+    .stop-button { min-width: 88px; padding: 8px 12px; font-size: 13px; color: #a33d37; border-color: #f0c8c4; background: #fff8f7; }
+    .stop-button:hover { background: #ffebe9; }
+    .action-buttons button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
+    .restart-button:disabled { cursor: wait; opacity: .65; transform: none; }
+    .empty { padding: 28px; text-align: center; color: var(--muted); }
+    .footer { padding-top: 20px; color: #8b9bad; font-size: 12px; text-align: center; letter-spacing: .08em; text-transform: uppercase; }
+    @media (max-width: 700px) {
+      .topbar-inner, main { width: min(100% - 28px, 1080px); }
+      main { padding-top: 38px; }
+      .overview { grid-template-columns: 1fr; }
+      .section-head { align-items: flex-start; flex-direction: column; }
+      th, td { padding-left: 10px; padding-right: 10px; }
+      .brand-note { margin-left: auto; padding-left: 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <span class="brand-mark" aria-hidden="true">D</span>
+      <span class="brand">Digitrans</span>
+      <span class="brand-note">Centro de operaciones</span>
+    </div>
+  </header>
+
+  <main>
+    <p class="eyebrow">Supervisión de servicios</p>
+    <h1>Página del Orquestador</h1>
+    <p class="intro">Control central de los módulos de DigiMAX. Consulta de un vistazo qué servicios están activos.</p>
+
+    <section class="overview" aria-label="Resumen del sistema">
+      <article class="card summary">
+        <span class="pulse-icon" aria-hidden="true">⌁</span>
+        <div><span class="summary-label">Módulos activos</span><strong class="summary-value" id="active-count">—</strong></div>
+      </article>
+      <article class="card summary overall">
+        <div><span class="summary-label">Estado general</span><strong class="summary-value" id="overall-label">Consultando…</strong></div>
+        <span class="pill" id="overall-pill"><span class="dot"></span><span id="overall-detail">Conectando</span></span>
+      </article>
+    </section>
+
+    <section class="card module-card" aria-labelledby="modules-title">
+      <div class="section-head">
+        <div><p class="eyebrow">Estado en vivo</p><h2 id="modules-title">Módulos de DigiMAX</h2></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span class="updated" id="updated-at">Esperando datos</span>
+          <button id="refresh" type="button">Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Módulo</th><th>Estado</th><th>Puerto</th><th>Reinicios</th><th>Tiempo activo</th><th>Acción</th></tr></thead>
+          <tbody id="modules-body"><tr><td colspan="6" class="empty">Cargando estado de los módulos…</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+    <footer class="footer">Digitrans · Orquestador local · Puerto 8087</footer>
+  </main>
+
+  <script>
+    const body = document.getElementById('modules-body');
+    const pill = document.getElementById('overall-pill');
+    const detail = document.getElementById('overall-detail');
+    const label = document.getElementById('overall-label');
+    const formatDuration = seconds => {
+      const total = Number(seconds) || 0;
+      const hours = Math.floor(total / 3600);
+      const minutes = Math.floor((total % 3600) / 60);
+      if (hours) return `${hours} h ${minutes} min`;
+      if (minutes) return `${minutes} min`;
+      return `${total} s`;
+    };
+    async function refreshStatus() {
+      try {
+        const response = await fetch('/api/estado', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const modules = await response.json();
+        const active = modules.filter(module => module.estado === 'ACTIVO').length;
+        const hasProblems = modules.some(module => ['NO_RESPONDE', 'BLOQUEADO'].includes(module.estado));
+        document.getElementById('active-count').textContent = `${active} / ${modules.length}`;
+        label.textContent = hasProblems ? 'Revisar módulos' : active === modules.length ? 'Operativo' : 'Iniciando';
+        detail.textContent = hasProblems ? 'Hay alertas' : active === modules.length ? 'Todos activos' : `${active} activos`;
+        pill.className = `pill${hasProblems ? ' bad' : active === modules.length ? ' ok' : ''}`;
+        body.innerHTML = modules.map(module => `<tr>
+          <td>${escapeHtml(module.nombre)}</td>
+          <td><span class="state ${escapeHtml(module.estado)}">${escapeHtml(module.estado.replaceAll('_', ' '))}</span></td>
+          <td>${Number(module.puerto)}</td>
+          <td>${Number(module.reinicios)}</td>
+          <td>${formatDuration(module.segundosActivo)}</td>
+          <td><div class="action-buttons">
+            <button class="restart-button" type="button" data-action="reiniciar" data-module="${escapeHtml(module.nombre)}">Reiniciar</button>
+            <button class="stop-button" type="button" data-action="detener" data-module="${escapeHtml(module.nombre)}" ${module.estado === 'DETENIDO' ? 'disabled' : ''}>Parar</button>
+          </div></td>
+        </tr>`).join('');
+        document.getElementById('updated-at').textContent = `Actualizado ${new Date().toLocaleTimeString('es-CO')}`;
+      } catch (error) {
+        document.getElementById('active-count').textContent = '—';
+        label.textContent = 'Sin conexión';
+        detail.textContent = 'No se pudo consultar';
+        pill.className = 'pill bad';
+        body.innerHTML = '<tr><td colspan="6" class="empty">No se pudo cargar el estado. Intenta actualizar.</td></tr>';
+        document.getElementById('updated-at').textContent = 'Error de conexión';
+      }
+    }
+    body.addEventListener('click', async event => {
+      const button = event.target.closest('[data-action][data-module]');
+      if (!button) return;
+      const action = button.dataset.action;
+      const moduleName = button.dataset.module;
+      button.disabled = true;
+      button.textContent = action === 'detener' ? 'Parando…' : 'Reiniciando…';
+      try {
+        const response = await fetch(`/api/ui/modulos/${encodeURIComponent(moduleName)}/${action}`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store'
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await response.json();
+        await refreshStatus();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = 'Reintentar';
+        button.disabled = false;
+        document.getElementById('updated-at').textContent = `No se pudo ${action} ${moduleName}`;
+      }
+    });
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    }
+    document.getElementById('refresh').addEventListener('click', refreshStatus);
+    refreshStatus();
+    window.setInterval(refreshStatus, 10000);
+  </script>
+</body>
+</html>

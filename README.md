@@ -1,6 +1,6 @@
 # DigiMAX
 
-**Digitrans** es una plataforma universitaria que reúne en una sola cuenta servicios de transporte, billetera universal y recargas móviles. El proyecto está organizado como un monorepo de aplicaciones Spring Boot independientes que se comunican entre sí mediante APIs HTTP.
+**Digitrans** es una plataforma universitaria que reúne en una sola cuenta servicios de transporte, billetera universal y recargas móviles. El proyecto está organizado como un monorepo de aplicaciones Spring Boot independientes que se comunican mediante APIs HTTP. Orquestador coordina el inicio y la supervisión local de los servicios.
 
 ## Proyecto académico
 
@@ -22,6 +22,8 @@ Desarrollado en la **Fundación Universitaria Tecnológico Comfenalco** por:
 | `RecargasMovil` | 8083 | Catálogos, líneas y recargas simuladas; inicia pagos en Pagos y conserva su resultado en el historial. |
 | `Correo` | 8084 | API interna para el envío de correo mediante SMTP. |
 | `Pagos` | 8085 | API de prueba para iniciar y consultar pagos simulados en memoria; RecargasMovil la usa como medio de pago. |
+| `Lector` | 8086 | Registra tarjetas Digitrans RFID en inventario y consulta tarjetas vinculadas e historial de titulares. |
+| `Orquestador` | 8087 | Panel local para supervisar, detener y reiniciar los demás módulos; escribe logs en `Orquestador/logs/`. |
 
 Acceso centraliza la identidad. Los demás módulos validan la sesión mediante el token JWT; Billetera comparte el saldo con Transporte. Billetera y RecargasMovil se comunican con Pagos por HTTP y guardan el ID y estado del pago en sus movimientos. Las cargas y recargas son **simuladas**: no se conectan a medios de pago ni a operadores móviles reales; el saldo de Billetera solo aumenta cuando Pagos informa `APROBADO`, mientras RecargasMovil no descuenta saldo de Billetera.
 
@@ -34,6 +36,8 @@ Acceso centraliza la identidad. Los demás módulos validan la sesión mediante 
 - Credenciales SMTP y una clave compartida para enviar correos
 
 Los módulos incluyen sus wrappers Gradle o Maven; no es necesario instalar Gradle o Maven globalmente para los comandos de esta guía.
+
+Los módulos Java están configurados con Java 17 como versión objetivo. Orquestador está configurado para iniciar los módulos de DigiMAX en Windows.
 
 ## Configuración local
 
@@ -48,6 +52,8 @@ Configura estas variables de entorno para tu usuario o para las terminales donde
 | `SMTP_USERNAME` | Cuenta remitente SMTP configurada en Correo. |
 | `SMTP_PASSWORD` | Contraseña o contraseña de aplicación SMTP. |
 | `SMTP_FROM` | Dirección visible del remitente; por defecto usa `SMTP_USERNAME`. |
+| `LECTOR_API_KEY` | Clave compartida por Lector, Billetera y Transporte para proteger las llamadas internas de RFID. |
+| `ORQUESTADOR_API_TOKEN` | Token requerido por la API de control de Orquestador. |
 
 En Google Cloud Console, registra este URI de redirección para el cliente OAuth local:
 
@@ -69,6 +75,7 @@ Cada módulo persistente usa una base MongoDB independiente:
 | `Transporte` | `TRANSPORTE_MONGODB_URI` | `mongodb://localhost:27017/digitrans_transporte` |
 | `Billetera` | `BILLETERA_MONGODB_URI` | `mongodb://localhost:27017/digitrans_billetera` |
 | `RecargasMovil` | `RECARGAS_MONGODB_URI` | `mongodb://localhost:27017/digitrans_recargas` |
+| `Lector` | `LECTOR_MONGODB_URI` | `mongodb://localhost:27017/digitrans_lector` |
 
 MongoDB crea cada base cuando el módulo realiza su primera escritura. `Correo` no necesita base de datos. La base antigua `Digitrans_Max` no se modifica ni migra automáticamente.
 
@@ -85,7 +92,29 @@ Las direcciones de los servicios pueden personalizarse con `ACCESO_BASE_URL`, `B
 
 La consola global de Acceso consulta las bases de Transporte, Billetera y Recargas para consolidar transacciones. Usa las URI de MongoDB de cada módulo indicadas en la tabla; si personalizas una base, configura la misma URI en la variable correspondiente para que la consola pueda leer sus datos. El total global consolida operaciones por ID cuando los módulos comparten la misma referencia. Los reportes Excel permiten escoger conjuntos de datos, servicios y fechas.
 
-## Iniciar todos los módulos en Windows
+## Orquestador local
+
+Orquestador usa el puerto `8087` y administra los siete módulos de aplicación. Espera a que cada servicio responda antes de iniciar el siguiente, consulta su estado periódicamente y reinicia automáticamente los que fallen. El panel local permite actualizar el estado y usar los botones **Reiniciar** y **Parar**; al detener un módulo queda detenido hasta que lo inicies o reinicies manualmente. Los registros se guardan por módulo en `Orquestador/logs/`.
+
+Para iniciar Orquestador con las bases de datos de MongoDB Atlas, configura las variables de entorno del proyecto y ejecuta desde la raíz:
+
+```powershell
+.\Iniciar-Orquestador.ps1
+```
+
+El script comprueba las claves requeridas y las URI Atlas, activa el perfil `db-atlas` y ejecuta Orquestador. Requiere `APP_JWT_SECRET`, `MAIL_SERVICE_API_KEY`, `LECTOR_API_KEY` y las URI `ACCESO_MONGODB_URI`, `TRANSPORTE_MONGODB_URI`, `BILLETERA_MONGODB_URI` y `RECARGAS_MONGODB_URI`. También configura `LECTOR_MONGODB_URI` para la base `digitrans_lector` si no está definida. Las credenciales SMTP y OAuth de Google deben estar configuradas para las funciones que las utilizan.
+
+El panel está en <http://localhost:8087>. La API de estado es `GET /api/estado`. La API de control también ofrece `POST /api/modulos/{nombre}/iniciar`, `/detener` y `/reiniciar`; estas rutas requieren el encabezado `X-Orquestador-Token` con el valor de `ORQUESTADOR_API_TOKEN`. El panel local usa una ruta protegida para sus acciones.
+
+Para detener procesos que hayan quedado ocupando los puertos del proyecto, ejecuta desde la raíz:
+
+```powershell
+.\Limpiar-Puertos.ps1
+```
+
+El script muestra los procesos que escuchan en `8080`–`8087`, pide confirmación y verifica si quedaron puertos ocupados. Si detiene el puerto `8087`, también detiene Orquestador.
+
+Para iniciar todos los módulos en terminales separadas, también puedes usar el lanzador existente:
 
 Desde la raíz del repositorio:
 
@@ -121,6 +150,8 @@ Ejecuta las pruebas desde la raíz del repositorio con PowerShell:
 .\Billetera\gradlew.bat -p Billetera test
 .\RecargasMovil\gradlew.bat -p RecargasMovil test
 .\Correo\gradlew.bat -p Correo test
+.\Lector\gradlew.bat -p Lector test
+.\Orquestador\gradlew.bat -p Orquestador test
 .\Transporte\mvnw.cmd -f Transporte\pom.xml test
 .\Transporte\mvnw.cmd -f Pagos\pom.xml test
 ```
@@ -135,13 +166,17 @@ Para correr una clase específica en Gradle, añade `--tests nombre.completo.DeL
 
 ```text
 .
-├── Acceso/
-├── Billetera/
-├── Correo/
-├── RecargasMovil/
-├── Transporte/
-├── Iniciar-Digitrans.bat
-└── Iniciar-Digitrans.ps1
+|-- Acceso/
+|-- Billetera/
+|-- Correo/
+|-- Lector/
+|-- Orquestador/
+|-- Pagos/
+|-- RecargasMovil/
+|-- Transporte/
+|-- Iniciar-Digitrans.bat
+|-- Iniciar-Digitrans.ps1
+|-- Iniciar-Orquestador.ps1
+|-- Limpiar-Puertos.ps1
 ```
-
 Los secretos y configuraciones locales deben mantenerse fuera del control de versiones. El archivo `.gitignore` excluye archivos `.env`, configuraciones locales y artefactos de compilación.

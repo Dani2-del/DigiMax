@@ -51,7 +51,7 @@
         <div>
           <p class="model-kicker">PREDICCIÓN DE RECARGA · PRÓXIMOS 7 DÍAS</p>
           <h2>Una lectura anticipada de la actividad</h2>
-          <p>La regresión logística usa el historial de recargas de Billetera y señales recientes para ordenar a los pasajeros según su probabilidad estimada de volver a recargar.</p>
+          <p>El modelo combina el historial de recargas y consumos de Billetera con senales de Transporte para estimar que pasajeros podrian recargar en los proximos siete dias.</p>
           <p class="model-source">Evaluación temporal con datos exportados de Atlas. El periodo de prueba es posterior al periodo de entrenamiento.</p>
         </div>
         <div class="model-reference"><span>Semana proyectada</span><strong th:text="${semanaReferencia}">—</strong><small>Los grupos son posiciones relativas en esta población.</small></div>
@@ -83,7 +83,7 @@
           <div class="model-panel-heading"><div><p class="model-kicker">PRUEBA TEMPORAL</p><h2>Frente a una regla sencilla</h2></div></div>
           <p>La referencia marca como futuro recargador a quien recargó la semana anterior. Un F1 más alto indica mejor equilibrio entre aciertos y recargas detectadas.</p>
           <div class="model-f1-chart" role="img" aria-label="Comparación del F1 del modelo y la regla simple" th:style="${estiloBarrasF1}">
-            <div class="model-f1-row"><span>Regresión logística</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasF1[0]['valor']}">0.231</strong></div>
+            <div class="model-f1-row"><span th:text="${metricas['modelo']}">Modelo actual</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasF1[0]['valor']}">0.231</strong></div>
             <div class="model-f1-row"><span>Regla simple</span><div><i class="model-f1-bar is-baseline"></i></div><strong th:text="${barrasF1[1]['valor']}">0.128</strong></div>
           </div>
           <p class="model-footnote">Evaluación: 5 ene. – 19 oct. 2026 · prevalencia de recarga: 4,35 %.</p>

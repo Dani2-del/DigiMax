@@ -1,15 +1,15 @@
 """
 Publica las predicciones del modelo para el panel de administracion.
-1. Entrena la regresion logistica con entrenamiento + validacion (2024-01 a 2025-12).
+1. Entrena el modelo seleccionado en validacion (2024-01 a 2025-12).
 2. Calcula el riesgo de cada pasajero en la ultima semana disponible.
 3. Asigna un nivel de riesgo (Alto / Medio / Bajo). Se muestra el nivel, no el porcentaje,
    porque el decil mas alto estaba subestimado en calibracion.
 4. Guarda CSV locales y, si existe MONGO_URI, sube a digitrans_acceso:
      predicciones_recarga  -> una prediccion vigente por usuario
      modelo_metricas       -> un documento con las metricas de la prueba
-Entrada:  tabla_usuario_semana.csv y evaluacion_final.csv (misma carpeta)
+Entrada:  tabla_usuario_semana_v6.csv y evaluacion_final.csv (misma carpeta)
 Salida:   predicciones_recarga.csv, modelo_metricas.csv (y Atlas si MONGO_URI)
-Requisitos: python -m pip install pandas numpy scikit-learn pymongo
+Requisitos: python -m pip install -r requirements.txt
 Uso:        python publicar_predicciones.py
 """
 import os
@@ -19,15 +19,17 @@ from urllib.parse import urlsplit
 
 import numpy as np
 import pandas as pd
-from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
+from modelo_predictivo_config import (
+    MODELO_CATBOOST, MODELO_IMPULSO, MODELO_LIGHTGBM, MODELO_LOGISTICO, VARIABLES, VERSION_MODELO,
+    crear_modelo, transformar_variables,
+)
 
-ARCHIVO = "tabla_usuario_semana_v3.csv"
+ARCHIVO = "tabla_usuario_semana_v6.csv"
 SALIDA_PRED = "predicciones_recarga.csv"
 SALIDA_MET = "modelo_metricas.csv"
 ARCHIVO_EVALUACION = "evaluacion_final.csv"
 OBJETIVO = "recarga_billetera_en_7_dias"
-VERSION_MODELO = "logistica_historial_transporte_v3"
 
 
 def validar_uri_atlas(uri):
@@ -48,24 +50,10 @@ def validar_uri_atlas(uri):
             "con host terminado en .mongodb.net; no se publicara en una base local."
         )
 
-VARIABLES = ["rec_7d", "rec_7d_anterior", "rec_30d", "rec_90d",
-             "rec_180d", "rec_365d", "tarjeta_7d", "tarjeta_30d", "tarjeta_90d",
-             "tarjeta_180d", "tarjeta_365d", "movil_30d", "movil_90d",
-             "viaje_7d", "viaje_30d", "viaje_90d", "viaje_365d",
-             "dias_desde_ultimo_viaje", "dias_desde_ultima", "antiguedad_dias", "tendencia_7d"]
 ENTRENAMIENTO = ("2024-01-01", "2025-12-15")   # entrenamiento + validacion
 ULTIMA_SEMANA_REFERENCIA = None                # None = la ultima semana de la tabla
 PORC_ALTO = 0.10                               # 10 % de pasajeros con mayor riesgo
 PORC_MEDIO = 0.30                              # siguiente 30 %
-
-
-def transformar_variables(X):
-    X = np.asarray(X, dtype=np.float32).copy()
-    indice_tendencia = VARIABLES.index("tendencia_7d")
-    indices_log = [i for i in range(len(VARIABLES)) if i != indice_tendencia]
-    X[:, indices_log] = np.log1p(np.maximum(X[:, indices_log], 0))
-    X[:, indice_tendencia] = np.sign(X[:, indice_tendencia]) * np.log1p(np.abs(X[:, indice_tendencia]))
-    return X
 
 
 def main():
@@ -73,18 +61,31 @@ def main():
     ap.add_argument("--prefijo", default="digitrans",
                     help="prefijo de la base de Acceso donde se publican predicciones")
     args = ap.parse_args()
+    if not os.path.exists(ARCHIVO_EVALUACION):
+        raise SystemExit("Falta evaluacion_final.csv. Ejecuta evaluar_final.py antes de publicar.")
+    ev = pd.read_csv(ARCHIVO_EVALUACION)
+    if "objetivo" not in ev.columns or not ev["objetivo"].eq(OBJETIVO).all():
+        raise SystemExit("evaluacion_final.csv pertenece a otro objetivo. Vuelve a ejecutar evaluar_final.py.")
+    if "version_modelo" not in ev.columns or not ev["version_modelo"].eq(VERSION_MODELO).all():
+        raise SystemExit("evaluacion_final.csv no contiene la seleccion del modelo v8; ejecuta evaluar_final.py otra vez.")
+    filas_modelo = ev[ev["modelo"].isin([
+        MODELO_LOGISTICO, MODELO_IMPULSO, MODELO_CATBOOST, MODELO_LIGHTGBM
+    ])]
+    if filas_modelo.empty:
+        raise SystemExit("evaluacion_final.csv no identifica un modelo v8 que se pueda publicar.")
+    nombre_modelo = str(filas_modelo.iloc[0]["modelo"])
+
     t = pd.read_csv(ARCHIVO, usecols=["usuario_id", "semana"] + VARIABLES + ["y"], parse_dates=["semana"])
     tr = t[(t["semana"] >= ENTRENAMIENTO[0]) & (t["semana"] <= ENTRENAMIENTO[1])]
-    X_tr = tr[VARIABLES].values.astype(np.float32)
+    X_tr = transformar_variables(tr[VARIABLES].values.astype(np.float32))
     y_tr = tr["y"].values.astype(int)
     if len(tr) == 0 or np.unique(y_tr).size < 2:
         raise SystemExit("No hay suficientes filas y ambas clases para entrenar; reconstruye la tabla.")
     if not np.isfinite(X_tr).all():
         raise SystemExit("El entrenamiento contiene valores vacios o no numericos.")
-    X_tr = transformar_variables(X_tr)
-
-    esc = StandardScaler().fit(X_tr)
-    modelo = LogisticRegression(max_iter=1000).fit(esc.transform(X_tr), y_tr)
+    modelo = crear_modelo(nombre_modelo, y_tr)
+    esc = StandardScaler() if nombre_modelo == MODELO_LOGISTICO else None
+    modelo.fit(esc.fit_transform(X_tr) if esc else X_tr, y_tr)
 
     semana = t["semana"].max() if ULTIMA_SEMANA_REFERENCIA is None else pd.Timestamp(ULTIMA_SEMANA_REFERENCIA)
     actual = t[t["semana"] == semana].copy()
@@ -93,7 +94,7 @@ def main():
     if not np.isfinite(actual[VARIABLES].values.astype(np.float32)).all():
         raise SystemExit("La semana a publicar contiene valores vacios o no numericos.")
     X_actual = transformar_variables(actual[VARIABLES].values)
-    p = modelo.predict_proba(esc.transform(X_actual))[:, 1]
+    p = modelo.predict_proba(esc.transform(X_actual) if esc else X_actual)[:, 1]
 
     # Nivel de riesgo segun la distribucion de probabilidades de esta semana
     corte_alto = np.quantile(p, 1 - PORC_ALTO)
@@ -110,25 +111,28 @@ def main():
     pred["decil"] = pred["decil"].astype(int)
     pred.to_csv(SALIDA_PRED, index=False)
 
-    # No reutilizar metricas antiguas de otra etiqueta o conjunto de variables.
-    if not os.path.exists(ARCHIVO_EVALUACION):
-        raise SystemExit("Falta evaluacion_final.csv. Ejecuta evaluar_final.py antes de publicar.")
-    ev = pd.read_csv(ARCHIVO_EVALUACION)
-    if "objetivo" not in ev.columns or not ev["objetivo"].eq(OBJETIVO).all():
-        raise SystemExit("evaluacion_final.csv pertenece a otra version del objetivo. Vuelve a ejecutar evaluar_final.py.")
-    if "version_modelo" not in ev.columns or not ev["version_modelo"].eq(VERSION_MODELO).all():
-        raise SystemExit("evaluacion_final.csv es de otra version del modelo. Ejecuta evaluar_final.py antes de publicar.")
-    modelo_eval = ev[ev["modelo"] == "regresion logistica"]
+    modelo_eval = ev[ev["modelo"] == nombre_modelo]
     linea_base = ev[ev["modelo"] == "linea base (tarjeta_7d > 0)"]
     if modelo_eval.empty or linea_base.empty:
         raise SystemExit("evaluacion_final.csv no incluye el modelo y la linea base esperados.")
     r = modelo_eval.iloc[0]
     b = linea_base.iloc[0]
-    met = {"modelo": "Regresion logistica", "objetivo": OBJETIVO, "version_modelo": VERSION_MODELO,
+    etiquetas_modelo = {
+        MODELO_LOGISTICO: "Regresion logistica",
+        MODELO_IMPULSO: "Boosting de gradiente",
+        MODELO_CATBOOST: "CatBoost",
+        MODELO_LIGHTGBM: "LightGBM",
+    }
+    etiqueta_modelo = etiquetas_modelo[nombre_modelo]
+    met = {"modelo": etiqueta_modelo, "objetivo": OBJETIVO, "version_modelo": VERSION_MODELO,
            "datos": str(r["conjunto"]),
            "generado": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
            "auc_roc": float(r["auc_roc"]), "auc_pr": float(r["auc_pr"]),
            "precision": float(r["precision"]), "recall": float(r["recall"]), "f1": float(r["f1"]),
+           "umbral_f1": float(r["umbral"]),
+           "precision_validacion": float(r["precision_validacion"]),
+           "recall_validacion": float(r["recall_validacion"]),
+           "f1_validacion": float(r["f1_validacion"]),
            "f1_linea_base": float(b["f1"]), "precision_linea_base": float(b["precision"]),
            "recall_linea_base": float(b["recall"])}
     pd.DataFrame([met]).to_csv(SALIDA_MET, index=False)

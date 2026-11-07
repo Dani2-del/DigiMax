@@ -10,6 +10,8 @@ Desde PowerShell, en esta carpeta, ejecuta:
 .\ejecutar_modelo.ps1
 ```
 
+Para actualizar los datos y evaluar candidatos sin publicar predicciones en Atlas, usa `.\ejecutar_modelo.ps1 -SoloEvaluar`.
+
 El flujo usa `digitrans` como prefijo principal. Puedes indicar `-Prefijo` para evaluar otro conjunto; exportacion y publicacion usan el mismo prefijo.
 
 El script pide la URI de Atlas de forma oculta si `DIGITRANS_ATLAS_URI` no está definida en esa ventana. Después ejecuta, en orden, la exportación, construcción de tabla, evaluación y publicación. Si un paso falla, se detiene e indica cuál. La URI solicitada solo se mantiene en el proceso durante esta ejecución.
@@ -22,13 +24,15 @@ Si PowerShell bloquea la ejecución del archivo, inicia una sesión puntual así
 powershell -ExecutionPolicy Bypass -File .\ejecutar_modelo.ps1
 ```
 
-El mismo flujo puede ejecutarse paso a paso con `python exportar_datos_atlas.py`, `python construir_tabla_usuario_semana.py`, `python evaluar_final.py` y `python publicar_predicciones.py`.
+El flujo también puede ejecutarse paso a paso con `python exportar_datos_atlas.py`, `python construir_tabla_usuario_semana.py`, `python evaluar_final.py` y `python publicar_predicciones.py`.
 
-Instala dependencias si hace falta: `python -m pip install pymongo pandas numpy scikit-learn`.
+Instala las dependencias del modelo desde esta carpeta: `python -m pip install -r requirements.txt`. CatBoost y LightGBM se comparan como candidatos y la primera evaluación puede tardar más que antes.
 
-`evaluar_final.py` usa `tabla_eval.csv` si existe; de lo contrario, usa la ventana temporal reservada en `tabla_usuario_semana_v3.csv` (5 de enero a 19 de octubre de 2026). `tabla_eval.csv` debe tener las mismas columnas y el mismo objetivo.
+`evaluar_final.py` compara regresión logística, boosting de gradiente, CatBoost y LightGBM usando la misma división temporal. Elige el modelo y el umbral por F1 en validación; AUC-PR sirve como desempate. Luego reporta una sola vez el resultado en el periodo posterior, del 5 de enero al 19 de octubre de 2026. Si existe `tabla_eval.csv`, se usa como prueba independiente y debe tener todas las columnas de la versión v6. La versión de evaluación se identifica como `recarga_historial_consumo_transporte_v8_cadencia`.
 
-El modelo sigue usando regresión logística. Esta versión agrega al historial de recargas el uso reciente de Transporte (cantidad de pasajes en ventanas de 7, 30, 90 y 365 días, y días desde el último viaje). Los viajes son variables predictoras; la etiqueta positiva continúa contando solamente abonos de Billetera. La nueva medición estará disponible después de ejecutar el flujo completo. La evaluación anterior de la ventana temporal dio F1 0.2410, precisión 0.1704, recall 0.4116 y AUC-ROC 0.7594; esa ventana ya se había revisado en una iteración anterior.
+La tabla v6 agrega el intervalo entre las dos últimas recargas a las variables de la tabla v5. El generador de datos sintéticos crea usuarios ocasionales, regulares y frecuentes con una cadencia individual persistente, variación entre ciclos y algunos ciclos omitidos; el perfil no se guarda como dato del usuario. El objetivo sigue siendo exclusivamente un abono exitoso de Billetera dentro de los siguientes siete días; viajes, recargas móviles y consumos solo son predictores. Tras regenerar las bases, hay que exportar y reconstruir la tabla antes de evaluar.
+
+Las métricas guardadas de v5/v7 son históricas: se calcularon antes de introducir cadencias de recarga y la nueva variable de intervalo. No se deben comparar como si provinieran de la misma generación de datos que v8. Los datos sintéticos sirven para probar el flujo y no representan evidencia de rendimiento con pasajeros reales.
 
 La exportación de viajes consulta desde el 1 de enero de 2023 para aprovechar el índice por fecha. Si Atlas cierra la conexión, el exportador reabre el cursor y reintenta desde el último tramo escrito, sin duplicar los viajes ya exportados.
 
@@ -61,4 +65,4 @@ Cuando termine, ejecuta el modelo contra las bases principales:
 .\ejecutar_modelo.ps1
 ```
 
-Los datos generados son sint?ticos; sus m?tricas no describen el comportamiento real de pasajeros.
+Los datos generados son sintéticos. Sus métricas no describen el comportamiento real de pasajeros y no se deben presentar como rendimiento de producción. Para subirlas de forma legítima se necesitan historiales reales, suficientes positivos y patrones temporales que existan en el servicio. No se debe fijar una precisión de 80–90 % cambiando solo el umbral si el recall cae drásticamente.

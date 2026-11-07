@@ -1,5 +1,6 @@
 param(
-    [string]$Prefijo = 'digitrans'
+    [string]$Prefijo = 'digitrans',
+    [switch]$SoloEvaluar
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,9 +32,11 @@ try {
     $pasos = @(
         @{ Nombre = 'Exportar datos de Atlas'; Script = 'exportar_datos_atlas.py'; Argumentos = @('--prefijo', $Prefijo) },
         @{ Nombre = 'Construir tabla usuario-semana'; Script = 'construir_tabla_usuario_semana.py'; Argumentos = @() },
-        @{ Nombre = 'Evaluar modelo'; Script = 'evaluar_final.py'; Argumentos = @() },
-        @{ Nombre = 'Publicar predicciones'; Script = 'publicar_predicciones.py'; Argumentos = @('--prefijo', $Prefijo) }
+        @{ Nombre = 'Evaluar modelo'; Script = 'evaluar_final.py'; Argumentos = @() }
     )
+    if (-not $SoloEvaluar) {
+        $pasos += @{ Nombre = 'Publicar predicciones'; Script = 'publicar_predicciones.py'; Argumentos = @('--prefijo', $Prefijo) }
+    }
 
     foreach ($paso in $pasos) {
         Write-Host "`n=== $($paso.Nombre) ===" -ForegroundColor Cyan
@@ -44,7 +47,11 @@ try {
         }
     }
 
-    Write-Host "`nModelo ejecutado y publicado correctamente." -ForegroundColor Green
+    if ($SoloEvaluar) {
+        Write-Host "`nEvaluacion terminada; no se publicaron cambios en Atlas." -ForegroundColor Green
+    } else {
+        Write-Host "`nModelo ejecutado y publicado correctamente." -ForegroundColor Green
+    }
 } catch {
     Write-Error $_
     exit 1
