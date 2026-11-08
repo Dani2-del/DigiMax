@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color"
+        th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#FF5600')}" />
+  <title>Pago exitoso - Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261107-3)}" />
+  <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
+</head>
+<body class="menu-page payment-success-page" th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="~{fragments/header :: header}"></div>
+    <main class="payment-success-card" role="status" aria-live="polite">
+      <span class="payment-success-icon" aria-hidden="true">&#10003;</span>
+      <p class="payment-success-service" th:text="${sistemaActual.nombre}">Transcaribe</p>
+      <h1>Pago exitoso</h1>
+      <p class="payment-success-amount" th:if="${pagoMonto}">
+        Pasaje pagado: <strong th:text="${'$ ' + pagoMonto}">$ 3.900</strong>
+      </p>
+      <p class="payment-success-detail" th:if="${pagoDetalle}" th:text="${pagoDetalle}"></p>
+      <a class="payment-success-return" th:href="@{/menu}">Volver al menú</a>
+      <p class="payment-success-countdown">Volverás al menú en 3 segundos.</p>
+    </main>
+  </div>
+  <th:block th:replace="~{fragments/loading-indicator :: overlay}"></th:block>
+  <script>
+    window.setTimeout(() => window.location.replace('/menu'), 3000);
+    window.addEventListener('pageshow', () => {
+      const overlay = document.querySelector('#global-loading-overlay');
+      if (overlay) {
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
+    });
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
   <meta name="theme-color"
         th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#0F3948')}" />
   <title>Mi espacio - Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261029-1)}" />
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261107-3)}" />
   <link rel="stylesheet" th:href="@{/css/avisos.css(v=20261015-2)}" />
     <th:block th:replace="~{fragments/loading-indicator :: styles}"></th:block>
 </head>
@@ -228,9 +228,9 @@
               <span>Tarjeta Digitrans (RFID)</span>
             </label>
           </fieldset>
-          <div id="normal-card-payment">
+          <div id="normal-card-payment" class="normal-card-payment">
           <label for="rideCard" th:text="${'Tarjeta ' + sistemaActual.nombre}">Tarjeta Transcaribe</label>
-          <select id="rideCard" name="numeroTarjeta" class="select-bus" required>
+          <select id="rideCard" name="numeroTarjeta" class="select-bus">
             <option value="" disabled selected th:text="${'Selecciona una tarjeta ' + sistemaActual.nombre}">Selecciona una tarjeta Transcaribe</option>
             <option th:each="t : ${tarjetasSistemaActual}"
                     th:value="${t.numeroTarjeta}"
@@ -250,18 +250,17 @@
             Consultar o cargar saldo en Billetera Digitrans
           </a>
           </div>
-          <div id="rfid-card-payment" hidden>
+          <div id="rfid-card-payment" class="rfid-card-payment">
             <label for="rfidUid">Presenta tu tarjeta RFID</label>
             <input id="rfidUid" name="uidRfid" maxlength="40" autocomplete="off"
-                   placeholder="Conecta el lector y acerca la tarjeta" disabled>
+                   placeholder="Conecta el lector y acerca la tarjeta">
             <small>El lector USB escribe el UID en este campo. Lector valida el titular y cobra en Billetera.</small>
           </div>
-          <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}"
-                  data-normal-label="Simular viaje" data-rfid-label="Leer tarjeta y simular viaje">
+          <button type="submit" class="ride-submit" th:attr="data-fare=${valorPasaje}">
             <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
               <path d="M2.5 10h13m-4.5-4.5L15.5 10 11 14.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
-            <span id="ride-submit-label">Simular viaje</span> · $<span th:text="${#numbers.formatDecimal(valorPasaje, 0, 'POINT', 0, 'COMMA')}">3.550</span>
+            <span class="ride-label-normal">Simular viaje</span><span class="ride-label-rfid">Leer tarjeta y simular viaje</span> · $<span th:text="${#numbers.formatDecimal(valorPasaje, 0, 'POINT', 0, 'COMMA')}">3.550</span>
           </button>
         </form>
       </section>
@@ -309,24 +308,15 @@
     const rideForm = document.querySelector('.ride-form');
     if (rideForm) {
       const modeInputs = rideForm.querySelectorAll('input[name="modoPago"]');
-      const normalPayment = document.querySelector('#normal-card-payment');
-      const rfidPayment = document.querySelector('#rfid-card-payment');
-      const normalCard = document.querySelector('#rideCard');
       const rfidUid = document.querySelector('#rfidUid');
-      const label = document.querySelector('#ride-submit-label');
       const submit = rideForm.querySelector('.ride-submit');
       const updateMode = () => {
         const rfid = rideForm.querySelector('input[name="modoPago"]:checked').value === 'RFID';
-        normalPayment.hidden = rfid;
-        rfidPayment.hidden = !rfid;
-        normalCard.disabled = rfid;
-        normalCard.required = !rfid;
-        rfidUid.disabled = !rfid;
-        rfidUid.required = rfid;
-        label.textContent = rfid ? submit.dataset.rfidLabel : submit.dataset.normalLabel;
         if (rfid) rfidUid.focus();
       };
       modeInputs.forEach(input => input.addEventListener('change', updateMode));
+      updateMode();
+      window.addEventListener('pageshow', updateMode);
       rfidUid.addEventListener('keydown', event => {
         if (event.key !== 'Enter'
             || rideForm.querySelector('input[name="modoPago"]:checked').value !== 'RFID'
@@ -341,6 +331,14 @@
         if (!window.confirm(`¿Confirmas la simulación del viaje por $${fare}?`)) event.preventDefault();
       });
     }
+    // El formulario hace POST y redirige; limpia cualquier overlay restaurado por el navegador.
+    window.addEventListener('pageshow', () => {
+      const loadingOverlay = document.querySelector('#global-loading-overlay');
+      if (loadingOverlay) {
+        loadingOverlay.classList.remove('is-visible');
+        loadingOverlay.setAttribute('aria-hidden', 'true');
+      }
+    });
   </script>
 </body>
 </html>

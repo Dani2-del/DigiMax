@@ -185,6 +185,33 @@ public class UsuarioController {
         return "usuarios/cuenta/menu";
     }
 
+    @GetMapping("/pago-exitoso")
+    public String pagoExitoso(Model model, HttpSession session) {
+        Usuario usuario = obtenerUsuarioLogueado();
+        if (usuario == null) {
+            return "redirect:/login";
+        }
+        if (!model.containsAttribute("pagoSistema")
+                && !model.containsAttribute("pagoMonto")
+                && !model.containsAttribute("pagoDetalle")) {
+            return "redirect:/menu";
+        }
+
+        Object sistemaEnSesion = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);
+        SistemaTransporte sistema = sistemaEnSesion instanceof SistemaTransporte seleccionado
+                && seleccionado.estaDisponible()
+                ? seleccionado
+                : usuario.getSitm();
+        if (sistema == null || !sistema.estaDisponible()) {
+            sistema = SistemaTransporte.TRANSCARIBE;
+        }
+        session.setAttribute(SistemaTransporte.SESSION_ATTRIBUTE, sistema);
+        model.addAttribute("sistemaActual", sistema);
+        model.addAttribute("esTransmilenio", sistema == SistemaTransporte.TRANSMILENIO);
+        model.addAttribute("esTransmetro", sistema == SistemaTransporte.TRANSMETRO);
+        return "usuarios/cuenta/pago-exitoso";
+    }
+
     @PostMapping("/menu/sistema")
     public String seleccionarSistema(@RequestParam SistemaTransporte sistema,
                                      @RequestParam(defaultValue = "false") boolean primeraConfirmacion,

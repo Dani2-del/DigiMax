@@ -1916,6 +1916,25 @@ body[data-sistema="TRANSMETRO"] .ride-coming-soon span { color: #087a2e; font-we
   gap: 9px;
 }
 
+/* La forma de pago cambia con CSS para seguir funcionando aunque el JS no cargue. */
+.ride-form .rfid-card-payment,
+.ride-form .ride-label-rfid {
+  display: none;
+}
+
+.ride-form:has(.ride-payment-mode input[name="modoPago"][value="RFID"]:checked) .normal-card-payment,
+.ride-form:has(.ride-payment-mode input[name="modoPago"][value="RFID"]:checked) .ride-label-normal {
+  display: none;
+}
+
+.ride-form:has(.ride-payment-mode input[name="modoPago"][value="RFID"]:checked) .rfid-card-payment {
+  display: block;
+}
+
+.ride-form:has(.ride-payment-mode input[name="modoPago"][value="RFID"]:checked) .ride-label-rfid {
+  display: inline;
+}
+
 .ride-payment-mode {
   display: flex;
   flex-wrap: wrap;
@@ -2508,4 +2527,103 @@ body[data-sistema="TRANSMETRO"]::before {
 
 body[data-sistema="TRANSMILENIO"]::before {
   background-image: url("/images/fondo_transmilenio.jpg");
+}
+
+.payment-success-page .page {
+  min-height: 100vh;
+  justify-content: flex-start;
+  padding: 0 0 48px;
+}
+
+.payment-success-page .page > .navbar {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.payment-success-card {
+  box-sizing: border-box;
+  width: min(100% - 36px, 620px);
+  margin: auto;
+  padding: clamp(30px, 6vw, 56px);
+  border: 1px solid color-mix(in srgb, var(--coral) 30%, white);
+  border-top: 5px solid var(--coral);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 20px 56px rgba(31, 48, 61, .14);
+  text-align: center;
+  animation: dashboard-in .45s ease-out both;
+}
+
+.payment-success-icon {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--coral) 12%, white);
+  color: var(--coral);
+  font-size: 38px;
+  font-weight: 800;
+}
+
+.payment-success-service {
+  margin: 0 0 4px;
+  color: var(--coral);
+  font-size: .8rem;
+  font-weight: 800;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.payment-success-card h1 {
+  margin: 0 0 12px;
+  color: var(--tinta);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 5vw, 2.7rem);
+}
+
+.payment-success-amount {
+  margin: 0;
+  color: var(--piedra);
+}
+
+.payment-success-amount strong {
+  color: var(--tinta);
+}
+
+.payment-success-detail {
+  margin: 8px 0 0;
+  color: var(--piedra);
+}
+
+.payment-success-return {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  margin-top: 26px;
+  padding: 0 24px;
+  border-radius: 12px;
+  background: var(--coral);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform .18s ease, filter .18s ease;
+}
+
+.payment-success-return:hover {
+  color: #fff;
+  filter: brightness(.92);
+  transform: translateY(-1px);
+}
+
+.payment-success-countdown {
+  margin: 14px 0 0;
+  color: var(--piedra-soft);
+  font-size: .82rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .payment-success-card { animation-duration: .01ms; }
 }

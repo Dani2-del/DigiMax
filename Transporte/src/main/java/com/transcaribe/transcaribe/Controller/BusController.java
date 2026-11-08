@@ -163,9 +163,15 @@ public class BusController {
                         .orElseThrow(() -> new RuntimeException("Usuario de Transporte no encontrado."));
                 transaccionService.registrarViajeRfid(usuario, ride.charged().doubleValue(), ride.cardNumber(),
                         safeOperationId, sistema);
-                redirectAttributes.addFlashAttribute("mensaje", "Viaje RFID aprobado por $"
-                        + String.format(java.util.Locale.forLanguageTag("es-CO"), "%,.0f", fare)
-                        + ". Saldo Billetera: $" + ride.balance());
+                redirectAttributes.addFlashAttribute("pagoSistema", sistema.name());
+                redirectAttributes.addFlashAttribute("pagoMonto",
+                        String.format(java.util.Locale.forLanguageTag("es-CO"), "%,.0f", fare));
+                redirectAttributes.addFlashAttribute("pagoDetalle",
+                        "Saldo disponible en Billetera: $" + ride.balance());
+                return "redirect:/pago-exitoso";
+            }
+            if (numeroTarjeta == null || numeroTarjeta.isBlank()) {
+                redirectAttributes.addFlashAttribute("error", "Selecciona una tarjeta para pagar el viaje.");
                 return "redirect:/menu";
             }
             String resultado;
@@ -200,6 +206,11 @@ public class BusController {
             }
 
             if (resultado.contains("Cobro exitoso")) {
+                redirectAttributes.addFlashAttribute("pagoSistema", sistema.name());
+                redirectAttributes.addFlashAttribute("pagoMonto",
+                        String.format(java.util.Locale.forLanguageTag("es-CO"), "%,.0f",
+                                TarifaTranscaribe.paraSistema(sistema)));
+                redirectAttributes.addFlashAttribute("pagoDetalle", resultado);
                 try {
                     Usuario u = service.buscarPorId(usuarioId);
                     if (u != null) {
@@ -223,9 +234,11 @@ public class BusController {
                 } catch (Exception ex) {
                     System.err.println("Error correo simulación: " + ex.getMessage());
                 }
-                redirectAttributes.addFlashAttribute("mensaje", resultado + " ✅");
+                return "redirect:/pago-exitoso";
             } else if (resultado.startsWith("Pago ya procesado")) {
-                redirectAttributes.addFlashAttribute("mensaje", resultado);
+                redirectAttributes.addFlashAttribute("pagoSistema", sistema.name());
+                redirectAttributes.addFlashAttribute("pagoDetalle", resultado);
+                return "redirect:/pago-exitoso";
             } else {
                 redirectAttributes.addFlashAttribute("error", resultado + " ❌");
             }
