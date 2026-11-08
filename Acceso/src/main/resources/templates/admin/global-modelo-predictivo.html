@@ -4,102 +4,100 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101f35">
-  <title>Modelo predictivo — Digitrans</title>
-  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261105-1)}">
+  <title>Modelo predictivo mensual - Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/admin-global.css(v=20261107-1)}">
 </head>
 <body class="global-admin-page global-model-page">
 <div class="global-admin-shell">
   <aside class="global-sidebar">
     <a class="global-brand" th:href="@{/admin/global}">
       <img th:src="@{/images/digitrans-mark.svg}" width="40" height="40" alt="">
-      <span><strong>Digitrans</strong><small>Administración global</small></span>
+      <span><strong>Digitrans</strong><small>Administraci&oacute;n global</small></span>
     </a>
     <p class="sidebar-caption">PLATAFORMA</p>
-    <nav class="global-nav" aria-label="Navegación administrativa">
-      <a th:href="@{/admin/global}"><span>▦</span> Resumen</a>
-      <a th:href="@{/admin/global/usuarios}"><span>♙</span> Usuarios</a>
-      <a th:href="@{/admin/global/transacciones}"><span>⇄</span> Transacciones</a>
-      <a th:href="@{/admin/global/analitica}"><span>◷</span> Analítica global</a>
-      <a th:href="@{/admin/global/chats}"><span>⌁</span> Chats operativos</a>
-      <a th:href="@{/admin/global/reportes}"><span>▤</span> Reportes Excel</a>
-      <a class="active" th:href="@{/admin/global/modelo-predictivo}"><span>⌁</span> Modelo predictivo</a>
+    <nav class="global-nav" aria-label="Navegaci&oacute;n administrativa">
+      <a th:href="@{/admin/global}"><span>&#9638;</span> Resumen</a>
+      <a th:href="@{/admin/global/usuarios}"><span>&#9817;</span> Usuarios</a>
+      <a th:href="@{/admin/global/transacciones}"><span>&#8644;</span> Transacciones</a>
+      <a th:href="@{/admin/global/analitica}"><span>&#9719;</span> Anal&iacute;tica global</a>
+      <a th:href="@{/admin/global/chats}"><span>&#8991;</span> Chats operativos</a>
+      <a th:href="@{/admin/global/reportes}"><span>&#9636;</span> Reportes Excel</a>
+      <a class="active" th:href="@{/admin/global/modelo-predictivo}"><span>&#8961;</span> Modelo predictivo</a>
     </nav>
     <div class="sidebar-bottom">
-      <a th:href="@{/servicios}" class="sidebar-back">← Volver a servicios</a>
+      <a th:href="@{/servicios}" class="sidebar-back">&larr; Volver a servicios</a>
       <form th:action="@{/logout}" method="post">
         <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-        <button type="submit" class="sidebar-logout">Cerrar sesión</button>
+        <button type="submit" class="sidebar-logout">Cerrar sesi&oacute;n</button>
       </form>
     </div>
   </aside>
   <main class="global-main">
     <header class="global-topbar">
-      <div><p class="global-eyebrow">CENTRO DE CONTROL · DIGITRANS</p><h1>Modelo predictivo</h1></div>
-      <a class="back-dashboard" th:href="@{/admin/global}">← Resumen global</a>
+      <div><p class="global-eyebrow">CENTRO DE CONTROL &middot; DIGITRANS</p><h1>Modelo predictivo</h1></div>
+      <a class="back-dashboard" th:href="@{/admin/global}">&larr; Resumen global</a>
     </header>
 
     <section class="global-section" th:if="${metricas == null}">
       <div class="audit-panel">
-        <h2>Próximamente</h2>
-        <p>El modelo aún no ha publicado sus resultados.</p>
+        <h2>Proyecci&oacute;n mensual pendiente</h2>
+        <p>A&uacute;n no hay una proyecci&oacute;n de recarga a 30 d&iacute;as publicada en Atlas.</p>
       </div>
     </section>
 
     <section class="global-section model-section" th:unless="${metricas == null}">
-
       <div class="model-intro audit-panel">
         <div>
-          <p class="model-kicker">PREDICCIÓN DE RECARGA · PRÓXIMOS 7 DÍAS</p>
-          <h2>Una lectura anticipada de la actividad</h2>
-          <p>El modelo combina el historial de recargas y consumos de Billetera con senales de Transporte para estimar que pasajeros podrian recargar en los proximos siete dias.</p>
-          <p class="model-source">Evaluación temporal con datos exportados de Atlas. El periodo de prueba es posterior al periodo de entrenamiento.</p>
+          <p class="model-kicker">PREDICCI&Oacute;N DE RECARGA &middot; PR&Oacute;XIMOS 30 D&Iacute;AS</p>
+          <h2>Una lectura anticipada para el pr&oacute;ximo mes</h2>
+          <p>CatBoost ordena a los pasajeros activos seg&uacute;n su estimaci&oacute;n de volver a recargar la Billetera durante los pr&oacute;ximos 30 d&iacute;as.</p>
+          <p class="model-source">Evaluaci&oacute;n walk-forward en dos cortes temporales. La cohorte incluye pasajeros con historial de recargas y actividad en los &uacute;ltimos 365 d&iacute;as.</p>
         </div>
-        <div class="model-reference"><span>Semana proyectada</span><strong th:text="${semanaReferencia}">—</strong><small>Los grupos son posiciones relativas en esta población.</small></div>
+        <div class="model-reference"><span>Corte de referencia</span><strong th:text="${semanaReferencia}">&mdash;</strong><small>Horizonte estimado: los 30 d&iacute;as posteriores a esta fecha.</small></div>
       </div>
 
-      <div class="model-kpis" aria-label="Métricas de evaluación">
-        <article class="model-kpi model-kpi-primary"><span>F1 del modelo</span><strong th:text="${#numbers.formatDecimal(metricas['f1'], 1, 3)}">0.231</strong><small>Equilibra precisión y recall</small></article>
-        <article class="model-kpi"><span>Precisión</span><strong th:text="|${#numbers.formatDecimal(metricas['precision'] * 100, 1, 1)}%|">16.6%</strong><small>Predicciones de recarga que acertaron</small></article>
-        <article class="model-kpi"><span>Recall</span><strong th:text="|${#numbers.formatDecimal(metricas['recall'] * 100, 1, 1)}%|">38.2%</strong><small>Recargas reales que logró detectar</small></article>
-        <article class="model-kpi"><span>AUC-ROC</span><strong th:text="${#numbers.formatDecimal(metricas['auc_roc'], 1, 4)}">0.7495</strong><small>Capacidad de ordenar positivos sobre negativos</small></article>
-        <article class="model-kpi"><span>AUC-PR</span><strong th:text="${#numbers.formatDecimal(metricas['auc_pr'], 1, 4)}">0.1588</strong><small>Útil cuando las recargas positivas son pocas</small></article>
+      <div class="model-kpis" aria-label="M&eacute;tricas de evaluaci&oacute;n">
+        <article class="model-kpi model-kpi-primary"><span>F1 del segmento Alto</span><strong th:text="${#numbers.formatDecimal(metricas['f1'], 1, 3)}">0.605</strong><small>Equilibra precisi&oacute;n y cobertura del top 10 %</small></article>
+        <article class="model-kpi"><span>Precisi&oacute;n top 10 %</span><strong th:text="|${#numbers.formatDecimal(metricas['precision'] * 100, 1, 1)}%|">76.6%</strong><small>Pasajeros priorizados que recargaron en 30 d&iacute;as</small></article>
+        <article class="model-kpi"><span>Recargas capturadas</span><strong th:text="|${#numbers.formatDecimal(metricas['recall'] * 100, 1, 1)}%|">49.9%</strong><small>Recargas detectadas dentro del segmento Alto</small></article>
+        <article class="model-kpi"><span>AUC-ROC</span><strong th:text="${#numbers.formatDecimal(metricas['auc_roc'], 1, 4)}">0.9000</strong><small>Capacidad de ordenar positivos sobre negativos</small></article>
+        <article class="model-kpi"><span>AUC-PR</span><strong th:text="${#numbers.formatDecimal(metricas['auc_pr'], 1, 4)}">0.7324</strong><small>Rendimiento considerando la frecuencia de recarga</small></article>
       </div>
 
       <div class="model-analysis-grid">
         <section class="audit-panel model-risk-panel">
-          <div class="model-panel-heading"><div><p class="model-kicker">SEGMENTACIÓN ACTUAL</p><h2>Pasajeros por nivel estimado</h2></div><span class="model-total" th:text="|${#numbers.formatInteger(total, 1, 'POINT')} pasajeros|">0 pasajeros</span></div>
+          <div class="model-panel-heading"><div><p class="model-kicker">SEGMENTACI&Oacute;N ACTUAL</p><h2>Pasajeros por nivel estimado</h2></div><span class="model-total" th:text="|${#numbers.formatInteger(total, 1, 'POINT')} pasajeros|">0 pasajeros</span></div>
           <div class="global-donut-layout">
-            <div class="global-donut" th:style="${donutStyle}" role="img" th:attr="aria-label=|Distribución de ${total} pasajeros por nivel de riesgo|"><div class="global-donut-hole"><strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong><span>pasajeros</span></div></div>
+            <div class="global-donut" th:style="${donutStyle}" role="img" th:attr="aria-label=|Distribuci&oacute;n de ${total} pasajeros por nivel de riesgo|"><div class="global-donut-hole"><strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong><span>pasajeros</span></div></div>
             <ul class="global-donut-legend" aria-label="Pasajeros por nivel estimado">
-              <li><span class="global-donut-swatch" style="--slice-color:#c2410c"></span><span class="global-donut-label"><strong>Alto · 10 %</strong><small>Mayor probabilidad estimada dentro del grupo</small></span><b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b></li>
-              <li><span class="global-donut-swatch" style="--slice-color:#d97706"></span><span class="global-donut-label"><strong>Medio · 30 %</strong><small>Siguiente grupo por probabilidad estimada</small></span><b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b></li>
-              <li><span class="global-donut-swatch" style="--slice-color:#94a3b8"></span><span class="global-donut-label"><strong>Bajo · 60 %</strong><small>Menor probabilidad estimada relativa</small></span><b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#c2410c"></span><span class="global-donut-label"><strong>Alto &middot; 10 %</strong><small>Mayor estimaci&oacute;n relativa de recarga a 30 d&iacute;as</small></span><b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#d97706"></span><span class="global-donut-label"><strong>Medio &middot; 30 %</strong><small>Siguiente grupo por estimaci&oacute;n relativa</small></span><b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#94a3b8"></span><span class="global-donut-label"><strong>Bajo &middot; 60 %</strong><small>Menor estimaci&oacute;n relativa en esta poblaci&oacute;n</small></span><b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b></li>
             </ul>
           </div>
-          <p class="model-footnote">Alto, medio y bajo son segmentos relativos: no garantizan que una persona recargue ni representan una probabilidad individual calibrada.</p>
+          <p class="model-footnote">Los segmentos son posiciones relativas y no representan probabilidades individuales calibradas.</p>
         </section>
 
         <section class="audit-panel model-compare-panel">
-          <div class="model-panel-heading"><div><p class="model-kicker">PRUEBA TEMPORAL</p><h2>Frente a una regla sencilla</h2></div></div>
-          <p>La referencia marca como futuro recargador a quien recargó la semana anterior. Un F1 más alto indica mejor equilibrio entre aciertos y recargas detectadas.</p>
-          <div class="model-f1-chart" role="img" aria-label="Comparación del F1 del modelo y la regla simple" th:style="${estiloBarrasF1}">
-            <div class="model-f1-row"><span th:text="${metricas['modelo']}">Modelo actual</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasF1[0]['valor']}">0.231</strong></div>
-            <div class="model-f1-row"><span>Regla simple</span><div><i class="model-f1-bar is-baseline"></i></div><strong th:text="${barrasF1[1]['valor']}">0.128</strong></div>
+          <div class="model-panel-heading"><div><p class="model-kicker">PRECISI&Oacute;N SEG&Uacute;N COBERTURA</p><h2>Qu&eacute; pasa al priorizar m&aacute;s pasajeros</h2></div></div>
+          <p>En la validaci&oacute;n, el grupo superior al 5 % alcanz&oacute; mayor precisi&oacute;n; al ampliar la cobertura al 10 %, se incluyen m&aacute;s pasajeros y se capturan m&aacute;s recargas.</p>
+          <div class="model-f1-chart" role="img" aria-label="Precisi&oacute;n media de los segmentos superiores al 5 y 10 por ciento" th:style="${estiloBarrasPrecisionTop}">
+            <div class="model-f1-row"><span th:text="${barrasPrecisionTop[0]['etiqueta']}">Top 5 %</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasPrecisionTop[0]['valor']}">82.2%</strong></div>
+            <div class="model-f1-row"><span th:text="${barrasPrecisionTop[1]['etiqueta']}">Top 10 %</span><div><i class="model-f1-bar is-baseline"></i></div><strong th:text="${barrasPrecisionTop[1]['valor']}">76.6%</strong></div>
           </div>
-          <p class="model-footnote">Evaluación: 5 ene. – 19 oct. 2026 · prevalencia de recarga: 4,35 %.</p>
+          <p class="model-footnote">Promedio de dos cortes temporales. Prevalencia media de recarga a 30 d&iacute;as: <strong th:text="|${#numbers.formatDecimal(metricas['prevalencia'] * 100, 1, 1)}%|">15.3%</strong>. Resultados de datos sint&eacute;ticos.</p>
         </section>
       </div>
 
       <section class="audit-panel model-glossary">
-        <div><p class="model-kicker">CÓMO LEER LOS RESULTADOS</p><h2>Qué significa cada métrica</h2></div>
+        <div><p class="model-kicker">C&Oacute;MO LEER LOS RESULTADOS</p><h2>Qu&eacute; significa cada m&eacute;trica</h2></div>
         <div class="model-glossary-grid">
-          <p><strong>Precisión</strong><span>De quienes el modelo marcó, qué proporción recargó después.</span></p>
-          <p><strong>Recall</strong><span>De quienes sí recargaron, qué proporción encontró el modelo.</span></p>
-          <p><strong>AUC-ROC</strong><span>Qué tan bien ordena a quienes recargan por encima de quienes no; 0,5 equivale al azar.</span></p>
-          <p><strong>AUC-PR</strong><span>Resume precisión y recall y permite valorar mejor resultados con pocos positivos.</span></p>
+          <p><strong>Precisi&oacute;n top 10 %</strong><span>De los pasajeros priorizados, qu&eacute; proporci&oacute;n recarg&oacute; en los siguientes 30 d&iacute;as.</span></p>
+          <p><strong>Recargas capturadas</strong><span>De todas las recargas del periodo, qu&eacute; proporci&oacute;n ocurri&oacute; en el segmento Alto.</span></p>
+          <p><strong>AUC-ROC</strong><span>Qu&eacute; tan bien ordena a quienes recargan por encima de quienes no; 0,5 equivale al azar.</span></p>
+          <p><strong>AUC-PR</strong><span>Resume precisi&oacute;n y recall y permite valorar mejor resultados con pocos positivos.</span></p>
         </div>
       </section>
-
     </section>
   </main>
 </div>

@@ -94,7 +94,7 @@ La consola global de Acceso consulta las bases de Transporte, Billetera y Recarg
 
 ## Orquestador local
 
-Orquestador usa el puerto `8087` y administra los siete módulos de aplicación. Espera a que cada servicio responda antes de iniciar el siguiente, consulta su estado periódicamente y reinicia automáticamente los que fallen. El panel local permite actualizar el estado y usar los botones **Reiniciar** y **Parar**; al detener un módulo queda detenido hasta que lo inicies o reinicies manualmente. Los registros se guardan por módulo en `Orquestador/logs/`.
+Orquestador usa el puerto `8087` y administra los siete módulos de aplicación. Al abrirlo solo inicia el panel; los otros servicios permanecen detenidos hasta que pulses **Iniciar todos**. El panel permite iniciar todos los servicios en orden, finalizar los servicios sin apagar Orquestador y controlar módulos uno por uno con **Reiniciar** y **Parar**. Después de iniciarlos, Orquestador consulta su estado y reinicia automáticamente los que fallen. Los registros se guardan por módulo en `Orquestador/logs/`.
 
 Para iniciar Orquestador con las bases de datos de MongoDB Atlas, configura las variables de entorno del proyecto y ejecuta desde la raíz:
 
@@ -114,7 +114,7 @@ Para detener procesos que hayan quedado ocupando los puertos del proyecto, ejecu
 
 El script muestra los procesos que escuchan en `8080`–`8087`, pide confirmación y verifica si quedaron puertos ocupados. Si detiene el puerto `8087`, también detiene Orquestador.
 
-Para iniciar todos los módulos en terminales separadas, también puedes usar el lanzador existente:
+Como alternativa al panel de Orquestador, puedes iniciar todos los módulos en terminales separadas con el lanzador existente:
 
 Desde la raíz del repositorio:
 

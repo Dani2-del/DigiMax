@@ -31,8 +31,8 @@ try {
 
     $pasos = @(
         @{ Nombre = 'Exportar datos de Atlas'; Script = 'exportar_datos_atlas.py'; Argumentos = @('--prefijo', $Prefijo) },
-        @{ Nombre = 'Construir tabla usuario-semana'; Script = 'construir_tabla_usuario_semana.py'; Argumentos = @() },
-        @{ Nombre = 'Evaluar modelo'; Script = 'evaluar_final.py'; Argumentos = @() }
+        @{ Nombre = 'Construir tabla con etiquetas de 7, 14 y 30 días'; Script = 'construir_tabla_usuario_semana.py'; Argumentos = @('--horizontes', '7,14,30') },
+        @{ Nombre = 'Evaluar objetivo mensual'; Script = 'evaluar_horizontes.py'; Argumentos = @() }
     )
     if (-not $SoloEvaluar) {
         $pasos += @{ Nombre = 'Publicar predicciones'; Script = 'publicar_predicciones.py'; Argumentos = @('--prefijo', $Prefijo) }

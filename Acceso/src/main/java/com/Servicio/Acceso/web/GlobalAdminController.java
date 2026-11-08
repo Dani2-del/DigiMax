@@ -68,6 +68,11 @@ public class GlobalAdminController {
     @GetMapping("/modelo-predictivo")
     public String modeloPredictivo(Model model) {
         org.bson.Document metricas = mongoTemplate.findOne(new Query(), org.bson.Document.class, "modelo_metricas");
+        Object horizonte = metricas == null ? null : metricas.get("horizonte_dias");
+        if (!(horizonte instanceof Number numeroHorizonte) || numeroHorizonte.intValue() != 30) {
+            // No presentar metricas antiguas de siete dias bajo el rotulo mensual.
+            metricas = null;
+        }
         model.addAttribute("metricas", metricas);
 
         String coleccion = "predicciones_recarga";
@@ -79,9 +84,9 @@ public class GlobalAdminController {
         model.addAttribute("conteoBajo", bajo);
         model.addAttribute("total", alto + medio + bajo);
         model.addAttribute("donutStyle", estiloDonutRiesgo(alto, medio, bajo));
-        List<Map<String, Object>> barras = barrasF1(metricas);
-        model.addAttribute("barrasF1", barras);
-        model.addAttribute("estiloBarrasF1", estiloBarrasF1(barras));
+        List<Map<String, Object>> barras = barrasPrecisionTop(metricas);
+        model.addAttribute("barrasPrecisionTop", barras);
+        model.addAttribute("estiloBarrasPrecisionTop", estiloBarras(barras));
 
 
         org.bson.Document referencia = mongoTemplate.findOne(new Query(), org.bson.Document.class, coleccion);
@@ -103,25 +108,25 @@ public class GlobalAdminController {
                 a, a, a + m, a + m);
     }
 
-    private static List<Map<String, Object>> barrasF1(org.bson.Document metricas) {
-        double f1 = numero(metricas, "f1");
-        double base = numero(metricas, "f1_linea_base");
-        double maximo = Math.max(Math.max(f1, base), 0.0001);
+    private static List<Map<String, Object>> barrasPrecisionTop(org.bson.Document metricas) {
+        double topCinco = numero(metricas, "precision_top_5") * 100.0;
+        double topDiez = numero(metricas, "precision_top_10") * 100.0;
+        double maximo = Math.max(Math.max(topCinco, topDiez), 0.0001);
         List<Map<String, Object>> barras = new ArrayList<>();
-        barras.add(barra("Modelo", f1, f1 / maximo * 100));
-        barras.add(barra("Regla simple", base, base / maximo * 100));
+        barras.add(barraPorcentaje("Top 5 %", topCinco, topCinco / maximo * 100));
+        barras.add(barraPorcentaje("Top 10 %", topDiez, topDiez / maximo * 100));
         return barras;
     }
 
-    private static String estiloBarrasF1(List<Map<String, Object>> barras) {
+    private static String estiloBarras(List<Map<String, Object>> barras) {
         return "--f1-modelo:" + barras.get(0).get("porcentaje")
                 + "%;--f1-base:" + barras.get(1).get("porcentaje") + "%";
     }
 
-    private static Map<String, Object> barra(String etiqueta, double valor, double porcentaje) {
+    private static Map<String, Object> barraPorcentaje(String etiqueta, double valor, double porcentaje) {
         Map<String, Object> b = new LinkedHashMap<>();
         b.put("etiqueta", etiqueta);
-        b.put("valor", String.format(Locale.US, "%.3f", valor));
+        b.put("valor", String.format(Locale.US, "%.1f%%", valor));
         b.put("porcentaje", String.format(Locale.US, "%.2f", porcentaje));
         return b;
     }

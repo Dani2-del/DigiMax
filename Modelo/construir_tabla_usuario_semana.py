@@ -6,7 +6,7 @@ en los 7 dias siguientes.
 - Variables: solo usan recargas ANTERIORES a la fecha de la foto (sin mirar el futuro).
 - Etiqueta y: 1 si hubo una recarga exitosa de Billetera en (T, T+7 dias], 0 si no.
 Entrada:  usuarios_atlas.csv, eventos_atlas.csv  (en la misma carpeta)
-Salida:   tabla_usuario_semana.csv
+Salida:   tabla_usuario_semana_v7.csv (flujo actual de 7 dias)
 Requisitos: python -m pip install pandas numpy
 Uso:        python construir_tabla_usuario_semana.py
 """
@@ -15,9 +15,9 @@ import pandas as pd
 
 ARCHIVO_USUARIOS = "usuarios_atlas.csv"
 ARCHIVO_EVENTOS = "eventos_atlas.csv"
-SALIDA = "tabla_usuario_semana_v6.csv"
+SALIDA = "tabla_usuario_semana_v7.csv"
+SALIDA_HORIZONTES = "tabla_usuario_semana_horizontes_v1.csv"
 INICIO = "2024-01-01"
-FIN_ETIQUETA = "2026-10-29"   # ultima fecha con datos: la etiqueta necesita 7 dias futuros
 ESCALA = 10**10               # clave = indice_usuario * ESCALA + segundos (evita mezclar usuarios)
 
 
@@ -27,9 +27,22 @@ def main():
     ap.add_argument("--usuarios", default=ARCHIVO_USUARIOS)
     ap.add_argument("--eventos", default=ARCHIVO_EVENTOS)
     ap.add_argument("--salida", default=SALIDA)
-    ap.add_argument("--fin-etiqueta", default=FIN_ETIQUETA,
-                    help="ultimo dia con ventana futura completa (AAAA-MM-DD)")
+    ap.add_argument("--fin-etiqueta", default=None,
+                    help="ultimo dia con datos (por defecto se detecta en eventos_atlas.csv)")
+    ap.add_argument(
+        "--horizontes", default="7",
+        help="dias futuros a etiquetar, separados por coma; ejemplo: 7,14,30",
+    )
     args = ap.parse_args()
+    try:
+        horizontes = sorted({int(x.strip()) for x in args.horizontes.split(",") if x.strip()})
+    except ValueError as exc:
+        raise SystemExit("--horizontes debe ser una lista de enteros, por ejemplo 7,14,30") from exc
+    if not horizontes or any(h <= 0 for h in horizontes) or 7 not in horizontes:
+        raise SystemExit("Incluye horizontes positivos y conserva 7 dias para la columna compatible y.")
+    salida = args.salida
+    if salida == SALIDA and horizontes != [7]:
+        salida = SALIDA_HORIZONTES
     usuarios = pd.read_csv(args.usuarios)
     usuarios = usuarios[usuarios["rol"] == "ROLE_USER"].copy()
     usuarios["registro"] = pd.to_datetime(usuarios["fecha_registro"], format="ISO8601", utc=True)
@@ -40,8 +53,16 @@ def main():
     reg_seg = ((usuarios["registro"] - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta("1s")).astype(np.int64)
 
     e = pd.read_csv(args.eventos)
+    e["fecha_evento"] = pd.to_datetime(e["fecha"], format="ISO8601", utc=True, errors="coerce")
+    if args.fin_etiqueta:
+        fin_etiqueta = pd.Timestamp(args.fin_etiqueta, tz="UTC")
+    else:
+        ultima_fecha = e["fecha_evento"].max()
+        if pd.isna(ultima_fecha):
+            raise SystemExit("No hay fechas validas en eventos_atlas.csv para cerrar las etiquetas.")
+        fin_etiqueta = ultima_fecha.normalize()
     e = e[e["usuario_id"].isin(idx_de)].copy()
-    e["t"] = ((pd.to_datetime(e["fecha"], format="ISO8601", utc=True) - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta("1s")).astype(np.int64)
+    e["t"] = ((e["fecha_evento"] - pd.Timestamp("1970-01-01", tz="UTC")) // pd.Timedelta("1s")).astype(np.int64)
     e["uidx"] = e["usuario_id"].map(idx_de).astype(np.int64)
     if "monto" not in e.columns:
         e["monto"] = 0
@@ -61,15 +82,59 @@ def main():
     suma_consumos = np.concatenate(([0.0], np.cumsum(montos_consumo, dtype=np.float64)))
 
     inicio = pd.Timestamp(INICIO, tz="UTC")
-    fin_etiqueta = pd.Timestamp(args.fin_etiqueta, tz="UTC")
     semanas = pd.date_range(inicio, fin_etiqueta, freq="W-MON")
-    semanas = semanas[semanas + pd.Timedelta(days=7) <= fin_etiqueta + pd.Timedelta(days=1)]
+    horizonte_maximo = max(horizontes)
+    # El flujo tradicional conserva solo etiquetas completas. En el modo
+    # multihorizonte también deja las semanas recientes para predicción y marca
+    # como NaN las etiquetas cuyo futuro todavía no se observó.
+    if horizontes == [7]:
+        semanas = semanas[
+            semanas + pd.Timedelta(days=horizonte_maximo) <= fin_etiqueta + pd.Timedelta(days=1)
+        ]
 
     dia = 86400
+    # Para la cadencia se cuenta como máximo una recarga por día y usuario.
+    # Se conserva la hora de la primera recarga del día para no incluir eventos
+    # ocurridos después de la fecha de observación.
+    if len(claves_tarjeta):
+        usuarios_tarjeta = claves_tarjeta // ESCALA
+        tiempos_tarjeta = claves_tarjeta % ESCALA
+        conservar_dia = np.ones(len(claves_tarjeta), dtype=bool)
+        conservar_dia[1:] = (
+            (usuarios_tarjeta[1:] != usuarios_tarjeta[:-1])
+            | ((tiempos_tarjeta[1:] // dia) != (tiempos_tarjeta[:-1] // dia))
+        )
+        claves_cadencia = claves_tarjeta[conservar_dia]
+    else:
+        claves_cadencia = np.empty(0, dtype=np.int64)
+
+    # Estadísticas progresivas: cada posición usa solo los intervalos que ya
+    # se observaron al ocurrir esa recarga; nunca consulta eventos posteriores.
+    mediana_cadencia_evento = np.zeros(len(claves_cadencia), dtype=np.float32)
+    variabilidad_cadencia_evento = np.zeros(len(claves_cadencia), dtype=np.float32)
+    intervalos_cadencia_evento = np.zeros(len(claves_cadencia), dtype=np.int16)
+    if len(claves_cadencia):
+        usuarios_cadencia = claves_cadencia // ESCALA
+        dias_cadencia = (claves_cadencia % ESCALA) // dia
+        inicios = np.r_[0, np.flatnonzero(np.diff(usuarios_cadencia)) + 1]
+        finales = np.r_[inicios[1:], len(claves_cadencia)]
+        for inicio_usuario, fin_usuario in zip(inicios, finales):
+            dias_usuario = dias_cadencia[inicio_usuario:fin_usuario]
+            diferencias = np.diff(dias_usuario).astype(np.float64)
+            for indice in range(1, len(dias_usuario)):
+                intervalos = diferencias[:indice]
+                media = float(intervalos.mean())
+                mediana_cadencia_evento[inicio_usuario + indice] = np.median(intervalos)
+                variabilidad_cadencia_evento[inicio_usuario + indice] = (
+                    float(intervalos.std() / media) if media > 0 else 0.0
+                )
+                intervalos_cadencia_evento[inicio_usuario + indice] = indice
+
     uidx = usuarios["uidx"].values
     primera = True
     filas_total = 0
-    positivas = 0
+    positivas = {h: 0 for h in horizontes}
+    observables = {h: 0 for h in horizontes}
 
     for T in semanas:
         Ts = int(T.timestamp())
@@ -158,6 +223,32 @@ def main():
             dias_ultima_recarga = np.full(len(u), 999, dtype=np.int64)
             dias_entre_recargas = np.full(len(u), 999, dtype=np.int64)
 
+        if len(claves_cadencia):
+            pos_cadencia = np.searchsorted(claves_cadencia, base + Ts, side="right") - 1
+            cadencia_ok = ((pos_cadencia >= 0)
+                           & (claves_cadencia[np.clip(pos_cadencia, 0, None)] // ESCALA == u))
+            pos_cadencia_segura = np.clip(pos_cadencia, 0, None)
+            intervalos_observados = np.where(
+                cadencia_ok, intervalos_cadencia_evento[pos_cadencia_segura], 0
+            )
+            cadencia_mediana = np.where(
+                cadencia_ok, mediana_cadencia_evento[pos_cadencia_segura], 0.0
+            )
+            variabilidad_cadencia = np.where(
+                cadencia_ok, variabilidad_cadencia_evento[pos_cadencia_segura], 0.0
+            )
+            progreso_ciclo = np.divide(
+                dias_ultima_recarga,
+                cadencia_mediana,
+                out=np.zeros(len(u), dtype=np.float64),
+                where=(cadencia_mediana > 0) & (dias_ultima_recarga < 999),
+            )
+        else:
+            intervalos_observados = np.zeros(len(u), dtype=np.int16)
+            cadencia_mediana = np.zeros(len(u), dtype=np.float32)
+            variabilidad_cadencia = np.zeros(len(u), dtype=np.float32)
+            progreso_ciclo = np.zeros(len(u), dtype=np.float32)
+
         viaje_historico = (np.searchsorted(claves_transporte, base + Ts, side="right")
                            - np.searchsorted(claves_transporte, base, side="right"))
 
@@ -205,8 +296,18 @@ def main():
         antiguedad = (Ts - reg_seg.values[mask]) // dia
 
         # Las recargas moviles son señales auxiliares; no cuentan como recarga de tarjeta.
-        y = ((np.searchsorted(claves_tarjeta, base + Ts + 7 * dia, side="right")
-              - np.searchsorted(claves_tarjeta, base + Ts, side="right")) > 0).astype(np.int8)
+        etiquetas = {}
+        for h in horizontes:
+            completa = T + pd.Timedelta(days=h) <= fin_etiqueta + pd.Timedelta(days=1)
+            if completa:
+                etiquetas[h] = (
+                    (np.searchsorted(claves_tarjeta, base + Ts + h * dia, side="right")
+                     - np.searchsorted(claves_tarjeta, base + Ts, side="right")) > 0
+                ).astype(np.int8)
+                positivas[h] += int(etiquetas[h].sum())
+                observables[h] += len(etiquetas[h])
+            else:
+                etiquetas[h] = np.full(len(u), np.nan, dtype=np.float32)
 
         tabla = pd.DataFrame({
             "usuario_id": usuarios["usuario_id"].values[mask],
@@ -228,6 +329,10 @@ def main():
             "tarjeta_historica": tarjeta_historica,
             "dias_desde_ultima_recarga": dias_ultima_recarga,
             "dias_entre_ultimas_recargas": dias_entre_recargas,
+            "cadencia_mediana_recarga_dias": cadencia_mediana,
+            "variabilidad_cadencia_recarga": variabilidad_cadencia,
+            "progreso_ciclo_recarga": progreso_ciclo,
+            "intervalos_recarga_observados": intervalos_observados,
             "viaje_historico": viaje_historico,
             "consumo_7d": consumo_7,
             "consumo_30d": consumo_30,
@@ -250,18 +355,24 @@ def main():
             "dias_desde_ultima": dias_ultima,
             "antiguedad_dias": antiguedad,
             "tendencia_7d": rec_7 - rec_14_7,
-            "y": y,
+            **{f"y_{h}d": etiquetas[h] for h in horizontes},
+            # La columna y conserva el significado historico de recarga en 7 dias.
+            "y": etiquetas[7],
         })
-        tabla.to_csv(args.salida, mode="w" if primera else "a", header=primera, index=False)
+        tabla.to_csv(salida, mode="w" if primera else "a", header=primera, index=False)
         primera = False
         filas_total += len(tabla)
-        positivas += int(y.sum())
         if (len(tabla) and T.weekday() == 0 and (T.isocalendar().week % 13 == 0)):
             print(f"  Semanas procesadas: {T.strftime('%Y-%m-%d')} | filas acumuladas: {filas_total}", flush=True)
 
     print(f"Filas: {filas_total}")
-    print(f"Semanas: {len(semanas)} | Proporcion y=1: {positivas / max(filas_total, 1):.3f}")
-    print(f"Archivo: {args.salida}")
+    print(f"Semanas: {len(semanas)} | rango etiquetado hasta {horizonte_maximo} dias")
+    for h in horizontes:
+        print(
+            f"  Proporcion y_{h}d=1: {positivas[h] / max(observables[h], 1):.3f} "
+            f"({observables[h]} etiquetas completas; semanas recientes quedan sin etiqueta)"
+        )
+    print(f"Archivo: {salida}")
 
 
 if __name__ == "__main__":

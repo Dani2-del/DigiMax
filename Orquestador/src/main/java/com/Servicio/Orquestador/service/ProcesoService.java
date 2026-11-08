@@ -187,11 +187,16 @@ public class ProcesoService {
 
     @PreDestroy
     public synchronized void detenerTodos() {
+        detenerServicios();
+        log.info("Todos los módulos detenidos");
+    }
+
+    public synchronized void detenerServicios() {
         for (EstadoModulo e : estados.values()) {
             matar(e);
             e.estado = Estado.DETENIDO;
         }
-        log.info("Todos los módulos detenidos");
+        log.info("Servicios DigiMAX detenidos; Orquestador sigue activo");
     }
 
     // ---------- Internos ----------

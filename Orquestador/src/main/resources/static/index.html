@@ -59,6 +59,12 @@
     .section-head { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-bottom: 18px; }
     h2 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
     .updated { color: var(--muted); font-size: 13px; }
+    .bulk-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .start-all-button { color: var(--green); border-color: #c6e7d8; background: #f2fbf6; }
+    .start-all-button:hover { background: var(--green-bg); }
+    .stop-all-button { color: #a33d37; border-color: #f0c8c4; background: #fff8f7; }
+    .stop-all-button:hover { background: var(--red-bg); }
+    button:disabled { cursor: wait; opacity: .6; transform: none; }
     button { border: 1px solid #bfdae0; border-radius: 11px; padding: 10px 15px; background: #f5fbfb; color: var(--teal-dark); font: inherit; font-weight: 750; cursor: pointer; transition: background .18s, transform .18s; }
     button:hover { background: #e6f4f4; transform: translateY(-1px); }
     button:focus-visible { outline: 3px solid #60c3c8; outline-offset: 2px; }
@@ -120,6 +126,10 @@
         <div><p class="eyebrow">Estado en vivo</p><h2 id="modules-title">Módulos de DigiMAX</h2></div>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <span class="updated" id="updated-at">Esperando datos</span>
+          <div class="bulk-actions">
+            <button class="start-all-button" id="start-all" type="button">Iniciar todos</button>
+            <button class="stop-all-button" id="stop-all" type="button">Finalizar todos los servicios</button>
+          </div>
           <button id="refresh" type="button">Actualizar</button>
         </div>
       </div>
@@ -153,9 +163,10 @@
         const modules = await response.json();
         const active = modules.filter(module => module.estado === 'ACTIVO').length;
         const hasProblems = modules.some(module => ['NO_RESPONDE', 'BLOQUEADO'].includes(module.estado));
+        const allStopped = modules.length > 0 && modules.every(module => module.estado === 'DETENIDO');
         document.getElementById('active-count').textContent = `${active} / ${modules.length}`;
-        label.textContent = hasProblems ? 'Revisar módulos' : active === modules.length ? 'Operativo' : 'Iniciando';
-        detail.textContent = hasProblems ? 'Hay alertas' : active === modules.length ? 'Todos activos' : `${active} activos`;
+        label.textContent = hasProblems ? 'Revisar modulos' : active === modules.length ? 'Operativo' : allStopped ? 'Detenidos' : 'Iniciando';
+        detail.textContent = hasProblems ? 'Hay alertas' : active === modules.length ? 'Todos activos' : allStopped ? 'Inicia los servicios desde el panel' : `${active} activos`;
         pill.className = `pill${hasProblems ? ' bad' : active === modules.length ? ' ok' : ''}`;
         body.innerHTML = modules.map(module => `<tr>
           <td>${escapeHtml(module.nombre)}</td>
@@ -164,7 +175,7 @@
           <td>${Number(module.reinicios)}</td>
           <td>${formatDuration(module.segundosActivo)}</td>
           <td><div class="action-buttons">
-            <button class="restart-button" type="button" data-action="reiniciar" data-module="${escapeHtml(module.nombre)}">Reiniciar</button>
+            <button class="restart-button" type="button" data-action="${module.estado === 'DETENIDO' ? 'iniciar' : 'reiniciar'}" data-module="${escapeHtml(module.nombre)}">${module.estado === 'DETENIDO' ? 'Iniciar' : 'Reiniciar'}</button>
             <button class="stop-button" type="button" data-action="detener" data-module="${escapeHtml(module.nombre)}" ${module.estado === 'DETENIDO' ? 'disabled' : ''}>Parar</button>
           </div></td>
         </tr>`).join('');
@@ -184,7 +195,7 @@
       const action = button.dataset.action;
       const moduleName = button.dataset.module;
       button.disabled = true;
-      button.textContent = action === 'detener' ? 'Parando…' : 'Reiniciando…';
+      button.textContent = action === 'detener' ? 'Parando…' : action === 'iniciar' ? 'Iniciando…' : 'Reiniciando…';
       try {
         const response = await fetch(`/api/ui/modulos/${encodeURIComponent(moduleName)}/${action}`, {
           method: 'POST',
@@ -201,6 +212,39 @@
         document.getElementById('updated-at').textContent = `No se pudo ${action} ${moduleName}`;
       }
     });
+    async function runBulkAction(action) {
+      if (action === 'detener-todos'
+          && !window.confirm('Se detendrÃ¡n todos los mÃ³dulos DigiMAX. Orquestador permanecerÃ¡ activo. Â¿Continuar?')) return;
+
+      const startButton = document.getElementById('start-all');
+      const stopButton = document.getElementById('stop-all');
+      const button = action === 'iniciar-todos' ? startButton : stopButton;
+      const originalText = button.textContent;
+      startButton.disabled = true;
+      stopButton.disabled = true;
+      button.textContent = action === 'iniciar-todos' ? 'Iniciando servicios...' : 'Finalizando servicios...';
+      document.getElementById('updated-at').textContent = 'OperaciÃ³n en curso';
+      try {
+        const response = await fetch(`/api/ui/servicios/${action}`, {
+          method: 'POST',
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-store'
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await response.json();
+        await refreshStatus();
+      } catch (error) {
+        await refreshStatus();
+        document.getElementById('updated-at').textContent = `No se pudo completar: ${action}`;
+      } finally {
+        button.textContent = originalText;
+        startButton.disabled = false;
+        stopButton.disabled = false;
+      }
+    }
+    document.getElementById('start-all').addEventListener('click', () => runBulkAction('iniciar-todos'));
+    document.getElementById('stop-all').addEventListener('click', () => runBulkAction('detener-todos'));
+
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
     }

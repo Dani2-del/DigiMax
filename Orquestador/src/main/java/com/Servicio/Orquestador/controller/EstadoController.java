@@ -20,16 +20,43 @@ public class EstadoController {
     private final ModulosConfig config;
     private final ProcesoService procesos;
     private final String apiToken;
+    private final int timeoutSegundos;
 
     public EstadoController(ModulosConfig config, ProcesoService procesos,
-                            @Value("${orquestador.api-token:}") String apiToken) {
+                            @Value("${orquestador.api-token:}") String apiToken,
+                            @Value("${orquestador.arranque-timeout-segundos:120}") int timeoutSegundos) {
         this.config = config;
         this.procesos = procesos;
         this.apiToken = apiToken;
+        this.timeoutSegundos = timeoutSegundos;
     }
 
     @GetMapping("/estado")
     public List<EstadoDto> estado() {
+        return procesos.resumen();
+    }
+
+    @PostMapping("/ui/servicios/iniciar-todos")
+    public List<EstadoDto> iniciarTodosDesdePanel(
+            @RequestHeader(value = "Origin", required = false) String origin,
+            @RequestHeader(value = "Sec-Fetch-Site", required = false) String fetchSite) throws Exception {
+        validarOrigenLocal(origin, fetchSite);
+        for (var modulo : config.todos()) {
+            procesos.iniciarManual(modulo.nombre());
+            if (!procesos.esperarDisponible(modulo.nombre(), timeoutSegundos)) {
+                throw new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT,
+                        modulo.nombre() + " no respondio a tiempo en el puerto " + modulo.puerto());
+            }
+        }
+        return procesos.resumen();
+    }
+
+    @PostMapping("/ui/servicios/detener-todos")
+    public List<EstadoDto> detenerTodosDesdePanel(
+            @RequestHeader(value = "Origin", required = false) String origin,
+            @RequestHeader(value = "Sec-Fetch-Site", required = false) String fetchSite) {
+        validarOrigenLocal(origin, fetchSite);
+        procesos.detenerServicios();
         return procesos.resumen();
     }
 
@@ -81,6 +108,17 @@ public class EstadoController {
         validarOrigenLocal(origin, fetchSite);
         validar(nombre);
         procesos.detener(nombre);
+        return procesos.resumen();
+    }
+
+    @PostMapping("/ui/modulos/{nombre}/iniciar")
+    public List<EstadoDto> iniciarDesdePanel(
+            @PathVariable("nombre") String nombre,
+            @RequestHeader(value = "Origin", required = false) String origin,
+            @RequestHeader(value = "Sec-Fetch-Site", required = false) String fetchSite) throws IOException {
+        validarOrigenLocal(origin, fetchSite);
+        validar(nombre);
+        procesos.iniciarManual(nombre);
         return procesos.resumen();
     }
 

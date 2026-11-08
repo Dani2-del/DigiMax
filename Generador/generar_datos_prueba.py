@@ -27,8 +27,9 @@ from rutas_catalogo import RUTAS_TRANSMILENIO, RUTAS_TRANSMETRO
 URI = os.environ.get("MONGO_URI") or os.environ.get("DIGITRANS_ATLAS_URI")
 LOCAL_URI = os.environ.get("MONGO_LOCAL", "mongodb://localhost:27017")
 PASSWORD = os.environ.get("DIGITRANS_TEST_PASSWORD")
-FECHA_INI = dt.datetime(2016, 1, 1)
+FECHA_INI = dt.datetime(2023, 1, 1)
 FECHA_FIN = dt.datetime(2026, 10, 29, 23, 59)
+INICIO_HISTORIAL_SINTETICO = FECHA_INI
 LOTE = 1000  # usuarios por lote: controla el uso de memoria
 
 SERVICIOS = ["TRANSCARIBE", "TRANSMILENIO", "TRANSMETRO"]
@@ -124,27 +125,54 @@ def fecha_aleatoria(desde, hasta):
     return desde + dt.timedelta(seconds=random.randint(0, segundos))
 
 
-def fechas_abonos_usuario(registro):
-    """Simula recargas con una cadencia persistente por usuario, sin guardar el perfil latente."""
-    perfil = random.random()
+def crear_perfil_actividad():
+    """Crea hábitos sintéticos compartidos por recargas y uso de transporte.
 
-    # Usuarios ocasionales: pocos abonos distribuidos durante su vida de cuenta.
-    if perfil < 0.50:
-        cantidad = random.choices((0, 1, 2, 3, 4), weights=(12, 28, 32, 20, 8), k=1)[0]
-        return [fecha_aleatoria(registro, FECHA_FIN) for _ in range(cantidad)]
+    El perfil solo se usa durante la generación: no se guarda en Mongo ni se
+    exporta como predictor. Los modelos deben inferir el hábito de eventos previos.
+    """
+    valor = random.random()
+    if valor < 0.45:
+        return {"cadencia": (110, 150), "omision": 0.06,
+                "intentos_transporte": (8, 14), "pasajes_billetera": (6, 12),
+                "recargas_moviles": (1, 4)}
+    if valor < 0.80:
+        return {"cadencia": (175, 235), "omision": 0.10,
+                "intentos_transporte": (4, 8), "pasajes_billetera": (3, 7),
+                "recargas_moviles": (0, 3)}
+    return {"cadencia": (260, 360), "omision": 0.15,
+            "intentos_transporte": (1, 4), "pasajes_billetera": (0, 3),
+            "recargas_moviles": (0, 2)}
 
-    # Usuarios regulares y frecuentes conservan un ciclo propio con variación y
-    # algunos ciclos omitidos. El historial permite inferir hábito, no el perfil.
-    cadencia = random.randint(160, 240) if perfil < 0.85 else random.randint(70, 100)
-    jitter = max(3, cadencia // 10)
-    proxima = registro + dt.timedelta(days=random.randint(0, cadencia))
+
+def inicio_actividad(registro):
+    return max(registro, INICIO_HISTORIAL_SINTETICO)
+
+
+def cantidad_en_historial(rango, registro):
+    """Escala el número de eventos al tiempo de historial disponible del usuario."""
+    inicio = inicio_actividad(registro)
+    dias_disponibles = max(0, (FECHA_FIN - inicio).days)
+    dias_historial = max(1, (FECHA_FIN - INICIO_HISTORIAL_SINTETICO).days)
+    proporcion = min(1.0, dias_disponibles / dias_historial)
+    cantidad = random.randint(*rango)
+    return max(0, round(cantidad * proporcion))
+
+
+def fechas_abonos_usuario(registro, perfil):
+    """Genera recargas periódicas con ruido y ciclos omitidos para cada usuario."""
+    inicio = inicio_actividad(registro)
+    cadencia = random.randint(*perfil["cadencia"])
+    jitter = max(3, round(cadencia * 0.08))
+    proxima = inicio + dt.timedelta(days=random.randint(0, cadencia))
     fechas = []
     while proxima <= FECHA_FIN:
         fecha = proxima + dt.timedelta(days=random.randint(-jitter, jitter))
-        fecha = min(FECHA_FIN, max(registro, fecha))
-        if random.random() < 0.92:
+        fecha = min(FECHA_FIN, max(inicio, fecha))
+        if random.random() >= perfil["omision"]:
             fechas.append(fecha)
-        avance = random.randint(max(30, int(cadencia * 0.85)), int(cadencia * 1.15))
+        variacion = max(3, round(cadencia * 0.08))
+        avance = max(30, cadencia + random.randint(-variacion, variacion))
         proxima += dt.timedelta(days=avance)
     return fechas
 
@@ -296,6 +324,7 @@ def crear_usuario(rol, servicio, u, hash_pw, paquetes, operadores, buses_by_serv
     nombre = u.nuevo("nombre", generar_nombre)
     correo = u.nuevo("correo", lambda: correo_realista(nombre))
     registro = fecha_aleatoria(FECHA_INI, FECHA_FIN - dt.timedelta(days=30))
+    perfil_actividad = crear_perfil_actividad()
 
     doc_acc = {"_id": uid, "correo": correo, "password_hash": hash_pw, "nombre": nombre,
                "fecha_registro": registro, "role": ROL[rol], "activo": True, "verificado": True,
@@ -308,7 +337,10 @@ def crear_usuario(rol, servicio, u, hash_pw, paquetes, operadores, buses_by_serv
     tarjeta_t = u.nuevo("tarjetaT", lambda: digitos(10))
     ultimos = tarjeta_t[-4:]
     saldo_t = 0
-    for f in sorted(fecha_aleatoria(registro, FECHA_FIN) for _ in range(random.randint(0, 15))):
+    cantidad_intentos = cantidad_en_historial(perfil_actividad["intentos_transporte"], registro)
+    inicio_transporte = inicio_actividad(registro)
+    for f in sorted(fecha_aleatoria(inicio_transporte, FECHA_FIN)
+                    for _ in range(cantidad_intentos)):
         if saldo_t > 0 and random.random() < 0.5:
             saldo_t -= PASAJE_TARJETA
             salida["tx"].append({"_id": ObjectId(), "monto": PASAJE_TARJETA, "fecha": f,
@@ -356,13 +388,17 @@ def crear_usuario(rol, servicio, u, hash_pw, paquetes, operadores, buses_by_serv
     # Billetera: cargas, pasajes con billetera y recargas moviles en orden de fecha
     tarjeta_u = "UNI-" + hex_mayus(12)
     eventos = []
-    eventos.extend((fecha, "ABONO", None) for fecha in fechas_abonos_usuario(registro))
-    for _ in range(random.randint(0, 15)):
-        eventos.append((fecha_aleatoria(registro, FECHA_FIN), "PASAJE", None))
-    for _ in range(random.randint(0, 10)):
+    eventos.extend((fecha, "ABONO", None)
+                   for fecha in fechas_abonos_usuario(registro, perfil_actividad))
+    cantidad_pasajes = cantidad_en_historial(perfil_actividad["pasajes_billetera"], registro)
+    for _ in range(cantidad_pasajes):
+        eventos.append((fecha_aleatoria(inicio_actividad(registro), FECHA_FIN), "PASAJE", None))
+    cantidad_recargas_moviles = cantidad_en_historial(perfil_actividad["recargas_moviles"], registro)
+    for _ in range(cantidad_recargas_moviles):
         lid_s, telf, op = random.choice(lineas)
         candidatos = [p for p in paquetes if p["operadorId"] == str(op["_id"])] or paquetes
-        eventos.append((fecha_aleatoria(registro, FECHA_FIN), "RECARGA", (lid_s, telf, op, random.choice(candidatos))))
+        eventos.append((fecha_aleatoria(inicio_actividad(registro), FECHA_FIN), "RECARGA",
+                        (lid_s, telf, op, random.choice(candidatos))))
     eventos.sort(key=lambda e: e[0])
 
     saldo_u = 0
@@ -434,11 +470,15 @@ def main():
     ap = argparse.ArgumentParser(description="Borra las bases Digitrans y las reconstruye con datos de demostraci?n.")
     ap.add_argument("--escala", type=float, default=0.20,
                     help="proporci?n de los rangos originales (por defecto 20%%, escala usada anteriormente)")
+    ap.add_argument("--usuarios", type=int, default=None,
+                    help="fija el total de usuarios en vez de sortearlo dentro de la escala")
     ap.add_argument("--semilla", type=int, default=None,
                     help="semilla aleatoria para reproducir la generaci?n")
     args = ap.parse_args()
     if not 0 < args.escala <= 1:
         raise SystemExit("La escala debe ser mayor que 0 y como m?ximo 1.")
+    if args.usuarios is not None and args.usuarios < 1:
+        raise SystemExit("--usuarios debe ser un entero positivo.")
     if args.semilla is not None:
         random.seed(args.semilla)
 
@@ -463,10 +503,14 @@ def main():
     def rango(lo, hi):
         return random.randint(max(1, round(lo * e)), max(1, round(hi * e)))
 
-    total = rango(100000, 200000)
+    total = args.usuarios if args.usuarios is not None else rango(100000, 200000)
     mods = {s: rango(*MODERADORES[s]) for s in SERVICIOS}
     conds = {s: rango(*CONDUCTORES[s]) for s in SERVICIOS}
     personal = sum(mods.values()) + sum(conds.values())
+    if total <= personal:
+        cli.close()
+        cli_local.close()
+        raise SystemExit("El total de --usuarios debe superar la cantidad de moderadores y conductores.")
     password = PASSWORD
     if not password:
         password = getpass.getpass("Clave temporal para las cuentas de prueba (no se mostrar?): ")
@@ -480,6 +524,9 @@ def main():
     print("Destino Atlas:", urlsplit(uri_destino).hostname)
     print(f"Mongo local: {urlsplit(uri_local).hostname} | operadores={len(operadores)} | paquetes={len(paquetes)}")
     print(f"Escala: {e * 100:.0f}% | usuarios: {total} | moderadores: {mods} | conductores: {conds}")
+    print("Habitos sinteticos: 45% frecuentes (recarga cada 110-150 dias), "
+          "35% regulares (175-235 dias), 20% ocasionales (260-360 dias).")
+    print("El habito compartido influye en recargas y viajes; no se guarda como variable del modelo.")
     print("Se eliminar?n estas bases de Atlas antes de generar:")
     bases_borrar = [f"digitrans_{s}" for s in SUFIJOS_BASE]
     bases_borrar += [f"{PREFIJO_PARCIAL}_{s}" for s in SUFIJOS_BASE]

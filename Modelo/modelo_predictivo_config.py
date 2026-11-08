@@ -3,13 +3,14 @@ import numpy as np
 from sklearn.ensemble import HistGradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
 
-VERSION_MODELO = "recarga_historial_consumo_transporte_v8_cadencia"
+VERSION_MODELO_BASE = "recarga_historial_consumo_transporte_v8_cadencia"
+VERSION_MODELO = "recarga_historial_consumo_transporte_v9_cadencia_personal"
 MODELO_LOGISTICO = "regresion logistica"
 MODELO_IMPULSO = "boosting gradiente (histograma)"
 MODELO_CATBOOST = "catboost"
 MODELO_LIGHTGBM = "lightgbm"
 
-VARIABLES = [
+VARIABLES_BASE = [
     "rec_7d", "rec_7d_anterior", "rec_30d", "rec_90d", "rec_180d", "rec_365d",
     "tarjeta_7d", "tarjeta_30d", "tarjeta_90d", "tarjeta_180d", "tarjeta_365d",
     "tarjeta_8_30d", "tarjeta_31_90d", "tarjeta_91_180d", "tarjeta_historica",
@@ -22,15 +23,25 @@ VARIABLES = [
     "servicio_transcaribe", "servicio_transmilenio", "servicio_transmetro",
 ]
 
+# Variables experimentales estimadas solo con recargas anteriores a cada semana.
+VARIABLES_CADENCIA = [
+    "cadencia_mediana_recarga_dias",
+    "variabilidad_cadencia_recarga",
+    "progreso_ciclo_recarga",
+    "intervalos_recarga_observados",
+]
+VARIABLES = VARIABLES_BASE + VARIABLES_CADENCIA
 
-def transformar_variables(valores):
+
+def transformar_variables(valores, variables=None):
     """Reduce asimetria de conteos, montos y recencias sin alterar indicadores."""
+    variables = VARIABLES if variables is None else variables
     x = np.asarray(valores, dtype=np.float32).copy()
-    i_tendencia = VARIABLES.index("tendencia_7d")
+    i_tendencia = variables.index("tendencia_7d")
     i_binarias = {
-        VARIABLES.index("servicio_transcaribe"),
-        VARIABLES.index("servicio_transmilenio"),
-        VARIABLES.index("servicio_transmetro"),
+        variables.index("servicio_transcaribe"),
+        variables.index("servicio_transmilenio"),
+        variables.index("servicio_transmetro"),
     }
     indices_log = [i for i in range(x.shape[1]) if i != i_tendencia and i not in i_binarias]
     x[:, indices_log] = np.log1p(np.maximum(x[:, indices_log], 0))
