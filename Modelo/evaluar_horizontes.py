@@ -1,8 +1,8 @@
-"""Compara objetivos de recarga a 7, 14 y 30 dias sin tocar la publicacion.
+"""Evalua recargas a 7, 14 y 30 dias con cortes temporales moviles.
 
-Usa CatBoost v9, la misma cohorte de pasajeros activos y validacion temporal
-walk-forward. Para reducir la repeticion de etiquetas, toma una foto cada 35
-dias; las ventanas futuras de hasta 30 dias no se solapan entre fotos.
+Usa CatBoost, la misma cohorte de pasajeros activos y validacion walk-forward.
+Las ventanas de validacion se calculan desde las etiquetas completas mas
+recientes, para que el flujo siga evaluando periodos nuevos al refrescar Atlas.
 """
 from pathlib import Path
 
@@ -22,13 +22,9 @@ SALIDA = "evaluacion_horizontes_v1.csv"
 HORIZONTES = (7, 14, 30)
 PASO_SEMANAS = 5
 ANCLA = pd.Timestamp("2024-01-01")
-
-# El ultimo dia se reserva para que las etiquetas futuras esten completas.
-# Los cortes tienen un margen superior a 30 dias antes de cada validacion.
-CORTES = (
-    ("corte_2024", "2024-09-30", "2024-11-04", "2025-03-24"),
-    ("corte_2025a", "2025-02-24", "2025-04-07", "2025-08-25"),
-)
+NUM_CORTES = 6
+DIAS_VALIDACION = 90
+MIN_CORTES = 3
 
 
 def precision_en_top(y, probabilidades, proporcion):
@@ -52,13 +48,63 @@ def validar_fechas(nombre, train, valid, horizonte):
         )
 
 
+def construir_cortes_temporales(tabla, horizonte, numero_cortes, dias_validacion):
+    """Crea ventanas recientes no solapadas y deja embargo igual al horizonte."""
+    columna_objetivo = f"y_{horizonte}d"
+    etiquetadas = tabla[tabla[columna_objetivo].notna()].copy()
+    if etiquetadas.empty:
+        raise SystemExit(f"No hay etiquetas completas para el horizonte de {horizonte} dias.")
+
+    ultima_semana = etiquetadas["semana"].max()
+    ancho = pd.Timedelta(days=dias_validacion)
+    horizonte_td = pd.Timedelta(days=horizonte)
+    cortes = []
+
+    # Se recorren primero las ventanas más recientes; se omiten solo las que
+    # todavía no tienen suficiente historia de entrenamiento.
+    for desplazamiento in range(numero_cortes):
+        fin_valid = ultima_semana - desplazamiento * ancho
+        inicio_valid = fin_valid - pd.Timedelta(days=dias_validacion - 1)
+        fin_train = inicio_valid - horizonte_td - pd.Timedelta(days=1)
+
+        train = etiquetadas[etiquetadas["semana"] <= fin_train]
+        valid = etiquetadas[
+            (etiquetadas["semana"] >= inicio_valid)
+            & (etiquetadas["semana"] <= fin_valid)
+        ]
+        if train.empty or valid.empty:
+            continue
+
+        nombre = f"corte_{numero_cortes - desplazamiento:02d}"
+        validar_fechas(nombre, train, valid, horizonte)
+        cortes.append((nombre, train, valid))
+
+    cortes.reverse()
+    if len(cortes) < MIN_CORTES:
+        raise SystemExit(
+            f"Solo se pudieron crear {len(cortes)} cortes completos de {dias_validacion} dias "
+            f"para {horizonte} dias. Se requieren al menos {MIN_CORTES}; "
+            "se necesita mas historial etiquetado en Atlas o una ventana de validacion menor."
+        )
+    return cortes
+
+
 def main():
     import argparse
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--tabla", default=TABLA)
     parser.add_argument("--salida", default=SALIDA)
+    parser.add_argument("--cortes", type=int, default=NUM_CORTES,
+                        help=f"numero de ventanas temporales recientes (por defecto {NUM_CORTES})")
+    parser.add_argument("--dias-validacion", type=int, default=DIAS_VALIDACION,
+                        help=f"duracion de cada ventana (por defecto {DIAS_VALIDACION})")
     args = parser.parse_args()
+
+    if args.cortes < MIN_CORTES:
+        raise SystemExit(f"--cortes debe ser al menos {MIN_CORTES}.")
+    if args.dias_validacion < 35:
+        raise SystemExit("--dias-validacion debe ser al menos 35 para cubrir las fotos cada cinco semanas.")
 
     if not Path(args.tabla).is_file():
         raise SystemExit(
@@ -80,17 +126,13 @@ def main():
         raise SystemExit("Hay valores vacios o no numericos en las variables del modelo.")
 
     filas = []
-    for nombre_corte, fin_train, inicio_valid, fin_valid in CORTES:
-        train = tabla[tabla["semana"] <= pd.Timestamp(fin_train)]
-        valid = tabla[
-            (tabla["semana"] >= pd.Timestamp(inicio_valid))
-            & (tabla["semana"] <= pd.Timestamp(fin_valid))
-        ]
-
-        for horizonte in HORIZONTES:
+    for horizonte in HORIZONTES:
+        cortes = construir_cortes_temporales(
+            tabla, horizonte, args.cortes, args.dias_validacion
+        )
+        for nombre_corte, train, valid in cortes:
             y_train = train[f"y_{horizonte}d"].to_numpy(dtype=np.int8)
             y_valid = valid[f"y_{horizonte}d"].to_numpy(dtype=np.int8)
-            validar_fechas(nombre_corte, train, valid, horizonte)
             if np.unique(y_train).size < 2 or np.unique(y_valid).size < 2:
                 raise SystemExit(
                     f"{nombre_corte}, {horizonte}d: hacen falta positivos y negativos "
@@ -113,6 +155,8 @@ def main():
                 "filas_entrenamiento": len(train),
                 "filas_validacion": len(valid),
                 "semanas_validacion": int(valid["semana"].nunique()),
+                "inicio_validacion": valid["semana"].min().strftime("%Y-%m-%d"),
+                "fin_validacion": valid["semana"].max().strftime("%Y-%m-%d"),
                 "prevalencia_validacion": float(y_valid.mean()),
                 "auc_roc": float(roc_auc_score(y_valid, p_valid)),
                 "auc_pr": float(average_precision_score(y_valid, p_valid)),
@@ -164,8 +208,8 @@ def main():
         "precision_top_10_media", "recall_top_10_media", "f1_top_10_media",
     ]].to_string(index=False, float_format=lambda x: f"{x:.4f}"))
     print(f"\nCohorte activa: al menos 2 recargas historicas y 1 en los 365 dias previos.")
-    print(f"Fotos cada {PASO_SEMANAS * 7} dias; etiquetas de 30 dias no se solapan entre fotos.")
-    print(f"No se uso el periodo de prueba anterior ni se publico en Atlas. Archivo: {args.salida}")
+    print(f"Fotos cada {PASO_SEMANAS * 7} dias; ventanas de validacion de {args.dias_validacion} dias.")
+    print(f"Embargo temporal igual al horizonte evaluado; no se publico en Atlas. Archivo: {args.salida}")
 
 
 if __name__ == "__main__":

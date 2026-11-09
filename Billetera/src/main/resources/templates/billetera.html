@@ -335,12 +335,15 @@
                         <td>
                             <form th:if="${movimiento.tipo == 'ABONO_PENDIENTE'}"
                                   th:action="@{'/saldo/' + ${movimiento.operacionId} + '/revisar'}"
-                                  method="post" data-auto-review-form>
+                                  method="post">
                                 <input type="hidden" th:if="${_csrf}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                                 <button type="submit" class="button-secondary">
-                                    <span data-auto-review-label>Revisar pago automáticamente</span>
+                                    Revisar pago
                                 </button>
                             </form>
+                            <a th:if="${movimiento.operacionId != null and !#strings.isEmpty(movimiento.operacionId)}"
+                               th:href="@{'/transacciones/' + ${movimiento.operacionId} + '/recibo.pdf'}"
+                               class="button-secondary" download>Descargar recibo PDF</a>
                         </td>
                     </tr>
                     </tbody>
@@ -410,24 +413,13 @@
         paymentForm.querySelectorAll("[data-demo-field]").forEach((field) => {
             field.value = "";
         });
+        const submitButton = paymentForm.querySelector('button[type="submit"]');
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Cargando transacción...";
+        }
     });
     updatePaymentFields();
-
-    const autoReviewForms = [...document.querySelectorAll("[data-auto-review-form]")];
-    autoReviewForms.forEach((form) => {
-        const label = form.querySelector("[data-auto-review-label]");
-        let remainingSeconds = 10;
-        const counter = window.setInterval(() => {
-            remainingSeconds -= 1;
-            label.textContent = `Revisión automática en ${remainingSeconds}s`;
-            if (remainingSeconds <= 0) {
-                window.clearInterval(counter);
-                label.textContent = "Revisando pago...";
-                form.querySelector("button").disabled = true;
-                form.submit();
-            }
-        }, 1000);
-    });
 
     const historyToggle = document.querySelector("[data-history-toggle]");
     const historyContent = document.querySelector("[data-history-content]");

@@ -34,7 +34,6 @@
       </div>
       <p id="adminChatError" class="notice error" role="alert" hidden></p>
       <form id="adminChatForm" class="admin-chat-compose" th:action="@{/admin/chat/mensajes}" method="post">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <label for="adminChatText">Escribe un mensaje</label>
         <textarea id="adminChatText" name="texto" rows="3" maxlength="1000"
                   placeholder="Escribe un mensaje para el equipo..." required></textarea>

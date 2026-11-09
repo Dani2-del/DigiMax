@@ -1,10 +1,16 @@
 package com.Servicio.RecargasMovil.web;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
@@ -16,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.RecargasMovil.model.OperadorMovil;
@@ -24,6 +31,7 @@ import com.Servicio.RecargasMovil.model.RecargaMovil;
 import com.Servicio.RecargasMovil.security.AuthenticatedIdentity;
 import com.Servicio.RecargasMovil.security.RemoteAccessAuthenticationFilter;
 import com.Servicio.RecargasMovil.service.RecargasService;
+import com.Servicio.RecargasMovil.service.ReciboPdfGenerator;
 import com.Servicio.RecargasMovil.service.WalletClient;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -133,7 +141,7 @@ public class ServiceLandingController {
         try {
             var recharge = recargasService.solicitarRecarga(
                     identity.id(), lineaId, paqueteId, operationId, identity.email());
-            mostrarResultadoPago(recharge, redirectAttributes);
+            return "redirect:/transacciones/" + recharge.getOperacionId() + "?cargando=true";
         } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
@@ -159,7 +167,7 @@ public class ServiceLandingController {
         try {
             var recharge = recargasService.solicitarRecargaDinero(
                     identity.id(), lineaId, monto, operationId, identity.email());
-            mostrarResultadoPago(recharge, redirectAttributes);
+            return "redirect:/transacciones/" + recharge.getOperacionId() + "?cargando=true";
         } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
@@ -182,7 +190,7 @@ public class ServiceLandingController {
             RedirectAttributes redirectAttributes) {
         try {
             var recharge = recargasService.reintentarRecarga(identity.id(), operationId, identity.email());
-            mostrarResultadoPago(recharge, redirectAttributes);
+            return "redirect:/transacciones/" + recharge.getOperacionId();
         } catch (RecargasService.OperacionPendienteAnteriorException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (IllegalArgumentException exception) {
@@ -197,18 +205,109 @@ public class ServiceLandingController {
         return "redirect:/";
     }
 
-    private static void mostrarResultadoPago(
-            RecargaMovil recharge, RedirectAttributes redirectAttributes) {
-        String message = switch (recharge.getEstado()) {
-            case RecargaMovil.STATUS_SIMULATED ->
-                "Pago simulado aprobado. La recarga quedó registrada, pero no se envió al operador.";
-            case RecargaMovil.STATUS_PAYMENT_PENDING ->
-                "Pago pendiente. Recargas consultará automáticamente el resultado en 10 segundos.";
-            case RecargaMovil.STATUS_REJECTED ->
-                "El pago fue rechazado o cancelado. La recarga no se completó.";
-            default -> "La operación sigue pendiente. Revisa su estado desde el historial.";
-        };
-        redirectAttributes.addFlashAttribute("mensaje", message);
+    @GetMapping("/transacciones/{operationId}")
+    public String transactionResult(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @PathVariable String operationId,
+            @RequestParam(defaultValue = "false") boolean cargando,
+            @RequestAttribute("_csrf") CsrfToken csrfToken,
+            Model model) {
+        RecargaMovil recharge = buscarRecarga(identity.id(), operationId);
+        boolean successful = RecargaMovil.STATUS_SIMULATED.equals(recharge.getEstado());
+        boolean pending = RecargaMovil.STATUS_PAYMENT_PENDING.equals(recharge.getEstado())
+                || RecargaMovil.STATUS_PROCESSING.equals(recharge.getEstado());
+        boolean showLoading = pending || cargando;
+        csrfToken.getToken();
+        model.addAttribute("identity", identity);
+        model.addAttribute("recarga", recharge);
+        model.addAttribute("exitosa", successful);
+        model.addAttribute("cargando", showLoading);
+        model.addAttribute("menuUrl", urlMenuRecargas(recharge));
+        model.addAttribute("_csrf", csrfToken);
+        model.addAttribute("mensajeResultado", successful
+                ? "Transacción exitosa. El pago simulado fue aprobado y la operación quedó registrada."
+                : mensajeEstadoRecarga(recharge));
+        model.addAttribute("reciboUrl", "/transacciones/" + operationId + "/recibo.pdf");
+        return "resultado-transaccion";
+    }
+
+    @GetMapping("/transacciones/{operationId}/recibo.pdf")
+    public ResponseEntity<byte[]> downloadReceipt(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @PathVariable String operationId) {
+        RecargaMovil recharge = buscarRecarga(identity.id(), operationId);
+        List<String> lines = List.of(
+                "DIGITRANS | RECARGAS MOVILES",
+                "RECIBO DE TRANSACCION",
+                "Estado: " + estadoRecarga(recharge),
+                "Operacion: " + safeText(recharge.getOperacionId(), "No disponible"),
+                "Fecha: " + fechaRecarga(recharge),
+                "Cliente: " + safeText(identity.name(), "No disponible"),
+                "Operador: " + safeText(recharge.getOperador(), "No disponible"),
+                "Telefono: " + safeText(recharge.getTelefono(), "No disponible"),
+                "Paquete: " + safeText(recharge.getPaquete(), "No disponible"),
+                "Valor: COP " + (recharge.getMonto() == null ? "0" : recharge.getMonto().toPlainString()),
+                "Estado de pago: " + safeText(recharge.getEstadoPago(), "No disponible"),
+                "Referencia de pago: " + safeText(recharge.getIdPagoProveedor(), "No disponible"),
+                "Recibo de operación simulada. No se envió una recarga al operador ni se activó el paquete.");
+        byte[] pdf = ReciboPdfGenerator.generar(lines);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=recibo-recargas-" + safeFilename(operationId) + ".pdf")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(pdf);
+    }
+
+    private RecargaMovil buscarRecarga(String usuarioId, String operationId) {
+        return recargasService.historialDelUsuario(usuarioId).stream()
+                .filter(item -> operationId.equals(item.getOperacionId()))
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
+
+    private static String estadoRecarga(RecargaMovil recharge) {
+        if (RecargaMovil.STATUS_SIMULATED.equals(recharge.getEstado())) {
+            return "EXITOSA (SIMULADA)";
+        }
+        if (RecargaMovil.STATUS_REJECTED.equals(recharge.getEstado())) {
+            return "RECHAZADA";
+        }
+        if (RecargaMovil.STATUS_PAYMENT_PENDING.equals(recharge.getEstado())) {
+            return "PENDIENTE";
+        }
+        return safeText(recharge.getEstado(), "EN PROCESO");
+    }
+
+    private static String mensajeEstadoRecarga(RecargaMovil recharge) {
+        if (RecargaMovil.STATUS_REJECTED.equals(recharge.getEstado())) {
+            return "El pago fue rechazado o cancelado. La recarga no se completó.";
+        }
+        if (RecargaMovil.STATUS_PAYMENT_PENDING.equals(recharge.getEstado())
+                || RecargaMovil.STATUS_PROCESSING.equals(recharge.getEstado())) {
+            return "La operación sigue pendiente. Puedes consultar nuevamente su estado desde el historial.";
+        }
+        return "La operación quedó registrada.";
+    }
+
+    private static String fechaRecarga(RecargaMovil recharge) {
+        return recharge.getFecha() == null ? "No disponible"
+                : recharge.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+    }
+
+    private static String safeText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
+    }
+
+    private static String urlMenuRecargas(RecargaMovil recharge) {
+        String description = recharge.getPaquete();
+        return description != null && description.startsWith("Recarga de saldo $")
+                ? "/#recargar-saldo"
+                : "/#paquetes";
+    }
+
+    private static String safeFilename(String value) {
+        return value.replaceAll("[^A-Za-z0-9_-]", "_");
     }
 
     private static String token(HttpServletRequest request) {

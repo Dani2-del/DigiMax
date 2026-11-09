@@ -49,7 +49,7 @@ def transformar_variables(valores, variables=None):
     return x
 
 
-def crear_modelo(nombre, y_entrenamiento=None):
+def crear_modelo(nombre, y_entrenamiento=None, parametros=None):
     if nombre == MODELO_LOGISTICO:
         return LogisticRegression(max_iter=1500, C=1.0)
     if nombre == MODELO_IMPULSO:
@@ -71,19 +71,22 @@ def crear_modelo(nombre, y_entrenamiento=None):
             raise SystemExit(
                 "Falta CatBoost. Instálalo con: python -m pip install catboost"
             ) from exc
-        return CatBoostClassifier(
-            iterations=500,
-            depth=6,
-            learning_rate=0.05,
-            loss_function="Logloss",
-            eval_metric="AUC",
-            auto_class_weights="SqrtBalanced",
-            l2_leaf_reg=8.0,
-            random_seed=42,
-            thread_count=-1,
-            verbose=False,
-            allow_writing_files=False,
-        )
+        configuracion = {
+            "iterations": 500,
+            "depth": 6,
+            "learning_rate": 0.05,
+            "loss_function": "Logloss",
+            "eval_metric": "AUC",
+            "auto_class_weights": "SqrtBalanced",
+            "l2_leaf_reg": 8.0,
+            "random_seed": 42,
+            "thread_count": -1,
+            "verbose": False,
+            "allow_writing_files": False,
+        }
+        if parametros:
+            configuracion.update(parametros)
+        return CatBoostClassifier(**configuracion)
     if nombre == MODELO_LIGHTGBM:
         try:
             from lightgbm import LGBMClassifier

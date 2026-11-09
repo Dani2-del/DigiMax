@@ -102,7 +102,7 @@
     .secondary { color: #514078; background: #eee9fb; }
     .secondary:hover:not(:disabled) { color: #fff; background: #7250d5; }
     .notice { padding: 13px 15px; border: 1px solid #ccebd8; border-radius: 12px; color: #286541; background: #effaf3; }
-    .error { border-color: #f2c8c1; color: #8a3f36; background: #fff1ef; }
+    .error { border-color: #d8cafa; color: #5639ac; background: #f4f0ff; }
     .wallet-missing { border-color: #f4d4a1; background: #fff8e9; }
     .wallet-missing h2 { margin-top: 0; color: #805625; }
     .wallet-link { display: inline-block; width: auto; padding: 11px 17px; color: #fff; text-decoration: none; border-radius: 11px; background: #7250d5; font-weight: 700; }
@@ -253,7 +253,6 @@
       Todavía no hay operadores configurados. Un moderador debe habilitar el catálogo.
     </p>
     <form th:if="${not #lists.isEmpty(operadores)}" th:action="@{/lineas}" method="post" class="grid">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
       <label>Operador
         <select name="operadorId" required>
           <option value="" disabled selected>Selecciona operador</option>
@@ -289,11 +288,10 @@
       <div><p class="eyebrow">Paso 2 · Saldo a tu SIM</p><h2>Recargar saldo</h2><p>Elige una de tus líneas y el monto que quieres agregar a su saldo prepago.</p></div>
     </div>
     <p class="simulation-warning" role="note">
-      El resultado del pago simulado se consulta automáticamente después de 10 segundos. No se descuenta de Billetera
-      ni se envía saldo a la SIM.
+      El pago se aprueba de forma simulada al instante. La operación queda registrada, pero no se descuenta de Billetera
+      ni se envía saldo al operador.
     </p>
-    <form th:action="@{/recargar/saldo}" method="post" class="grid">
-      <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+    <form th:action="@{/recargar/saldo}" method="post" class="grid" data-transaction-form>
       <input type="hidden" name="operationId" th:value="${customRechargeOperationId}">
       <label>Línea a recargar
         <select name="lineaId" required th:disabled="${#lists.isEmpty(lineasRecargables)}">
@@ -324,8 +322,8 @@
       <div><p class="eyebrow">Paso 2 · Oferta de tu operador</p><h2>Comprar paquetes</h2><p>Selecciona el operador y la categoría para comparar sus opciones.</p></div>
     </div>
     <p class="simulation-warning" role="note">
-      Importante: estos paquetes se muestran como catálogo informativo. El resultado del pago simulado se consulta
-      automáticamente después de 10 segundos. No se descuenta de Billetera, no se envía al operador ni se activa el paquete.
+      Importante: estos paquetes se muestran como catálogo informativo. El pago se aprueba de forma simulada al instante;
+      no se descuenta de Billetera, no se envía al operador ni se activa el paquete.
     </p>
     <p th:if="${#lists.isEmpty(paquetes)}" class="muted">No hay paquetes activos por ahora.</p>
     <div th:unless="${#lists.isEmpty(paquetes)}">
@@ -380,8 +378,7 @@
             <button type="button" class="secondary" data-select-package>Elegir este paquete</button>
             <button type="button" class="cancel-package" data-cancel-package hidden>Cancelar selección</button>
           </div>
-          <form th:action="@{/recargar}" method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+          <form th:action="@{/recargar}" method="post" data-transaction-form>
             <input type="hidden" name="paqueteId" th:value="${paquete.id}">
             <input type="hidden" name="operationId" th:value="${operationIds[paquete.id]}">
             <label>Enviar a
@@ -473,12 +470,13 @@
         <td>
           <form th:if="${recarga.estado == 'PROCESANDO' or recarga.estado == 'PAGO_PENDIENTE'}"
                 th:action="@{'/recargar/' + ${recarga.operacionId} + '/reintentar'}"
-                method="post" data-auto-review-form>
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                method="post">
             <button type="submit" class="secondary">
-              <span data-auto-review-label>Revisar pago · automático en 10s</span>
+              Revisar pago
             </button>
           </form>
+          <a th:href="@{'/transacciones/' + ${recarga.operacionId} + '/recibo.pdf'}"
+             class="secondary" download>Descargar recibo PDF</a>
         </td>
       </tr>
       </tbody>
@@ -721,23 +719,16 @@
   });
   updateHistory();
 
-  const autoReviewForm = [...document.querySelectorAll("[data-auto-review-form]")]
-    .find((form) => !form.closest("[data-history-row]")?.hidden);
-  if (autoReviewForm) {
-    const autoReviewLabel = autoReviewForm.querySelector("[data-auto-review-label]");
-    const autoReviewButton = autoReviewForm.querySelector('button[type="submit"]');
-    let remainingSeconds = 10;
-    const autoReviewTimer = window.setInterval(() => {
-      remainingSeconds -= 1;
-      autoReviewLabel.textContent = `Revisión automática en ${remainingSeconds}s`;
-      if (remainingSeconds <= 0) {
-        window.clearInterval(autoReviewTimer);
-        autoReviewLabel.textContent = "Revisando pago...";
-        autoReviewButton.disabled = true;
-        autoReviewForm.submit();
+  document.querySelectorAll("[data-transaction-form]").forEach((form) => {
+    form.addEventListener("submit", () => {
+      const submitButton = form.querySelector('button[type="submit"]');
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "Cargando...";
       }
-    }, 1000);
-  }
+    });
+  });
+
 </script>
 </body>
 </html>

@@ -32,7 +32,7 @@ public class ProveedorSimulado implements ProveedorPago, SimuladorPago {
     private final long demoraAprobacionSegundos;
 
     public ProveedorSimulado(
-            @Value("${pagos.simulacion.aprobacion-automatica-segundos:10}")
+            @Value("${pagos.simulacion.aprobacion-automatica-segundos:0}")
             long demoraAprobacionSegundos) {
         if (demoraAprobacionSegundos < 0) {
             throw new IllegalArgumentException("La demora de aprobación no puede ser negativa.");
@@ -55,7 +55,7 @@ public class ProveedorSimulado implements ProveedorPago, SimuladorPago {
             String id = UUID.randomUUID().toString();
             EstadoPago estado = solicitud.monto().compareTo(MONTO_MAXIMO) > 0
                     ? EstadoPago.RECHAZADO
-                    : EstadoPago.PENDIENTE;
+                    : (demoraAprobacionSegundos == 0 ? EstadoPago.APROBADO : EstadoPago.PENDIENTE);
             ResultadoInicio resultado = new ResultadoInicio(id, estado, null);
             pagos.put(id, new PagoRegistrado(solicitud, resultado));
             if (estado == EstadoPago.PENDIENTE) {

@@ -3,9 +3,9 @@
     font-family: Inter, "Segoe UI", system-ui, sans-serif;
     color: #17324d;
     background: #f3f6fa;
-    --error-accent: #087c86;
-    --error-accent-dark: #066b75;
-    --error-soft: #e5f5f4;
+    --error-accent: #7250d5;
+    --error-accent-dark: #5d3fb8;
+    --error-soft: #f0ebff;
 }
 
 * { box-sizing: border-box; }
@@ -18,7 +18,7 @@ body {
     margin: 0;
     padding: 24px;
     background:
-        radial-gradient(ellipse at 50% -20%, #dcecf0 0, transparent 55%),
+        radial-gradient(ellipse at 50% -20%, #ebe4ff 0, transparent 55%),
         #f3f6fa;
 }
 
@@ -42,9 +42,9 @@ body {
     right: -92px;
     width: 250px;
     height: 250px;
-    border: 1px solid #087c8622;
+    border: 1px solid #7250d522;
     border-radius: 50%;
-    box-shadow: 0 0 0 24px #087c860a, 0 0 0 52px #087c8607;
+    box-shadow: 0 0 0 24px #7250d50a, 0 0 0 52px #7250d507;
     content: "";
     pointer-events: none;
 }

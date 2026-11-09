@@ -7,8 +7,6 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.springframework.dao.DuplicateKeyException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -25,9 +23,6 @@ import com.Servicio.RecargasMovil.service.PagosClient.ResultadoPago;
 
 @Service
 public class RecargasService {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(RecargasService.class);
-    private static final long PAYMENT_REVIEW_DELAY_SECONDS = 10;
 
     private static final Pattern PHONE_NUMBER = Pattern.compile("^3[0-9]{9}$");
     private static final BigDecimal MAX_PACKAGE_PRICE = new BigDecimal("1000000");
@@ -69,24 +64,6 @@ public class RecargasService {
 
     public List<RecargaMovil> historialDelUsuario(String usuarioId) {
         return recargas.findByUsuarioIdOrderByFechaDesc(usuarioId);
-    }
-
-    public void revisarPagosPendientesVencidos() {
-        LocalDateTime eligibleSince = LocalDateTime.now().minusSeconds(PAYMENT_REVIEW_DELAY_SECONDS);
-        List<RecargaMovil> pending = recargas
-                .findByEstadoAndFechaLessThanEqualAndIdPagoProveedorIsNotNullOrderByFechaAsc(
-                        RecargaMovil.STATUS_PAYMENT_PENDING, eligibleSince);
-        for (RecargaMovil recharge : pending) {
-            if (!StringUtils.hasText(recharge.getIdPagoProveedor())) {
-                continue;
-            }
-            try {
-                procesar(recharge, recharge.getPagador());
-            } catch (RuntimeException exception) {
-                LOGGER.warn("No se pudo conciliar el pago de la recarga {}.",
-                        recharge.getOperacionId(), exception);
-            }
-        }
     }
 
     public OperadorMovil crearOperador(String nombre) {

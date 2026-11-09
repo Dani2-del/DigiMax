@@ -64,7 +64,7 @@ tbody tr:hover { background: #fcfaff; }
 .compact-form { display: inline-flex; }
 .compact-form button { white-space: nowrap; }
 .notice { margin: 0 0 16px; padding: 13px 15px; border: 1px solid #ccebd8; border-radius: 12px; color: #286541; background: #effaf3; }
-.notice.error { border-color: #f2c8c1; color: #8a3f36; background: #fff1ef; }
+.notice.error { border-color: #d8cafa; color: #5639ac; background: #f4f0ff; }
 .empty-state { padding: 20px; border: 1px dashed #cfc5e1; border-radius: 14px; color: #77718a; background: #fcfaff; text-align: center; }
 .pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 18px; }
 .pagination-label { color: #51466c; font-size: .9rem; font-weight: 750; }

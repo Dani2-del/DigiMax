@@ -80,8 +80,8 @@ def main():
     if len(evaluacion) != 1:
         raise SystemExit("La evaluacion no contiene un unico resumen walk-forward para 30 dias.")
     evaluacion = evaluacion.iloc[0]
-    if int(evaluacion["cortes"]) < 2:
-        raise SystemExit("Se requieren al menos dos cortes temporales para publicar el modelo mensual.")
+    if int(evaluacion["cortes"]) < 3:
+        raise SystemExit("Se requieren al menos tres cortes temporales para publicar el modelo mensual.")
 
     columnas = ["usuario_id", "semana", "tarjeta_historica", "tarjeta_365d", "y_30d"] + VARIABLES
     tabla = pd.read_csv(ARCHIVO, usecols=columnas, parse_dates=["semana"])
@@ -143,7 +143,7 @@ def main():
         "objetivo": OBJETIVO,
         "horizonte_dias": HORIZONTE,
         "version_modelo": VERSION,
-        "metodo_evaluacion": "validacion walk-forward con 2 cortes temporales",
+        "metodo_evaluacion": "validacion walk-forward con ventanas temporales moviles",
         "cohorte": "pasajeros activos: >=2 recargas historicas y >=1 en 365 dias",
         "generado": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
         "semana_referencia": referencia,

@@ -8,4 +8,4 @@ server:
 pagos:
   proveedor: simulado
   simulacion:
-    aprobacion-automatica-segundos: 10
+    aprobacion-automatica-segundos: 0

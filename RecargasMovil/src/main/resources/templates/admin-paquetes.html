@@ -34,7 +34,6 @@
                 <div class="row-actions">
                   <a class="button-link secondary table-action" th:href="@{/admin/paquetes/{id}/editar(id=${paquete.id})}">Editar</a>
                   <form method="post" th:action="@{/admin/paquetes/estado}" class="compact-form">
-                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                     <input type="hidden" name="paqueteId" th:value="${paquete.id}">
                     <button class="table-action" th:classappend="${paquete.activo ? ' danger' : ' secondary'}" type="submit" th:text="${paquete.activo ? 'Desactivar' : 'Activar'}">Cambiar</button>
                   </form>

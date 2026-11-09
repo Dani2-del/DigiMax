@@ -3,7 +3,6 @@
         class="admin-footer">
   <p>Digitrans · Recargas móviles</p>
   <form th:action="@{/logout}" method="post">
-    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
     <button type="submit">Salir</button>
   </form>
 </footer>

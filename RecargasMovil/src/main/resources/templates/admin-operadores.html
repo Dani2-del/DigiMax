@@ -19,7 +19,6 @@
     <section class="admin-section">
       <div class="section-heading"><div><h2>Añadir operador</h2><p class="muted">El nombre debe ser único. Los operadores inactivos no aparecerán en las opciones de usuario.</p></div></div>
       <form method="post" th:action="@{/admin/operadores}" class="form-grid">
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
         <label>Nombre del operador<input type="text" name="nombre" maxlength="80" placeholder="Ej. Claro" required></label>
         <button type="submit">Crear operador</button>
       </form>
@@ -37,7 +36,6 @@
               <td><span class="status" th:classappend="${operador.activo ? ' status-activo' : ' status-inactivo'}" th:text="${operador.activo ? 'Activo' : 'Inactivo'}">Estado</span></td>
               <td>
                 <form method="post" th:action="@{/admin/operadores/estado}" class="compact-form">
-                  <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                   <input type="hidden" name="operadorId" th:value="${operador.id}">
                   <button class="table-action" th:classappend="${operador.activo ? ' danger' : ' secondary'}" type="submit" th:text="${operador.activo ? 'Desactivar' : 'Activar'}">Cambiar</button>
                 </form>

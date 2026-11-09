@@ -1,6 +1,7 @@
 package com.Servicio.Billetera.web;
 
 import java.math.BigDecimal;
+import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -8,9 +9,12 @@ import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
@@ -18,11 +22,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestAttribute;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import com.Servicio.Billetera.model.AccionVerificacionTarjeta;
@@ -34,6 +40,7 @@ import com.Servicio.Billetera.security.AuthenticatedIdentity;
 import com.Servicio.Billetera.service.BilleteraService;
 import com.Servicio.Billetera.service.LectorClient;
 import com.Servicio.Billetera.service.MailDeliveryException;
+import com.Servicio.Billetera.service.ReciboPdfGenerator;
 import com.Servicio.Billetera.service.SaldoInsuficienteException;
 import com.Servicio.Billetera.service.VerificacionTarjetaService;
 import com.Servicio.Billetera.service.VerificacionTarjetaService.ErrorVerificacionTarjeta;
@@ -293,9 +300,9 @@ public class BilleteraController {
             @RequestParam @NotBlank @Size(max = 100) String operationId,
             RedirectAttributes redirectAttributes) {
         try {
-            BilleteraUniversal wallet = billeteraService.iniciarCargaSimulada(
+            billeteraService.iniciarCargaSimulada(
                     identity.id(), identity.email(), monto, operationId, metodoPago);
-            redirectAttributes.addFlashAttribute("mensaje", mensajeCarga(wallet, operationId));
+            return "redirect:/transacciones/" + operationId + "?cargando=true";
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (BilleteraService.WalletNotFoundException exception) {
@@ -320,9 +327,8 @@ public class BilleteraController {
             @PathVariable String operationId,
             RedirectAttributes redirectAttributes) {
         try {
-            BilleteraUniversal wallet = billeteraService.revisarCarga(
-                    identity.id(), operationId, identity.email());
-            redirectAttributes.addFlashAttribute("mensaje", mensajeCarga(wallet, operationId));
+            billeteraService.revisarCarga(identity.id(), operationId, identity.email());
+            return "redirect:/transacciones/" + operationId;
         } catch (IllegalArgumentException exception) {
             redirectAttributes.addFlashAttribute("error", exception.getMessage());
         } catch (BilleteraService.WalletNotFoundException exception) {
@@ -340,18 +346,119 @@ public class BilleteraController {
         return "redirect:/";
     }
 
-    private static String mensajeCarga(BilleteraUniversal wallet, String operationId) {
-        MovimientoBilletera movement = wallet.getMovimientos().stream()
+    @GetMapping("/transacciones/{operationId}")
+    public String transactionResult(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @PathVariable String operationId,
+            @RequestParam(defaultValue = "false") boolean cargando,
+            @RequestAttribute("_csrf") CsrfToken csrfToken,
+            Model model) {
+        MovimientoBilletera movement = buscarMovimiento(identity.id(), operationId);
+        boolean successful = transaccionExitosa(movement);
+        boolean pending = esTransaccionPendiente(movement);
+        boolean showLoading = pending || cargando;
+        csrfToken.getToken();
+        model.addAttribute("identity", identity);
+        model.addAttribute("movimiento", movement);
+        model.addAttribute("exitosa", successful);
+        model.addAttribute("cargando", showLoading);
+        model.addAttribute("csrfToken", csrfToken.getToken());
+        model.addAttribute("revisarUrl", "/saldo/" + operationId + "/revisar");
+        model.addAttribute("mensajeResultado", successful
+                ? "Transacción exitosa. El movimiento quedó registrado en tu Billetera."
+                : mensajeEstadoMovimiento(movement));
+        model.addAttribute("reciboUrl", "/transacciones/" + operationId + "/recibo.pdf");
+        return "resultado-transaccion";
+    }
+
+    @GetMapping("/transacciones/{operationId}/recibo.pdf")
+    public ResponseEntity<byte[]> downloadReceipt(
+            @AuthenticationPrincipal AuthenticatedIdentity identity,
+            @PathVariable String operationId) {
+        MovimientoBilletera movement = buscarMovimiento(identity.id(), operationId);
+        String estado = estadoMovimiento(movement);
+        List<String> lines = List.of(
+                "DIGITRANS | BILLETERA",
+                "RECIBO DE TRANSACCION",
+                "Estado: " + estado,
+                "Operacion: " + movement.getOperacionId(),
+                "Fecha: " + fechaMovimiento(movement),
+                "Cliente: " + safeText(identity.name(), "No disponible"),
+                "Servicio: " + safeText(movement.getServicio(), "Billetera"),
+                "Detalle: " + safeText(movement.getDescripcion(), "Movimiento registrado"),
+                "Valor: COP " + movimientoMonto(movement),
+                "Metodo de pago: " + (movement.getMetodoPago() == null ? "No aplica" : movement.getMetodoPago()),
+                "Referencia de pago: " + (movement.getIdPagoProveedor() == null
+                        ? "No aplica" : movement.getIdPagoProveedor()),
+                "Comprobante de una operacion registrada en DigiTrans. Las cargas de saldo usan pago simulado.");
+        byte[] pdf = ReciboPdfGenerator.generar(lines);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=recibo-billetera-" + safeFilename(operationId) + ".pdf")
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(pdf);
+    }
+
+    private MovimientoBilletera buscarMovimiento(String usuarioId, String operationId) {
+        return billeteraService.historial(usuarioId).stream()
                 .filter(item -> operationId.equals(item.getOperacionId()))
                 .findFirst()
-                .orElseThrow(() -> new IllegalStateException(
-                        "No se encontró el movimiento de carga después de procesarlo."));
-        return switch (movement.getEstadoPago() == null ? "" : movement.getEstadoPago()) {
-            case "APROBADO" -> "Pago simulado aprobado. El saldo se agregó a tu tarjeta Digitrans.";
-            case "RECHAZADO" -> "El pago simulado fue rechazado. No se agregó saldo.";
-            case "CANCELADO" -> "El pago simulado fue cancelado. No se agregó saldo.";
-            default -> "";
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+    }
+
+    private static boolean transaccionExitosa(MovimientoBilletera movement) {
+        String type = movement.getTipo() == null ? "" : movement.getTipo();
+        String paymentState = movement.getEstadoPago() == null ? "" : movement.getEstadoPago();
+        return !type.endsWith("PENDIENTE") && !type.endsWith("RECHAZADO")
+                && !"PENDIENTE".equals(paymentState)
+                && !"RECHAZADO".equals(paymentState)
+                && !"CANCELADO".equals(paymentState);
+    }
+
+    private static boolean esTransaccionPendiente(MovimientoBilletera movement) {
+        return "ABONO_PENDIENTE".equals(movement.getTipo())
+                || "PENDIENTE".equals(movement.getEstadoPago())
+                || "INICIANDO".equals(movement.getEstadoPago());
+    }
+
+    private static String estadoMovimiento(MovimientoBilletera movement) {
+        String type = movement.getTipo() == null ? "" : movement.getTipo();
+        if (type.endsWith("PENDIENTE")) {
+            return "PENDIENTE";
+        }
+        if (type.endsWith("RECHAZADO")) {
+            return "RECHAZADO";
+        }
+        return "APROBADO".equals(movement.getEstadoPago()) || movement.getEstadoPago() == null
+                ? "EXITOSA" : movement.getEstadoPago();
+    }
+
+    private static String mensajeEstadoMovimiento(MovimientoBilletera movement) {
+        return switch (estadoMovimiento(movement)) {
+            case "PENDIENTE" -> "La transacción todavía está pendiente de confirmación.";
+            case "RECHAZADO", "RECHAZADA" -> "La transacción fue rechazada y no se completó.";
+            case "CANCELADO", "CANCELADA" -> "La transacción fue cancelada.";
+            default -> "El movimiento quedó registrado.";
         };
+    }
+
+    private static String fechaMovimiento(MovimientoBilletera movement) {
+        return movement.getFecha() == null ? "No disponible"
+                : movement.getFecha().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss"));
+    }
+
+    private static String movimientoMonto(MovimientoBilletera movement) {
+        return movement.getMonto() == null ? "0.00"
+                : movement.getMonto().setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
+    }
+
+    private static String safeFilename(String value) {
+        return value.replaceAll("[^A-Za-z0-9_-]", "_");
+    }
+
+    private static String safeText(String value, String fallback) {
+        return value == null || value.isBlank() ? fallback : value;
     }
 
     @RestController
