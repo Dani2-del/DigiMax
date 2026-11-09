@@ -3,7 +3,7 @@ spring:
     name: pagos
 
 server:
-  port: 8085
+  port: ${SERVER_PORT:8085}
 
 pagos:
   proveedor: simulado
