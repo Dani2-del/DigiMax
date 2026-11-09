@@ -191,6 +191,7 @@ def main():
         auc_pr_media=("auc_pr", "mean"),
         precision_top_5_media=("precision_top_5", "mean"),
         recall_top_5_media=("recall_top_5", "mean"),
+        f1_top_5_media=("f1_top_5", "mean"),
         precision_top_10_media=("precision_top_10", "mean"),
         recall_top_10_media=("recall_top_10", "mean"),
         f1_top_10_media=("f1_top_10", "mean"),
@@ -204,7 +205,7 @@ def main():
     print("\nPromedio de cortes walk-forward; top-K es una politica relativa, no precision individual:")
     print(resumen[[
         "horizonte_dias", "prevalencia_media", "auc_pr_media",
-        "precision_top_5_media", "recall_top_5_media",
+        "precision_top_5_media", "recall_top_5_media", "f1_top_5_media",
         "precision_top_10_media", "recall_top_10_media", "f1_top_10_media",
     ]].to_string(index=False, float_format=lambda x: f"{x:.4f}"))
     print(f"\nCohorte activa: al menos 2 recargas historicas y 1 en los 365 dias previos.")

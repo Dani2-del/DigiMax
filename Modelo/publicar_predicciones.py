@@ -21,13 +21,13 @@ ARCHIVO_EVALUACION = "evaluacion_horizontes_v1.csv"
 SALIDA_PRED = "predicciones_recarga.csv"
 SALIDA_MET = "modelo_metricas.csv"
 OBJETIVO = "recarga_billetera_en_30_dias"
-VERSION = "recarga_historial_consumo_transporte_v10_horizonte30_catboost"
+VERSION = "recarga_historial_consumo_transporte_v11_horizonte30_catboost_top5"
 HORIZONTE = 30
 INICIO_ENTRENAMIENTO = pd.Timestamp("2024-01-01")
 ANCLA_MUESTREO = pd.Timestamp("2024-01-01")
 PASO_SEMANAS = 5
-PORC_ALTO = 0.10
-PORC_MEDIO = 0.30
+PORC_ALTO = 0.05
+PORC_MEDIO = 0.35
 
 
 def validar_uri_atlas(uri):
@@ -67,9 +67,19 @@ def main():
             raise SystemExit(f"Falta {archivo}; ejecuta primero el flujo mensual completo.")
 
     resumen_eval = pd.read_csv(ARCHIVO_EVALUACION)
+    # Compatibilidad con evaluaciones ya generadas antes de agregar F1 top 5 %
+    # al resumen: la columna detallada por corte ya contiene ese valor.
+    if "f1_top_5_media" not in resumen_eval.columns and "f1_top_5" in resumen_eval.columns:
+        resumen_eval["f1_top_5_media"] = np.nan
+        resumen_30 = (resumen_eval["corte"].eq("promedio_cortes")
+                      & resumen_eval["horizonte_dias"].eq(HORIZONTE))
+        cortes_30 = resumen_eval[(resumen_eval["corte"] != "promedio_cortes")
+                                 & resumen_eval["horizonte_dias"].eq(HORIZONTE)]
+        if resumen_30.sum() == 1 and cortes_30["f1_top_5"].notna().any():
+            resumen_eval.loc[resumen_30, "f1_top_5_media"] = cortes_30["f1_top_5"].mean()
     requerido = {"corte", "horizonte_dias", "auc_roc_media", "auc_pr_media",
                  "precision_top_5_media", "recall_top_5_media", "precision_top_10_media",
-                 "recall_top_10_media", "f1_top_10_media", "prevalencia_media"}
+                 "recall_top_10_media", "f1_top_5_media", "f1_top_10_media", "prevalencia_media"}
     faltantes = sorted(requerido - set(resumen_eval.columns))
     if faltantes:
         raise SystemExit(f"Faltan metricas en {ARCHIVO_EVALUACION}: {', '.join(faltantes)}")
@@ -119,10 +129,15 @@ def main():
     modelo.fit(x_train, y_train)
     probabilidades = modelo.predict_proba(x_actual)[:, 1]
 
-    corte_alto = np.quantile(probabilidades, 1 - PORC_ALTO)
-    corte_medio = np.quantile(probabilidades, 1 - PORC_ALTO - PORC_MEDIO)
-    nivel = np.where(probabilidades >= corte_alto, "Alto",
-                     np.where(probabilidades >= corte_medio, "Medio", "Bajo"))
+    # Mantiene los mismos tamaños top-K usados durante la evaluacion y evita
+    # que empates en la cuantila inflen el grupo Alto por encima del 5 %.
+    orden = np.argsort(-probabilidades, kind="mergesort")
+    limite_alto = max(1, int(np.ceil(len(probabilidades) * PORC_ALTO)))
+    limite_medio = max(limite_alto,
+                       int(np.ceil(len(probabilidades) * (PORC_ALTO + PORC_MEDIO))))
+    nivel = np.full(len(probabilidades), "Bajo", dtype=object)
+    nivel[orden[:limite_alto]] = "Alto"
+    nivel[orden[limite_alto:limite_medio]] = "Medio"
     decil = pd.qcut(pd.Series(probabilidades).rank(method="first"), 10,
                     labels=False, duplicates="drop").astype(int).to_numpy() + 1
 
@@ -149,11 +164,10 @@ def main():
         "semana_referencia": referencia,
         "auc_roc": float(evaluacion["auc_roc_media"]),
         "auc_pr": float(evaluacion["auc_pr_media"]),
-        # Compatibilidad con los nombres que la consola ya representa. Estos
-        # valores se refieren al segmento superior, no a una clasificacion total.
-        "precision": float(evaluacion["precision_top_10_media"]),
-        "recall": float(evaluacion["recall_top_10_media"]),
-        "f1": float(evaluacion["f1_top_10_media"]),
+        # Compatibilidad con la consola: Alto ahora es el segmento superior 5 %.
+        "precision": float(evaluacion["precision_top_5_media"]),
+        "recall": float(evaluacion["recall_top_5_media"]),
+        "f1": float(evaluacion["f1_top_5_media"]),
         "precision_top_5": float(evaluacion["precision_top_5_media"]),
         "recall_top_5": float(evaluacion["recall_top_5_media"]),
         "precision_top_10": float(evaluacion["precision_top_10_media"]),
@@ -172,7 +186,7 @@ def main():
           f"| filas activas: {len(entrenamiento)}")
     print(f"Referencia: {referencia} | pasajeros activos: {len(predicciones)}")
     print(predicciones["nivel_riesgo"].value_counts().to_string())
-    print(f"Validacion top 10%: precision={metricas['precision']:.1%}, "
+    print(f"Validacion top 5%: precision={metricas['precision']:.1%}, "
           f"recall={metricas['recall']:.1%}, F1={metricas['f1']:.4f}")
     print(f"AUC-ROC={metricas['auc_roc']:.4f} | AUC-PR={metricas['auc_pr']:.4f}")
     print(f"Archivos: {SALIDA_PRED}, {SALIDA_MET}")

@@ -51,14 +51,14 @@
           <p class="model-kicker">PREDICCI&Oacute;N DE RECARGA &middot; PR&Oacute;XIMOS 30 D&Iacute;AS</p>
           <h2>Una lectura anticipada para el pr&oacute;ximo mes</h2>
           <p>CatBoost ordena a los pasajeros activos seg&uacute;n su estimaci&oacute;n de volver a recargar la Billetera durante los pr&oacute;ximos 30 d&iacute;as.</p>
-          <p class="model-source">Evaluaci&oacute;n walk-forward en dos cortes temporales. La cohorte incluye pasajeros con historial de recargas y actividad en los &uacute;ltimos 365 d&iacute;as.</p>
+          <p class="model-source" th:text="|Evaluaci&oacute;n walk-forward en ${metricas['cortes_temporales']} cortes temporales. La cohorte incluye pasajeros con historial de recargas y actividad en los &uacute;ltimos 365 d&iacute;as.|">Evaluaci&oacute;n walk-forward en varios cortes temporales.</p>
         </div>
         <div class="model-reference"><span>Corte de referencia</span><strong th:text="${semanaReferencia}">&mdash;</strong><small>Horizonte estimado: los 30 d&iacute;as posteriores a esta fecha.</small></div>
       </div>
 
       <div class="model-kpis" aria-label="M&eacute;tricas de evaluaci&oacute;n">
-        <article class="model-kpi model-kpi-primary"><span>F1 del segmento Alto</span><strong th:text="${#numbers.formatDecimal(metricas['f1'], 1, 3)}">0.605</strong><small>Equilibra precisi&oacute;n y cobertura del top 10 %</small></article>
-        <article class="model-kpi"><span>Precisi&oacute;n top 10 %</span><strong th:text="|${#numbers.formatDecimal(metricas['precision'] * 100, 1, 1)}%|">76.6%</strong><small>Pasajeros priorizados que recargaron en 30 d&iacute;as</small></article>
+        <article class="model-kpi model-kpi-primary"><span>F1 del segmento Alto</span><strong th:text="${#numbers.formatDecimal(metricas['f1'], 1, 3)}">0.605</strong><small>Equilibra precisi&oacute;n y cobertura del top 5 %</small></article>
+        <article class="model-kpi"><span>Precisi&oacute;n top 5 %</span><strong th:text="|${#numbers.formatDecimal(metricas['precision'] * 100, 1, 1)}%|">84.0%</strong><small>Pasajeros priorizados que recargaron en 30 d&iacute;as</small></article>
         <article class="model-kpi"><span>Recargas capturadas</span><strong th:text="|${#numbers.formatDecimal(metricas['recall'] * 100, 1, 1)}%|">49.9%</strong><small>Recargas detectadas dentro del segmento Alto</small></article>
         <article class="model-kpi"><span>AUC-ROC</span><strong th:text="${#numbers.formatDecimal(metricas['auc_roc'], 1, 4)}">0.9000</strong><small>Capacidad de ordenar positivos sobre negativos</small></article>
         <article class="model-kpi"><span>AUC-PR</span><strong th:text="${#numbers.formatDecimal(metricas['auc_pr'], 1, 4)}">0.7324</strong><small>Rendimiento considerando la frecuencia de recarga</small></article>
@@ -70,8 +70,8 @@
           <div class="global-donut-layout">
             <div class="global-donut" th:style="${donutStyle}" role="img" th:attr="aria-label=|Distribuci&oacute;n de ${total} pasajeros por nivel de riesgo|"><div class="global-donut-hole"><strong th:text="${#numbers.formatInteger(total, 1, 'POINT')}">0</strong><span>pasajeros</span></div></div>
             <ul class="global-donut-legend" aria-label="Pasajeros por nivel estimado">
-              <li><span class="global-donut-swatch" style="--slice-color:#c2410c"></span><span class="global-donut-label"><strong>Alto &middot; 10 %</strong><small>Mayor estimaci&oacute;n relativa de recarga a 30 d&iacute;as</small></span><b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b></li>
-              <li><span class="global-donut-swatch" style="--slice-color:#d97706"></span><span class="global-donut-label"><strong>Medio &middot; 30 %</strong><small>Siguiente grupo por estimaci&oacute;n relativa</small></span><b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#c2410c"></span><span class="global-donut-label"><strong>Alto &middot; 5 %</strong><small>Mayor estimaci&oacute;n relativa de recarga a 30 d&iacute;as</small></span><b th:text="${#numbers.formatInteger(conteoAlto, 1, 'POINT')}">0</b></li>
+              <li><span class="global-donut-swatch" style="--slice-color:#d97706"></span><span class="global-donut-label"><strong>Medio &middot; 35 %</strong><small>Siguiente grupo por estimaci&oacute;n relativa</small></span><b th:text="${#numbers.formatInteger(conteoMedio, 1, 'POINT')}">0</b></li>
               <li><span class="global-donut-swatch" style="--slice-color:#94a3b8"></span><span class="global-donut-label"><strong>Bajo &middot; 60 %</strong><small>Menor estimaci&oacute;n relativa en esta poblaci&oacute;n</small></span><b th:text="${#numbers.formatInteger(conteoBajo, 1, 'POINT')}">0</b></li>
             </ul>
           </div>
@@ -85,14 +85,14 @@
             <div class="model-f1-row"><span th:text="${barrasPrecisionTop[0]['etiqueta']}">Top 5 %</span><div><i class="model-f1-bar is-model"></i></div><strong th:text="${barrasPrecisionTop[0]['valor']}">82.2%</strong></div>
             <div class="model-f1-row"><span th:text="${barrasPrecisionTop[1]['etiqueta']}">Top 10 %</span><div><i class="model-f1-bar is-baseline"></i></div><strong th:text="${barrasPrecisionTop[1]['valor']}">76.6%</strong></div>
           </div>
-          <p class="model-footnote">Promedio de dos cortes temporales. Prevalencia media de recarga a 30 d&iacute;as: <strong th:text="|${#numbers.formatDecimal(metricas['prevalencia'] * 100, 1, 1)}%|">15.3%</strong>. Resultados de datos sint&eacute;ticos.</p>
+          <p class="model-footnote">Promedio de cortes temporales. Prevalencia media de recarga a 30 d&iacute;as: <strong th:text="|${#numbers.formatDecimal(metricas['prevalencia'] * 100, 1, 1)}%|">15.3%</strong>. La precisi&oacute;n hist&oacute;rica no garantiza el mismo resultado futuro.</p>
         </section>
       </div>
 
       <section class="audit-panel model-glossary">
         <div><p class="model-kicker">C&Oacute;MO LEER LOS RESULTADOS</p><h2>Qu&eacute; significa cada m&eacute;trica</h2></div>
         <div class="model-glossary-grid">
-          <p><strong>Precisi&oacute;n top 10 %</strong><span>De los pasajeros priorizados, qu&eacute; proporci&oacute;n recarg&oacute; en los siguientes 30 d&iacute;as.</span></p>
+          <p><strong>Precisi&oacute;n top 5 %</strong><span>De los pasajeros priorizados, qu&eacute; proporci&oacute;n recarg&oacute; en los siguientes 30 d&iacute;as.</span></p>
           <p><strong>Recargas capturadas</strong><span>De todas las recargas del periodo, qu&eacute; proporci&oacute;n ocurri&oacute; en el segmento Alto.</span></p>
           <p><strong>AUC-ROC</strong><span>Qu&eacute; tan bien ordena a quienes recargan por encima de quienes no; 0,5 equivale al azar.</span></p>
           <p><strong>AUC-PR</strong><span>Resume precisi&oacute;n y recall y permite valorar mejor resultados con pocos positivos.</span></p>

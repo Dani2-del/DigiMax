@@ -47,4 +47,6 @@ Abre `Modelo_Predictivo_DigiTrans_Colab.ipynb` en Google Colab y sube `tabla_usu
 
 El modelo de publicación predice una recarga exitosa de Billetera dentro de 30 días usando eventos exportados desde Atlas. La evaluación usa cortes temporales móviles y reporta precisión y recall en los grupos superiores. Esas cifras reflejan la base exportada; si contiene transacciones de prueba o simuladas, no deben interpretarse como rendimiento en producción. El horizonte publicado se mantiene en 30 días.
 
+La publicación clasifica como **Alto** al 5 % con las puntuaciones mayores, **Medio** al siguiente 35 % y **Bajo** al 60 % restante. En los seis cortes temporales disponibles, el top 5 % obtuvo 83,8 % de precisión promedio; en los dos cortes más recientes obtuvo 85,3 % y 84,9 %. Son resultados retrospectivos y no garantizan el mismo rendimiento en nuevas semanas.
+
 Los archivos CSV se generan durante la ejecución y no forman parte de esta entrega. El flujo los vuelve a crear desde Atlas.
