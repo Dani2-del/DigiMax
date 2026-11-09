@@ -1,5 +1,7 @@
 package com.Servicio.Acceso.web;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +20,8 @@ import jakarta.servlet.http.HttpSession;
 @Controller
 @SessionAttributes({"recoveryEmail", "recoveryCode"})
 public class PasswordRecoveryController {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(PasswordRecoveryController.class);
 
     private final AccountService accountService;
 
@@ -41,6 +45,7 @@ public class PasswordRecoveryController {
                     + java.net.URLEncoder.encode(correo, java.nio.charset.StandardCharsets.UTF_8);
         } catch (MailDeliveryException exception) {
             redirectAttributes.addFlashAttribute("error", "No se pudo enviar el correo. Inténtalo más tarde.");
+            LOGGER.warn("Falló el envío del correo de recuperación.", exception);
             return "redirect:/olvido-password";
         }
     }
