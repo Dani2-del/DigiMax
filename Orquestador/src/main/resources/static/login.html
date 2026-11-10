@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111111">
+  <title>Acceso al Orquestador | Digitrans</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #111; background: #080808; }
+    * { box-sizing: border-box; }
+    body { min-height: 100vh; margin: 0; display: grid; place-items: center; padding: 24px; background: radial-gradient(ellipse at 75% 0%, #292929 0, transparent 43%), #080808; }
+    .card { width: min(100%, 440px); padding: clamp(28px, 7vw, 44px); border: 1px solid #dedede; border-radius: 22px; background: #fff; box-shadow: 0 20px 55px #00000012; animation: card-enter .7s cubic-bezier(.2,.75,.25,1) both; }
+    .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; color: #111; font-weight: 800; }
+    .mark { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 14px; background: #111; color: #fff; font-size: 23px; animation: mark-in .55s .18s both; }
+    .eyebrow { margin: 0 0 10px; color: #555; font-size: 12px; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(30px, 7vw, 38px); letter-spacing: -.04em; }
+    .intro { margin: 12px 0 26px; color: #666; line-height: 1.6; }
+    label { display: block; margin: 0 0 8px; font-size: 14px; font-weight: 750; }
+    input { width: 100%; min-height: 50px; padding: 12px 14px; border: 1px solid #bdbdbd; border-radius: 11px; font: inherit; transition: border-color .2s, box-shadow .2s; }
+    input:focus { outline: 3px solid #11111120; border-color: #111; }
+    .field + .field { margin-top: 16px; }
+    button { width: 100%; min-height: 50px; margin-top: 18px; border: 1px solid #111; border-radius: 11px; background: #111; color: #fff; font: inherit; font-weight: 800; cursor: pointer; transition: transform .2s, box-shadow .2s, background .2s; }
+    button:hover { background: #333; box-shadow: 0 8px 20px #00000022; transform: translateY(-2px); }
+    button:focus-visible { outline: 3px solid #777; outline-offset: 3px; }
+    .error { margin: 14px 0 0; padding: 11px 13px; border: 1px solid #d0d0d0; border-radius: 10px; background: #eee; color: #222; font-size: 14px; animation: card-enter .3s ease both; }
+    .hidden { display: none; }
+    .note { margin: 22px 0 0; color: #777; font-size: 12px; text-align: center; }
+    @keyframes card-enter { from { opacity: 0; transform: translateY(18px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    @keyframes mark-in { from { opacity: 0; transform: rotate(-12deg) scale(.8); } to { opacity: 1; transform: rotate(0) scale(1); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="brand"><span class="mark" aria-hidden="true">D</span><span>Digitrans</span></div>
+    <p class="eyebrow">Centro de operaciones</p>
+    <h1>Orquestador</h1>
+    <p class="intro">Inicia sesi&oacute;n para consultar y controlar los servicios de DigiMAX.</p>
+    <form action="/acceso" method="post">
+      <div class="field">
+        <label for="usuario">Usuario</label>
+        <input id="usuario" name="usuario" type="text" autocomplete="username" required autofocus>
+      </div>
+      <div class="field">
+        <label for="clave">Contrase&ntilde;a</label>
+        <input id="clave" name="clave" type="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit">Entrar al Orquestador</button>
+      <p class="error hidden" id="login-error" role="alert">El usuario o la contrase&ntilde;a no son correctos. Int&eacute;ntalo de nuevo.</p>
+      <p class="error hidden" id="logout-note" role="status">La sesi&oacute;n se cerr&oacute; correctamente.</p>
+    </form>
+    <p class="note">Acceso restringido &middot; Orquestador local</p>
+  </main>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('error')) document.getElementById('login-error').classList.remove('hidden');
+    if (params.has('salio')) document.getElementById('logout-note').classList.remove('hidden');
+  </script>
+</body>
+</html>

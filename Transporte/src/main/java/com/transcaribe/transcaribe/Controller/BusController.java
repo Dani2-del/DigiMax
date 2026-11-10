@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import jakarta.servlet.http.HttpSession;
 import java.util.UUID;
+import java.util.Locale;
 
 @Controller
 @RequestMapping("/api/buses")
@@ -205,6 +206,9 @@ public class BusController {
                         usuarioId, busId, numeroTarjeta, sistema, safeOperationId);
             }
 
+            if (esSaldoInsuficiente(resultado)) {
+                return "redirect:/saldo-insuficiente";
+            }
             if (resultado.contains("Cobro exitoso")) {
                 redirectAttributes.addFlashAttribute("pagoSistema", sistema.name());
                 redirectAttributes.addFlashAttribute("pagoMonto",
@@ -245,6 +249,9 @@ public class BusController {
 
         } catch (RestClientResponseException e) {
             String responseBody = e.getResponseBodyAsString();
+            if (esSaldoInsuficiente(responseBody) || esSaldoInsuficiente(e.getMessage())) {
+                return "redirect:/saldo-insuficiente";
+            }
             if (responseBody.contains("no está vinculada a una cuenta")
                     || responseBody.contains("pertenece a otra cuenta")) {
                 redirectAttributes.addFlashAttribute("error", "La tarjeta no está asociada a tu cuenta.");
@@ -252,10 +259,17 @@ public class BusController {
                 redirectAttributes.addFlashAttribute("error", "Error en la simulación: " + e.getMessage());
             }
         } catch (Exception e) {
+            if (esSaldoInsuficiente(e.getMessage())) {
+                return "redirect:/saldo-insuficiente";
+            }
             redirectAttributes.addFlashAttribute("error", "Error en la simulación: " + e.getMessage());
         }
 
         return "redirect:/menu";
+    }
+
+    private boolean esSaldoInsuficiente(String texto) {
+        return texto != null && texto.toLowerCase(Locale.ROOT).contains("saldo insuficiente");
     }
 
     private SistemaTransporte obtenerSistemaActual(HttpSession session) {

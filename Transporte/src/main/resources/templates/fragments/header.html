@@ -17,6 +17,9 @@
     </div>
 
     <div class="navbar-right">
+        <a th:if="${puedeVerPanelAdmin}" th:href="@{/admin/dashboard}" class="nav-link admin-nav-link">
+            Panel administrador
+        </a>
         <a th:href="@{/menu}" class="nav-link">Menú</a>
     </div>
 </header>

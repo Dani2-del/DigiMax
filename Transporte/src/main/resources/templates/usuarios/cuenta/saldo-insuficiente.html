@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color"
+        th:content="${esTransmilenio ? '#C8102E' : (esTransmetro ? '#12A842' : '#FF5600')}" />
+  <title>Saldo insuficiente - Digitrans</title>
+  <link rel="stylesheet" th:href="@{/css/usuario.css(v=20261110-1)}" />
+</head>
+<body class="menu-page payment-success-page insufficient-balance-page" th:attr="data-sistema=${sistemaActual}">
+  <div class="page">
+    <div th:replace="~{fragments/header :: header}"></div>
+    <main class="payment-success-card" role="alert">
+      <span class="payment-success-icon" aria-hidden="true">!</span>
+      <h1>No tienes suficiente saldo</h1>
+      <p class="payment-success-detail">Recarga tu saldo en Billetera para volver a intentar el viaje.</p>
+      <a class="payment-success-return" th:href="${billeteraUrl}" target="_blank" rel="noopener">
+        Recargar en Billetera
+      </a>
+      <a class="insufficient-balance-back" th:href="@{/menu}">Volver al menú</a>
+    </main>
+  </div>
+</body>
+</html>

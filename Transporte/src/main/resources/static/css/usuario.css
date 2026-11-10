@@ -196,6 +196,7 @@ body.login-page .center-card {
 .navbar-right .nav-link:hover { color: var(--mango); opacity: 1; }
 
 .navbar-left { display: flex; align-items: center; gap: 12px; }
+.navbar-right { display: flex; align-items: center; gap: 24px; }
 .navbar-left .brand { display: flex; flex-direction: column; gap: 6px; }
 .navbar-left h1 { margin: 0; font-size: 1.4rem; color: white; }
 
@@ -2617,6 +2618,22 @@ body[data-sistema="TRANSMILENIO"]::before {
   filter: brightness(.92);
   transform: translateY(-1px);
 }
+
+.insufficient-balance-page .payment-success-icon {
+  background: color-mix(in srgb, var(--mango) 20%, white);
+  color: #9a6800;
+}
+
+.insufficient-balance-back {
+  display: block;
+  width: fit-content;
+  margin: 14px auto 0;
+  color: var(--piedra);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.insufficient-balance-back:hover { color: var(--tinta); text-decoration: underline; }
 
 .payment-success-countdown {
   margin: 14px 0 0;

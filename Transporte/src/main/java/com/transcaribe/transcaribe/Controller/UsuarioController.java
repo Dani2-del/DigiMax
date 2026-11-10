@@ -212,6 +212,26 @@ public class UsuarioController {
         return "usuarios/cuenta/pago-exitoso";
     }
 
+    @GetMapping("/saldo-insuficiente")
+    public String saldoInsuficiente(Model model, HttpSession session) {
+        Usuario usuario = obtenerUsuarioLogueado();
+        if (usuario == null) {
+            return "redirect:/login";
+        }
+
+        Object sistemaEnSesion = session.getAttribute(SistemaTransporte.SESSION_ATTRIBUTE);
+        SistemaTransporte sistema = sistemaEnSesion instanceof SistemaTransporte seleccionado
+                && seleccionado.estaDisponible() ? seleccionado : usuario.getSitm();
+        if (sistema == null || !sistema.estaDisponible()) {
+            sistema = SistemaTransporte.TRANSCARIBE;
+        }
+        model.addAttribute("sistemaActual", sistema);
+        model.addAttribute("esTransmilenio", sistema == SistemaTransporte.TRANSMILENIO);
+        model.addAttribute("esTransmetro", sistema == SistemaTransporte.TRANSMETRO);
+        model.addAttribute("billeteraUrl", billeteraUrl);
+        return "usuarios/cuenta/saldo-insuficiente";
+    }
+
     @PostMapping("/menu/sistema")
     public String seleccionarSistema(@RequestParam SistemaTransporte sistema,
                                      @RequestParam(defaultValue = "false") boolean primeraConfirmacion,

@@ -3,24 +3,24 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#087f88">
+  <meta name="theme-color" content="#111111">
   <title>Página del Orquestador | Digitrans</title>
   <style>
     :root {
       color-scheme: light;
-      --ink: #17324d;
-      --muted: #70839b;
-      --teal: #087f88;
-      --teal-dark: #06666f;
-      --line: #dce7ef;
+      --ink: #f4f4f4;
+      --muted: #bdbdbd;
+      --teal: #f1f1f1;
+      --teal-dark: #111;
+      --line: #dedede;
       --surface: #fff;
-      --page: #f1f6fa;
-      --green: #16734e;
-      --green-bg: #e4f5ed;
-      --amber: #9a6207;
-      --amber-bg: #fff2d5;
-      --red: #a33d37;
-      --red-bg: #ffebe9;
+      --page: #080808;
+      --green: #222;
+      --green-bg: #e7e7e7;
+      --amber: #444;
+      --amber-bg: #ededed;
+      --red: #111;
+      --red-bg: #e2e2e2;
       font-family: Inter, "Segoe UI", system-ui, sans-serif;
     }
     * { box-sizing: border-box; }
@@ -28,26 +28,33 @@
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
-      background: radial-gradient(ellipse at 75% 0%, #d8edf0 0, transparent 43%), var(--page);
+      background: radial-gradient(ellipse at 75% 0%, #292929 0, transparent 43%), var(--page);
     }
-    .topbar { background: #101820; color: white; box-shadow: 0 8px 24px #1018202c; }
+    .topbar { background: #111; color: white; box-shadow: 0 8px 24px #00000024; animation: slide-down .55s cubic-bezier(.2,.75,.25,1) both; }
     .topbar-inner, main { width: min(1080px, calc(100% - 40px)); margin: 0 auto; }
     .topbar-inner { height: 72px; display: flex; align-items: center; gap: 13px; }
     .brand-mark {
       width: 40px; height: 40px; display: grid; place-items: center;
-      border-radius: 13px; background: white; color: #101820;
+      border-radius: 13px; background: white; color: #111;
       font-size: 23px; font-weight: 900;
     }
     .brand { font-weight: 800; letter-spacing: -.02em; }
-    .brand-note { margin-left: 8px; padding-left: 18px; border-left: 1px solid #ffffff65; color: #d8f2f2; font-size: 14px; }
-    main { padding: 54px 0 40px; }
+    .brand-note { margin-left: 8px; padding-left: 18px; border-left: 1px solid #ffffff65; color: #ddd; font-size: 14px; }
+    .logout-form { margin-left: auto; }
+    .logout-button { border-color: #ffffff55; background: transparent; color: white; }
+    .logout-button:hover { background: #ffffff18; }
+    main { padding: 54px 0 40px; animation: content-enter .65s .08s both; }
     .eyebrow { margin: 0 0 12px; color: var(--teal); font-size: 12px; font-weight: 850; letter-spacing: .17em; text-transform: uppercase; }
     h1 { margin: 0; font-size: clamp(34px, 5vw, 52px); letter-spacing: -.045em; line-height: 1.05; }
     .intro { margin: 14px 0 30px; color: var(--muted); font-size: 17px; line-height: 1.6; }
     .overview { display: grid; grid-template-columns: 1.5fr 1fr; gap: 18px; margin-bottom: 20px; }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 14px 38px #17324d09; }
+    .card { color: #111; --muted: #666; --teal: #111; background: var(--surface); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 14px 38px #ffffff0a; transition: transform .22s ease, box-shadow .22s ease, border-color .22s ease; }
+    .card:hover { transform: translateY(-3px); border-color: #bdbdbd; box-shadow: 0 20px 44px #00000012; }
+    .overview .card { animation: content-enter .55s both; }
+    .overview .card:nth-child(2) { animation-delay: .1s; }
+    .module-card { animation: content-enter .65s .16s both; }
     .summary { display: flex; align-items: center; gap: 18px; padding: 24px; }
-    .pulse-icon { width: 54px; height: 54px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 17px; background: #e4f4f3; color: var(--teal); font-size: 25px; }
+    .pulse-icon { width: 54px; height: 54px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 17px; background: #eee; color: var(--teal); font-size: 25px; animation: icon-float 3.6s ease-in-out infinite; }
     .summary-label { display: block; color: var(--muted); font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
     .summary-value { display: block; margin-top: 4px; font-size: 27px; font-weight: 850; }
     .overall { justify-content: space-between; }
@@ -60,32 +67,36 @@
     h2 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
     .updated { color: var(--muted); font-size: 13px; }
     .bulk-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .start-all-button { color: var(--green); border-color: #c6e7d8; background: #f2fbf6; }
-    .start-all-button:hover { background: var(--green-bg); }
-    .stop-all-button { color: #a33d37; border-color: #f0c8c4; background: #fff8f7; }
-    .stop-all-button:hover { background: var(--red-bg); }
+    .start-all-button { color: var(--green); border-color: #c9c9c9; background: #f4f4f4; }
+    .start-all-button:hover { background: #e5e5e5; }
+    .stop-all-button { color: #111; border-color: #c9c9c9; background: #f4f4f4; }
+    .stop-all-button:hover { background: #e2e2e2; }
     button:disabled { cursor: wait; opacity: .6; transform: none; }
-    button { border: 1px solid #bfdae0; border-radius: 11px; padding: 10px 15px; background: #f5fbfb; color: var(--teal-dark); font: inherit; font-weight: 750; cursor: pointer; transition: background .18s, transform .18s; }
-    button:hover { background: #e6f4f4; transform: translateY(-1px); }
-    button:focus-visible { outline: 3px solid #60c3c8; outline-offset: 2px; }
+    button { border: 1px solid #c8c8c8; border-radius: 11px; padding: 10px 15px; background: #f4f4f4; color: var(--teal-dark); font: inherit; font-weight: 750; cursor: pointer; transition: background .18s, transform .18s, box-shadow .18s; }
+    button:hover { background: #e5e5e5; transform: translateY(-1px); box-shadow: 0 5px 14px #00000012; }
+    button:focus-visible { outline: 3px solid #777; outline-offset: 2px; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; text-align: left; }
     th { padding: 12px 14px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
-    td { padding: 15px 14px; border-bottom: 1px solid #e8eef3; font-size: 14px; }
+    td { padding: 15px 14px; border-bottom: 1px solid #e8e8e8; font-size: 14px; }
     tbody tr:last-child td { border-bottom: 0; }
     td:first-child { font-weight: 750; }
-    .state { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; background: var(--amber-bg); color: var(--amber); font-size: 12px; font-weight: 800; }
-    .state.ACTIVO { background: var(--green-bg); color: var(--green); }
-    .state.NO_RESPONDE, .state.BLOQUEADO { background: var(--red-bg); color: var(--red); }
-    .state.DETENIDO { background: #edf1f5; color: #66778b; }
+    .state { display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px; background: #ededed; color: #555; font-size: 12px; font-weight: 800; transition: background .2s ease, color .2s ease; }
+    .state.ACTIVO { background: #111; color: #fff; }
+    .state.DETENIDO, .state.ARRANCANDO { background: #ededed; color: #555; }
+    .state.NO_RESPONDE, .state.BLOQUEADO { background: #d8d8d8; color: #222; }
     .restart-button { min-width: 112px; padding: 8px 12px; font-size: 13px; }
     .action-buttons { display: flex; gap: 8px; }
-    .stop-button { min-width: 88px; padding: 8px 12px; font-size: 13px; color: #a33d37; border-color: #f0c8c4; background: #fff8f7; }
-    .stop-button:hover { background: #ffebe9; }
+    .stop-button { min-width: 88px; padding: 8px 12px; font-size: 13px; color: #111; border-color: #c9c9c9; background: #f4f4f4; }
+    .stop-button:hover { background: #e2e2e2; }
     .action-buttons button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
     .restart-button:disabled { cursor: wait; opacity: .65; transform: none; }
     .empty { padding: 28px; text-align: center; color: var(--muted); }
-    .footer { padding-top: 20px; color: #8b9bad; font-size: 12px; text-align: center; letter-spacing: .08em; text-transform: uppercase; }
+    .footer { padding-top: 20px; color: #aaa; font-size: 12px; text-align: center; letter-spacing: .08em; text-transform: uppercase; }
+    @keyframes slide-down { from { opacity: 0; transform: translateY(-14px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes content-enter { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes icon-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; } }
     @media (max-width: 700px) {
       .topbar-inner, main { width: min(100% - 28px, 1080px); }
       main { padding-top: 38px; }
@@ -102,6 +113,9 @@
       <span class="brand-mark" aria-hidden="true">D</span>
       <span class="brand">Digitrans</span>
       <span class="brand-note">Centro de operaciones</span>
+      <form class="logout-form" action="/salir" method="post">
+        <button class="logout-button" type="submit">Cerrar sesión</button>
+      </form>
     </div>
   </header>
 
