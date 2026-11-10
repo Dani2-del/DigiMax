@@ -112,6 +112,12 @@ body.login-page .services-page-shell {
   box-shadow: 0 0 0 3px rgba(34, 164, 119, 0.12);
 }
 
+.services-account-name {
+  max-width: min(38vw, 280px);
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+
 .services-heading {
   position: relative;
   display: flex;
@@ -578,6 +584,7 @@ body.login-page .services-page-shell {
     padding: 7px 9px;
     font-size: 0.68rem;
   }
+  .services-account-name { max-width: 48vw; }
   .services-brand { gap: 9px; }
   .services-brand > img { width: 38px; height: 38px; }
   .services-heading h1 { font-size: 1.9rem; }

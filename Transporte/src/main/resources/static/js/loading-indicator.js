@@ -78,6 +78,19 @@
 
     document.addEventListener('click', function (event) {
         const link = event.target.closest('a[href]');
+        if (link && link.hasAttribute('data-download-file') && !event.defaultPrevented) {
+            event.preventDefault();
+            link.setAttribute('aria-busy', 'true');
+            window.transcaribeDownloadFile(link.href).then(function (downloaded) {
+                link.removeAttribute('aria-busy');
+                if (downloaded) {
+                    link.textContent = 'PDF descargado';
+                    link.setAttribute('aria-label', 'PDF descargado');
+                }
+            });
+            return;
+        }
+
         if (link && !event.defaultPrevented && isInternalNavigation(link)) {
             beginLoading();
             return;
@@ -111,6 +124,7 @@
         window.transcaribeDownloadFile = async function (url) {
             const finishLoading = beginLoading();
             let objectUrl;
+            let downloaded = false;
 
             try {
                 const response = await originalFetch.call(window, url, { credentials: 'same-origin' });
@@ -139,6 +153,7 @@
                 document.body.appendChild(link);
                 link.click();
                 link.remove();
+                downloaded = true;
             } catch (error) {
                 console.error('No se pudo descargar el reporte.', error);
                 window.alert('No se pudo generar o descargar el reporte. Inténtalo de nuevo.');
@@ -150,6 +165,7 @@
                     }, 1000);
                 }
             }
+            return downloaded;
         };
     }
 
