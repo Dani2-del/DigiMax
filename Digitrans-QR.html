@@ -62,12 +62,15 @@
       pointer-events: none;
     }
     .topbar { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 24px; min-height: 82px; }
+    .topbar { animation: fade-down .65s ease both; }
     .brand { display: inline-flex; align-items: center; gap: 11px; color: #fff; font-size: 1.1rem; font-weight: 800; text-decoration: none; letter-spacing: -.03em; }
     .brand-mark { display: grid; width: 38px; height: 38px; place-items: center; color: #fff; font-size: 1.48rem; font-weight: 900; letter-spacing: -.12em; line-height: 1; }
     .top-links { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; }
     .top-links a { color: rgba(255,255,255,.78); font-size: .86rem; font-weight: 650; text-decoration: none; }
     .top-links a:hover { color: #fff; }
     .hero-grid { position: relative; z-index: 1; display: grid; grid-template-columns: minmax(0,1.08fr) minmax(340px,.92fr); align-items: center; gap: clamp(40px,7vw,92px); padding: 68px 0 100px; }
+    .hero-grid > div { animation: rise-in .75s .08s both; }
+    .architecture-card { animation: rise-in .8s .2s both; }
     .eyebrow { display: inline-flex; align-items: center; gap: 8px; margin-bottom: 20px; color: #ffc078; font-size: .73rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
     .eyebrow::before { width: 24px; height: 2px; background: var(--orange); content: ""; }
     h1 { max-width: 720px; margin-bottom: 22px; color: #fff; font-size: clamp(2.8rem, 6.2vw, 5rem); font-weight: 760; letter-spacing: -.06em; }
@@ -100,7 +103,8 @@
     .notice .wrap { display: flex; align-items: flex-start; gap: 12px; }
     .notice p { margin: 0; }
     .service-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 18px; }
-    .service-card { display: flex; min-height: 275px; flex-direction: column; padding: 25px; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); background: #fff; box-shadow: 0 10px 28px rgba(16,24,39,.045); }
+    .service-card { display: flex; min-height: 275px; flex-direction: column; padding: 25px; border: 1px solid var(--line); border-top: 4px solid var(--accent); border-radius: var(--radius); background: #fff; box-shadow: 0 10px 28px rgba(16,24,39,.045); transition: transform .22s ease, box-shadow .22s ease; }
+    .service-card:hover,.module-card:hover,.future-card:hover { transform: translateY(-5px); box-shadow: 0 18px 38px rgba(16,24,39,.12); }
     .service-card .icon { display: grid; width: 50px; height: 50px; margin-bottom: 24px; place-items: center; border-radius: 15px; background: var(--tint); color: var(--accent); }
     .service-card .icon svg { width: 26px; height: 26px; }
     .service-card .label { margin-bottom: 6px; color: var(--accent); font-size: .68rem; font-weight: 850; letter-spacing: .12em; }
@@ -123,22 +127,24 @@
     .diagram-app span { color: var(--muted); font-size: .7rem; line-height: 1.45; }
     .diagram-app.user-facing { border-bottom: 3px solid var(--teal); }
     .diagram-app.transport-module { border-bottom-color: var(--orange); }
-    .diagram-app.wallet-module { border-bottom-color: #0b7f88; }
     .diagram-app.recharge-module { border-bottom-color: #7350d6; }
+    .diagram-app-group { display: grid; grid-column: span 2; grid-template-columns: repeat(2,minmax(0,1fr)); min-width: 0; min-height: 100px; overflow: hidden; border: 1px solid var(--line); border-bottom: 3px solid #0b7f88; border-radius: 14px; background: #fff; }
+    .diagram-app-group .diagram-app { min-width: 0; min-height: 0; border: 0; border-radius: 0; background: transparent; }
+    .diagram-app-group .diagram-app + .diagram-app { border-left: 1px solid var(--line); }
     .diagram-support { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 740px; margin: 18px auto 0; }
     .diagram-support div { padding: 14px; border: 1px dashed #bbc6d3; border-radius: 13px; color: var(--ink-soft); background: #f8fafc; font-size: .78rem; text-align: center; }
     .diagram-support strong { color: var(--blue); }
     .diagram-note { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 22px; }
     .diagram-note p { margin: 0; padding: 14px 16px; border-radius: 12px; background: #f2f5f8; color: var(--muted); font-size: .78rem; }
     .module-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 14px; }
-    .module-card { padding: 21px; border: 1px solid var(--line); border-radius: 16px; background: #fff; }
+    .module-card { padding: 21px; border: 1px solid var(--line); border-radius: 16px; background: #fff; transition: transform .22s ease, box-shadow .22s ease; }
     .module-card .module-type { display: inline-block; margin-bottom: 11px; color: #a45a11; font-size: .64rem; font-weight: 850; letter-spacing: .1em; text-transform: uppercase; }
     .module-card h3 { margin-bottom: 8px; font-size: 1.05rem; }
     .module-card p { margin: 0; color: var(--muted); font-size: .81rem; line-height: 1.65; }
     .module-card.support .module-type { color: var(--blue); }
     .future-section { background: #fff; }
     .future-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 17px; }
-    .future-card { position: relative; min-height: 205px; padding: 23px; border: 1px solid var(--line); border-radius: 17px; background: #fbfcfd; }
+    .future-card { position: relative; min-height: 205px; padding: 23px; border: 1px solid var(--line); border-radius: 17px; background: #fbfcfd; transition: transform .22s ease, box-shadow .22s ease; }
     .future-card .future-icon { display: grid; width: 43px; height: 43px; margin-bottom: 17px; place-items: center; border-radius: 12px; background: #edf0f4; color: #526176; font-size: 1.1rem; font-weight: 800; }
     .future-card .future-status { position: absolute; top: 23px; right: 18px; padding: 5px 9px; border: 1px solid #e0e5eb; border-radius: 999px; background: #f3f5f7; color: #59677a; font-size: .65rem; font-weight: 750; }
     .future-card h3 { margin-bottom: 7px; font-size: 1.08rem; }
@@ -151,6 +157,10 @@
     .team-grid li { padding: 14px 16px; border: 1px solid rgba(255,255,255,.13); border-radius: 12px; background: rgba(255,255,255,.055); color: rgba(255,255,255,.87); font-size: .84rem; }
     footer { padding: 23px 0; background: #0b1220; color: rgba(255,255,255,.58); font-size: .76rem; }
     footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 20px; }
+    @keyframes fade-down { from { opacity: 0; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes rise-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    .reveal { opacity: 0; transform: translateY(22px); transition: opacity .65s ease, transform .65s cubic-bezier(.2,.75,.25,1); transition-delay: var(--reveal-delay, 0ms); }
+    .reveal.is-visible { opacity: 1; transform: translateY(0); }
     @media (max-width: 900px) {
       .hero-grid { grid-template-columns: 1fr; gap: 35px; padding-top: 48px; }
       .architecture-card { width: min(100%,560px); }
@@ -183,10 +193,13 @@
       .topbar { align-items: flex-start; flex-direction: column; padding: 16px 0; }
       .top-links { gap: 16px; }
       .module-grid,.diagram-apps { grid-template-columns: 1fr; }
+      .diagram-app-group { grid-column: span 1; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       *, *::before, *::after { scroll-behavior: auto !important; }
+      *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+      .reveal { opacity: 1; transform: none; }
     }
     @media print {
       .hero { background: #fff; color: var(--ink); }
@@ -248,12 +261,14 @@
         <div class="diagram" role="group" aria-label="Diagrama de arquitectura de Digitrans">
           <div class="diagram-core"><span class="node-label">IDENTIDAD CENTRAL</span><h3>Acceso</h3><p>Registro, autenticación y emisión de tokens JWT</p></div>
           <div class="diagram-connector" aria-hidden="true"></div>
-          <p class="diagram-connector-label">Los módulos validan la sesión con el token compartido</p>
+          <p class="diagram-connector-label"></p>
           <div class="diagram-apps">
             <div class="diagram-app user-facing transport-module"><strong>Transporte</strong><span>Movilidad pública y saldo</span></div>
-            <div class="diagram-app user-facing wallet-module"><strong>Billetera</strong><span>Tarjeta y saldo universal</span></div>
+            <div class="diagram-app-group" role="group" aria-label="Billetera y Lector">
+              <div class="diagram-app"><strong>Billetera</strong><span>Tarjeta y saldo universal</span></div>
+              <div class="diagram-app"><strong>Lector</strong><span>Tarjetas RFID para los Usuarios</span></div>
+            </div>
             <div class="diagram-app user-facing recharge-module"><strong>Recargas móviles</strong><span>Líneas y paquetes</span></div>
-            <div class="diagram-app"><strong>Lector</strong><span>Tarjetas RFID</span></div>
           </div>
           <div class="diagram-support">
             <div><strong>Pagos</strong><br>Billetera y Recargas consultan la API de pagos simulados.</div>
@@ -277,7 +292,7 @@
           <article class="module-card"><span class="module-type">Servicio principal</span><h3>Recargas móviles</h3><p>Gestiona catálogos, líneas y recargas simuladas, y conserva el resultado en el historial.</p></article>
           <article class="module-card support"><span class="module-type">Integración interna</span><h3>Pagos</h3><p>API de prueba para iniciar y consultar pagos simulados; no conecta con bancos.</p></article>
           <article class="module-card support"><span class="module-type">Integración interna</span><h3>Correo</h3><p>Servicio interno que envía correos electrónicos mediante SMTP.</p></article>
-          <article class="module-card support"><span class="module-type">Dispositivo e inventario</span><h3>Lector</h3><p>Registra tarjetas Digitrans RFID y consulta tarjetas vinculadas e historial de titulares.</p></article>
+          <article class="module-card support"><span class="module-type">Dispositivo e inventario</span><h3>Lector</h3><p>Registra tarjetas Digitrans RFID y consulta tarjetas vinculadas e historial de titulares. El acceso está limitado a administradores y moderadores asignados a Billetera.</p></article>
           <article class="module-card support"><span class="module-type">Herramienta local</span><h3>Orquestador</h3><p>Panel de desarrollo para iniciar, detener, reiniciar y supervisar los servicios locales.</p></article>
         </div>
       </div>
@@ -309,5 +324,29 @@
   </main>
 
   <footer><div class="wrap"><span>Digitrans</span><span>Plataforma universitaria modular</span></div></footer>
+  <script>
+    (function () {
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches
+          || !('IntersectionObserver' in window)) return;
+
+      const targets = document.querySelectorAll(
+        '.section-head, .service-card, .diagram, .module-card, .future-card, .team-grid li'
+      );
+      const observer = new IntersectionObserver(function (entries) {
+        entries.forEach(function (entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -24px 0px' });
+
+      targets.forEach(function (target, index) {
+        target.classList.add('reveal');
+        target.style.setProperty('--reveal-delay', ((index % 4) * 65) + 'ms');
+        observer.observe(target);
+      });
+    })();
+  </script>
 </body>
 </html>
