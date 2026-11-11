@@ -34,7 +34,7 @@ public class AccessIdentityClient {
     private final RestClient restClient;
     private final String accesoUrl;
 
-    public AccessIdentityClient(@Value("${app.acceso.base-url:http://localhost:8080}") String accesoUrl) {
+    public AccessIdentityClient(@Value("${ACCESO_INTERNAL_URL:${app.acceso.base-url:http://localhost:8080}}") String accesoUrl) {
         this.accesoUrl = accesoUrl;
         HttpClient httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(5))

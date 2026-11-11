@@ -14,7 +14,7 @@ public class TransportSitmClient {
     private final RestClient restClient;
     private final String transporteUrl;
 
-    public TransportSitmClient(@Value("${app.services.transporte-url}") String transporteUrl) {
+    public TransportSitmClient(@Value("${TRANSPORTE_INTERNAL_URL:${app.services.transporte-url}}") String transporteUrl) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(2));
         requestFactory.setReadTimeout(Duration.ofSeconds(3));

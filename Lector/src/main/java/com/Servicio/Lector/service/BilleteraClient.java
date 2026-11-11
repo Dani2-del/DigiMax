@@ -17,7 +17,7 @@ public class BilleteraClient {
     private final String serviceKey;
 
     public BilleteraClient(
-            @Value("${app.billetera.base-url}") String billeteraUrl,
+            @Value("${BILLETERA_INTERNAL_URL:${app.billetera.base-url}}") String billeteraUrl,
             @Value("${app.billetera.api-key}") String serviceKey) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(2));

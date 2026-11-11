@@ -27,7 +27,7 @@ public class WalletClient {
     private final AccessIdentityClient accessIdentityClient;
 
     public WalletClient(
-            @Value("${app.billetera.base-url:http://localhost:8082}") String billeteraUrl,
+            @Value("${BILLETERA_INTERNAL_URL:${app.billetera.base-url:http://localhost:8082}}") String billeteraUrl,
             AccessIdentityClient accessIdentityClient) {
         this.billeteraUrl = billeteraUrl;
         this.accessIdentityClient = accessIdentityClient;

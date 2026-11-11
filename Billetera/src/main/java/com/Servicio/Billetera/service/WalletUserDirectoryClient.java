@@ -22,7 +22,7 @@ public class WalletUserDirectoryClient {
     private final RestClient roleUpdateClient;
     private final String accesoUrl;
 
-    public WalletUserDirectoryClient(@Value("${app.acceso.base-url}") String accesoUrl) {
+    public WalletUserDirectoryClient(@Value("${ACCESO_INTERNAL_URL:${app.acceso.base-url}}") String accesoUrl) {
         this.restClient = createClient(Duration.ofSeconds(3));
         this.roleUpdateClient = createRoleUpdateClient();
         this.accesoUrl = accesoUrl;

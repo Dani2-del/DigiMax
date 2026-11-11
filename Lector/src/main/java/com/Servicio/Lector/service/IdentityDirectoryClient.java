@@ -17,7 +17,7 @@ public class IdentityDirectoryClient {
     private final RestClient client;
     private final String accesoUrl;
 
-    public IdentityDirectoryClient(@Value("${app.acceso.base-url:http://localhost:8080}") String accesoUrl) {
+    public IdentityDirectoryClient(@Value("${ACCESO_INTERNAL_URL:${app.acceso.base-url:http://localhost:8080}}") String accesoUrl) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(2));
         factory.setReadTimeout(Duration.ofSeconds(3));

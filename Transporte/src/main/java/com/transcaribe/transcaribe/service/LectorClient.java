@@ -17,7 +17,7 @@ public class LectorClient {
     private final String baseUrl;
     private final String serviceKey;
 
-    public LectorClient(@Value("${app.lector.base-url:http://localhost:8083}") String baseUrl,
+    public LectorClient(@Value("${LECTOR_INTERNAL_URL:${app.lector.base-url:http://localhost:8086}}") String baseUrl,
             @Value("${app.lector.api-key:}") String serviceKey) {
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(2));

@@ -20,7 +20,7 @@ public class SecurityConfig {
 
     @Bean
     RemoteAccessAuthenticationFilter remoteAccessAuthenticationFilter(
-            @Value("${app.acceso.base-url}") String accesoUrl,
+            @Value("${ACCESO_INTERNAL_URL:${app.acceso.base-url}}") String accesoUrl,
             @Value("${app.cookie.secure:false}") boolean secureCookie) {
         return new RemoteAccessAuthenticationFilter(accesoUrl, secureCookie);
     }

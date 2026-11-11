@@ -23,10 +23,14 @@ import jakarta.servlet.http.HttpServletResponse;
 public class WalletAdminAccessFilter extends OncePerRequestFilter {
 
     private final RestClient accessClient;
-    private final String accesoUrl;
+    private final String accesoInternalUrl;
+    private final String accesoPublicUrl;
 
-    public WalletAdminAccessFilter(@Value("${app.acceso.base-url:http://localhost:8080}") String accesoUrl) {
-        this.accesoUrl = accesoUrl;
+    public WalletAdminAccessFilter(
+            @Value("${ACCESO_INTERNAL_URL:${app.acceso.base-url:http://localhost:8080}}") String accesoInternalUrl,
+            @Value("${app.acceso.base-url:http://localhost:8080}") String accesoPublicUrl) {
+        this.accesoInternalUrl = accesoInternalUrl;
+        this.accesoPublicUrl = accesoPublicUrl;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(2));
         factory.setReadTimeout(Duration.ofSeconds(3));
@@ -52,7 +56,7 @@ public class WalletAdminAccessFilter extends OncePerRequestFilter {
 
         try {
             Identity identity = accessClient.get()
-                    .uri(accesoUrl + "/api/auth/me")
+                    .uri(accesoInternalUrl + "/api/auth/me")
                     .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                     .retrieve()
                     .body(Identity.class);
@@ -87,7 +91,7 @@ public class WalletAdminAccessFilter extends OncePerRequestFilter {
         if (request.getServletPath().startsWith("/api/")) {
             response.sendError(HttpServletResponse.SC_UNAUTHORIZED);
         } else {
-            response.sendRedirect(accesoUrl + "/login");
+            response.sendRedirect(accesoPublicUrl + "/login");
         }
     }
 

@@ -15,7 +15,7 @@ public class PagosClient {
     private final RestClient restClient;
     private final String pagosUrl;
 
-    public PagosClient(@Value("${app.pagos.base-url}") String pagosUrl) {
+    public PagosClient(@Value("${PAGOS_INTERNAL_URL:${app.pagos.base-url}}") String pagosUrl) {
         this.pagosUrl = pagosUrl.replaceAll("/+$", "");
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(2));

@@ -16,7 +16,7 @@ public class WalletClient {
     private final RestClient restClient;
     private final String billeteraUrl;
 
-    public WalletClient(@Value("${app.billetera.base-url}") String billeteraUrl) {
+    public WalletClient(@Value("${BILLETERA_INTERNAL_URL:${app.billetera.base-url}}") String billeteraUrl) {
         this.billeteraUrl = billeteraUrl;
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(Duration.ofSeconds(2));

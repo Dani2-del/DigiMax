@@ -1,12 +1,11 @@
-# Fase de compilación
-FROM maven:3.9.11-eclipse-temurin-21 AS build
-WORKDIR /app
-COPY . .
-RUN mvn clean package -DskipTests
+FROM maven:3.9.11-eclipse-temurin-17 AS build
+WORKDIR /workspace
+COPY Transporte/ ./Transporte/
+RUN mvn -f Transporte/pom.xml --no-transfer-progress package -DskipTests
 
-# Fase de ejecución
-FROM eclipse-temurin:21-jre-alpine
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "app.jar"]
+COPY --from=build /workspace/Transporte/target/*.jar /app/app.jar
+USER 10001:10001
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]

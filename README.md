@@ -141,6 +141,32 @@ Pagos también expone `POST http://localhost:8085/api/pagos` para iniciar pagos 
 
 Con todos los módulos activos, la página principal está en <http://localhost:8080>.
 
+## Ejecutar con Docker
+
+La configuración de Docker ejecuta Acceso, Transporte, Billetera, RecargasMovil, Correo, Pagos, Lector y una instancia propia de MongoDB. Orquestador queda fuera de Compose porque su implementación actual inicia y detiene procesos mediante comandos de Windows; los servicios de la plataforma se administran con Docker Compose.
+
+Necesitas Docker Desktop con Docker Compose v2. Desde PowerShell, en la raíz del repositorio:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Edita `.env` y reemplaza las claves de ejemplo. `APP_JWT_SECRET` debe tener al menos 32 caracteres. Usa la misma `MAIL_SERVICE_API_KEY` en los servicios y la misma `LECTOR_API_KEY` en Transporte, Billetera y Lector. Completa las credenciales SMTP si vas a usar el envío de correo. Para usar Google OAuth, completa `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`, y cambia `APP_OAUTH_GOOGLE_ENABLED` a `true`. No subas `.env` a Git.
+
+Luego construye e inicia los servicios:
+
+```powershell
+docker compose up --build
+```
+
+Abre Acceso en <http://localhost:8080>. Los demás servicios quedan disponibles en los puertos `8081` a `8086`. Para detenerlos, usa `Ctrl+C`; para iniciarlos después en segundo plano, agrega `-d` al comando. `docker compose down` detiene y elimina los contenedores, pero conserva los datos de MongoDB en el volumen `mongodb-data`. Para borrar también esos datos, Docker requiere `docker compose down -v`.
+
+MongoDB queda disponible en `localhost:27018` para herramientas locales, evitando el puerto `27017` de una instalación MongoDB que ya tengas. Puedes cambiarlo con `MONGO_PORT` en `.env`. La primera ejecución puede tardar mientras Docker descarga imágenes y compila las aplicaciones.
+
+Por defecto, los servicios usan el MongoDB local del Compose, incluso si tienes URI de Atlas configuradas para el arranque tradicional de DigiMAX. Si quieres que la versión Docker use Atlas, configura las variables `DOCKER_ACCESO_MONGODB_URI`, `DOCKER_TRANSPORTE_MONGODB_URI`, `DOCKER_BILLETERA_MONGODB_URI`, `DOCKER_RECARGAS_MONGODB_URI` y `DOCKER_LECTOR_MONGODB_URI` en `.env`; al hacerlo, los servicios escribirán en esas bases externas y la instancia Mongo local quedará sin uso.
+
+Las direcciones internas usan nombres de servicio de Compose; los enlaces abiertos por el navegador continúan usando `localhost`. El inicio de sesión de Google debe tener registrado el callback local `http://localhost:8080/login/oauth2/code/google`. Esta configuración está pensada para desarrollo local; no publiques sus puertos en Internet.
+
 ## Pruebas
 
 Ejecuta las pruebas desde la raíz del repositorio con PowerShell:
