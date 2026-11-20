@@ -1,4 +1,4 @@
-# Orquestador DigiMAX
+# Orquestador Digitrans
 
 Orquestador presenta el panel local de control en el puerto `8087`. Al iniciar la aplicación, únicamente se inicia Orquestador; los otros siete módulos quedan detenidos hasta que se solicite su inicio desde el panel.
 

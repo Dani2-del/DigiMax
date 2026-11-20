@@ -1,4 +1,4 @@
-# DigiMAX
+# Digitrans
 
 **Digitrans** es una plataforma universitaria que reúne en una sola cuenta servicios de transporte, billetera universal y recargas móviles. El proyecto está organizado como un monorepo de aplicaciones Spring Boot independientes que se comunican mediante APIs HTTP. Orquestador coordina el inicio y la supervisión local de los servicios.
 
