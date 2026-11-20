@@ -1,52 +1,49 @@
 # Modelo predictivo Digitrans
 
-Este módulo estima qué pasajeros activos harán una recarga exitosa de Billetera durante los siguientes **30 días**. Usa el historial disponible antes de cada fecha de referencia y publica los niveles estimados en Atlas.
+Este módulo estima qué pasajeros activos harán una recarga exitosa de Billetera durante los siguientes **30 días**.
 
-## Ejecutar en Windows
+## Carpetas
+
+- `ejecutar_modelo.bat` y `ejecutar_modelo.ps1`: ejecutan el flujo.
+- `modelo/`: código Python, configuración y notebook de Colab.
+- `generaciones/`: resultados separados por ejecución. Cada corrida crea una carpeta nueva con fecha y hora; los resultados anteriores se conservan.
+
+## Ejecutar
 
 Instala Python 3.12 y las dependencias:
 
 ```powershell
-python -m pip install -r requirements.txt
+python -m pip install -r .\requirements.txt
 ```
 
-Desde esta carpeta, inicia el flujo completo:
+Para generar los archivos y evaluar el modelo sin publicar cambios en Atlas:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\ejecutar_modelo.ps1 -SoloEvaluar
+```
+
+Para ejecutar el flujo completo, incluida la publicación de predicciones y métricas en Atlas:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\ejecutar_modelo.ps1
 ```
 
-El flujo solicita la URI de Atlas de forma oculta si no está configurada en la sesión. Luego exporta los datos, construye la tabla usuario-semana, evalúa el horizonte mensual y publica las predicciones.
+Si `DIGITRANS_ATLAS_URI` no está configurada, el script la solicita de forma segura. No la guardes en el notebook ni la pegues en archivos del proyecto.
 
-## Flujo
+Cada ejecución crea `generaciones\AAAA-MM-DD_HHMMSS\` con los CSV exportados, la tabla usuario-semana, la evaluación y, en el flujo completo, las predicciones y métricas. El flujo completo reemplaza la proyección vigente en Atlas; `-SoloEvaluar` no escribe en Atlas.
 
-1. `exportar_datos_atlas.py`: exporta usuarios y eventos desde Atlas.
-2. `construir_tabla_usuario_semana.py`: genera etiquetas de 7, 14 y 30 días y variables históricas.
-3. `evaluar_horizontes.py`: evalúa los horizontes con hasta seis ventanas temporales móviles de 90 días y embargo igual al horizonte. Requiere al menos tres cortes completos.
-4. `publicar_predicciones.py`: entrena CatBoost para el objetivo de 30 días y actualiza `predicciones_recarga` y `modelo_metricas` en la base `digitrans_acceso`.
+## Google Colab
 
-Para ejecutar únicamente la publicación con la tabla y evaluación ya generadas:
+Abre `modelo/Modelo_Predictivo_DigiTrans_Colab.ipynb` y carga el archivo `tabla_usuario_semana_horizontes_v1.csv` desde la carpeta de generación más reciente. El notebook vuelve a entrenar y evaluar en la sesión de Colab, y descarga sus predicciones al final. No publica en Atlas.
 
-```powershell
-python .\publicar_predicciones.py --prefijo digitrans
-```
+Si la tabla contiene información real de usuarios, anonimízala y confirma que puedes procesarla en Colab antes de subirla.
 
-Para comparar configuraciones de CatBoost del objetivo elegido de 30 días, después de generar la tabla:
+## Comparar configuraciones
+
+Desde la carpeta de una generación que ya tenga la tabla, compara configuraciones sin publicar en Atlas:
 
 ```powershell
-python .\comparar_catboost_30d.py
+python ..\..\modelo\comparar_catboost_30d.py
 ```
 
-La comparación selecciona parámetros con los cortes antiguos y reserva los dos más recientes para la medición final. Genera `experimento_catboost_30d.csv` y no publica ni modifica datos en Atlas. Solo conviene reemplazar la configuración actual si también mejora en ese periodo reservado.
-
-## Cuaderno Google Colab
-
-Abre `Modelo_Predictivo_DigiTrans_Colab.ipynb` en Google Colab y sube `tabla_usuario_semana_horizontes_v1.csv`. El cuaderno explica las variables y la validación temporal, reproduce la evaluación y genera puntuaciones descargables sin escribir en Atlas. Si la tabla contiene información real de usuarios, anonimízala y confirma que puedes procesarla en Colab antes de subirla.
-
-## Alcance de las métricas
-
-El modelo de publicación predice una recarga exitosa de Billetera dentro de 30 días usando eventos exportados desde Atlas. La evaluación usa cortes temporales móviles y reporta precisión y recall en los grupos superiores. Esas cifras reflejan la base exportada; si contiene transacciones de prueba o simuladas, no deben interpretarse como rendimiento en producción. El horizonte publicado se mantiene en 30 días.
-
-La publicación clasifica como **Alto** al 5 % con las puntuaciones mayores, **Medio** al siguiente 35 % y **Bajo** al 60 % restante. En los seis cortes temporales disponibles, el top 5 % obtuvo 83,8 % de precisión promedio; en los dos cortes más recientes obtuvo 85,3 % y 84,9 %. Son resultados retrospectivos y no garantizan el mismo rendimiento en nuevas semanas.
-
-Los archivos CSV se generan durante la ejecución y no forman parte de esta entrega. El flujo los vuelve a crear desde Atlas.
+La comparación guarda `experimento_catboost_30d.csv` en esa misma carpeta de generación.

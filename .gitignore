@@ -9,8 +9,9 @@
 **/credentials.json
 modelo_atlas_digitrans/*.csv
 modelo_atlas_digitrans/demo_sintetica_local/
-Modelo/*.csv
-Modelo/__pycache__/
+Modelo/generaciones/*
+!Modelo/generaciones/.gitkeep
+__pycache__/
 
 # Generated files
 **/.gradle/

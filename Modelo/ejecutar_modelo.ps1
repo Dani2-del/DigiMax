@@ -6,13 +6,23 @@ param(
 $ErrorActionPreference = 'Stop'
 
 $directorioScript = Split-Path -Parent $MyInvocation.MyCommand.Path
+$directorioModelo = Join-Path $directorioScript 'modelo'
+$directorioGeneraciones = Join-Path $directorioScript 'generaciones'
 $directorioAnterior = Get-Location
 $uriAnterior = $env:DIGITRANS_ATLAS_URI
 $solicitoUri = [string]::IsNullOrWhiteSpace($uriAnterior)
 $uriTemporal = $null
+$salidaGeneracion = Join-Path $directorioGeneraciones (Get-Date -Format 'yyyy-MM-dd_HHmmss')
+
+New-Item -ItemType Directory -Path $directorioGeneraciones -Force | Out-Null
+while (Test-Path $salidaGeneracion) {
+    Start-Sleep -Seconds 1
+    $salidaGeneracion = Join-Path $directorioGeneraciones (Get-Date -Format 'yyyy-MM-dd_HHmmss')
+}
+New-Item -ItemType Directory -Path $salidaGeneracion -Force | Out-Null
 
 try {
-    Set-Location $directorioScript
+    Set-Location $salidaGeneracion
 
     if ($solicitoUri) {
         $uriSegura = Read-Host 'Pega la URI de MongoDB Atlas' -AsSecureString
@@ -41,7 +51,7 @@ try {
     foreach ($paso in $pasos) {
         Write-Host "`n=== $($paso.Nombre) ===" -ForegroundColor Cyan
         $argumentos = @($paso.Argumentos)
-        & $python.Source $paso.Script @argumentos
+        & $python.Source (Join-Path $directorioModelo $paso.Script) @argumentos
         if ($LASTEXITCODE -ne 0) {
             throw "Falló $($paso.Script) (código $LASTEXITCODE). Se detuvo el flujo."
         }
@@ -52,6 +62,7 @@ try {
     } else {
         Write-Host "`nModelo ejecutado y publicado correctamente." -ForegroundColor Green
     }
+    Write-Host "Archivos de esta generacion: $salidaGeneracion" -ForegroundColor Cyan
 } catch {
     Write-Error $_
     exit 1
