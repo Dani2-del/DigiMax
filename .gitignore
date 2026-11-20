@@ -11,6 +11,8 @@ modelo_atlas_digitrans/*.csv
 modelo_atlas_digitrans/demo_sintetica_local/
 Modelo/generaciones/*
 !Modelo/generaciones/.gitkeep
+!Modelo/generaciones/Importante.md
+!Modelo/generaciones/Datos Extraidos de la base de datos.zip
 __pycache__/
 
 # Generated files
